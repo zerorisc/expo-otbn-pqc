@@ -44,9 +44,12 @@ async def run_adder_test(dut):
     A = random.getrandbits(256)
     B = random.getrandbits(256)
 
-    mode = int(os.environ.get("MODE", 0))
+    mode = int(os.environ.get("MODE"))
 
-    cin = random.randint(0, 1) #if mode == 0 else 0
+    if os.environ.get("TEST_CIN") == "yes":
+      cin = random.randint(0, 1) if mode == 0 else 0
+    else:
+      cin = 0
 
     # Assign inputs
     dut.A.value = A
@@ -56,13 +59,14 @@ async def run_adder_test(dut):
 
     await Timer(1, units="ns")  # allow evaluation
 
-    print(dut.sum.value)
-
     # Get result
     sum_expected, cout_expected = reference_sum(A, B, mode, cin)
 
     sum_out = dut.sum.value.integer
     cout_out = dut.cout.value.integer
+
+    print(f"\nsum out:  {bin(sum_out)}\nexpected: {bin(sum_expected)}")
+    print(f"\nsum out:  {hex(sum_out)}\nexpected: {hex(sum_expected)}")
 
     assert sum_out == sum_expected, f"sum mismatch: mode={mode} A={hex(A)} B={hex(B)} cin={cin}"
     if mode == 0:
@@ -73,13 +77,15 @@ async def run_adder_test(dut):
 # === Pytest hook ===
 
 @pytest.mark.parametrize(
-    "variant,mode",
-    [("ref_add", 0)] +
-    [("brent_kung_adder_256_mode0_only", 0)] +
-    [("brent_kung_adder_256", i) for i in range(3)] +
-    [("csa_adder_256", i) for i in range(3)]
+    "variant,mode,test_cin",
+    [("ref_add", 0, "yes")] +
+    [("brent_kung_adder_256_mode0_only", 0, "yes")] +
+    [("brent_kung_adder_256", i, "yes") for i in range(3)] +
+    [("sklansky_adder_256_mode0_only", 0, "no")] +
+    [("sklansky_adder_256", i, "no") for i in range(3)] +
+    [("csa_adder_256", i, "yes") for i in range(3)]
 )
-def test_adder_sim(variant, mode):
+def test_adder_sim(variant, mode, test_cin):
     run(
         toplevel=variant,
         module="test_adder_pytest",
@@ -90,8 +96,9 @@ def test_adder_sim(variant, mode):
         verilog_sources=[f"bn_vec_core/{variant}.sv"],
         extra_env={
             "MODE": str(mode),
+            "TEST_CIN": test_cin,
         },
-        waves=False,
+        #waves=True,
         #plus_args=["--trace"]  # enable trace all in verilator simulation
     )
 
