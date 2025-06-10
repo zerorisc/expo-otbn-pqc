@@ -10,6 +10,7 @@ module unified_mul #(
     input  logic                   half_sel,
     input  logic [WLEN-1:0]        A,
     input  logic [WLEN-1:0]        B,
+    input  logic [1:0]             mode_64_shift,
     output logic [2*WLEN-1:0]      result
 );
 
@@ -147,7 +148,15 @@ module unified_mul #(
     // -------------------------------------------------------------------
     always_comb begin
         unique case (mode)
-            MODE_64: result = {{(2*WLEN-2*DLEN){1'b0}}, result_64};
+            MODE_64: //result = {{(2*WLEN-2*DLEN){1'b0}}, result_64};
+                begin
+                  unique case (mode_64_shift)
+                    2'd0: result = {{WLEN {1'b0}}, {DLEN * 2{1'b0}}, result_64};
+                    2'd1: result = {{WLEN {1'b0}}, {DLEN{1'b0}}, result_64, {DLEN{1'b0}}};
+                    2'd2: result = {{WLEN {1'b0}}, result_64, {DLEN * 2{1'b0}}};
+                    2'd3: result = {{WLEN {1'b0}}, result_64[63:0], {DLEN * 3{1'b0}}};
+                  endcase
+                end
             MODE_32: result = {{(2*WLEN-2*SLEN*NDOUB){1'b0}}, result_32};
             MODE_16: result = result_16;
             default: result = '0;

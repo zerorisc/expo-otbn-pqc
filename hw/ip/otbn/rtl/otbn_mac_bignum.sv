@@ -39,9 +39,9 @@ module otbn_mac_bignum
   logic [WLEN-1:0] adder_result;
   logic [1:0]      adder_result_hw_is_zero;
 
-  logic [QWLEN-1:0]  mul_op_a;
-  logic [QWLEN-1:0]  mul_op_b;
-  logic [WLEN/2-1:0] mul_res;
+//  logic [QWLEN-1:0]  mul_op_a;
+//  logic [QWLEN-1:0]  mul_op_b;
+//  logic [WLEN/2-1:0] mul_res;
   logic [WLEN-1:0]   mul_res_shifted;
 
   logic [ExtWLEN-1:0] acc_intg_d;
@@ -67,28 +67,28 @@ module otbn_mac_bignum
     .out_o(operand_b_blanked)
   );
 
-  // Extract QWLEN multiply operands from WLEN operand inputs based on chosen quarter word from the
-  // instruction (operand_[a|b]_qw_sel).
-  always_comb begin
-    mul_op_a = '0;
-    mul_op_b = '0;
-
-    unique case (operation_i.operand_a_qw_sel)
-      2'd0: mul_op_a = operand_a_blanked[QWLEN*0+:QWLEN];
-      2'd1: mul_op_a = operand_a_blanked[QWLEN*1+:QWLEN];
-      2'd2: mul_op_a = operand_a_blanked[QWLEN*2+:QWLEN];
-      2'd3: mul_op_a = operand_a_blanked[QWLEN*3+:QWLEN];
-      default: mul_op_a = '0;
-    endcase
-
-    unique case (operation_i.operand_b_qw_sel)
-      2'd0: mul_op_b = operand_b_blanked[QWLEN*0+:QWLEN];
-      2'd1: mul_op_b = operand_b_blanked[QWLEN*1+:QWLEN];
-      2'd2: mul_op_b = operand_b_blanked[QWLEN*2+:QWLEN];
-      2'd3: mul_op_b = operand_b_blanked[QWLEN*3+:QWLEN];
-      default: mul_op_b = '0;
-    endcase
-  end
+//  // Extract QWLEN multiply operands from WLEN operand inputs based on chosen quarter word from the
+//  // instruction (operand_[a|b]_qw_sel).
+//  always_comb begin
+//    mul_op_a = '0;
+//    mul_op_b = '0;
+//
+//    unique case (operation_i.operand_a_qw_sel)
+//      2'd0: mul_op_a = operand_a_blanked[QWLEN*0+:QWLEN];
+//      2'd1: mul_op_a = operand_a_blanked[QWLEN*1+:QWLEN];
+//      2'd2: mul_op_a = operand_a_blanked[QWLEN*2+:QWLEN];
+//      2'd3: mul_op_a = operand_a_blanked[QWLEN*3+:QWLEN];
+//      default: mul_op_a = '0;
+//    endcase
+//
+//    unique case (operation_i.operand_b_qw_sel)
+//      2'd0: mul_op_b = operand_b_blanked[QWLEN*0+:QWLEN];
+//      2'd1: mul_op_b = operand_b_blanked[QWLEN*1+:QWLEN];
+//      2'd2: mul_op_b = operand_b_blanked[QWLEN*2+:QWLEN];
+//      2'd3: mul_op_b = operand_b_blanked[QWLEN*3+:QWLEN];
+//      default: mul_op_b = '0;
+//    endcase
+//  end
 
   `ASSERT_KNOWN_IF(OperandAQWSelKnown, operation_i.operand_a_qw_sel, mac_en_i)
   `ASSERT_KNOWN_IF(OperandBQWSelKnown, operation_i.operand_b_qw_sel, mac_en_i)
@@ -112,24 +112,27 @@ module otbn_mac_bignum
     .half_sel(1'b0),
     .A(operand_a_blanked),
     .B(operand_b_blanked),
+    .mode_64_shift(operation_i.pre_acc_shift_imm),
     .result(unified_result)
   );
 
-  assign mul_res = unified_result[WLEN/2-1:0];
+//  assign mul_res = unified_result[WLEN/2-1:0];
+//
+//  // Shift the QWLEN multiply result into a WLEN word before accumulating using the shift amount
+//  // supplied in the instruction (pre_acc_shift_imm).
+//  always_comb begin
+//    mul_res_shifted = '0;
+//
+//    unique case (operation_i.pre_acc_shift_imm)
+//      2'd0: mul_res_shifted = {{QWLEN * 2{1'b0}}, mul_res};
+//      2'd1: mul_res_shifted = {{QWLEN{1'b0}}, mul_res, {QWLEN{1'b0}}};
+//      2'd2: mul_res_shifted = {mul_res, {QWLEN * 2{1'b0}}};
+//      2'd3: mul_res_shifted = {mul_res[63:0], {QWLEN * 3{1'b0}}};
+//      default: mul_res_shifted = '0;
+//    endcase
+//  end
 
-  // Shift the QWLEN multiply result into a WLEN word before accumulating using the shift amount
-  // supplied in the instruction (pre_acc_shift_imm).
-  always_comb begin
-    mul_res_shifted = '0;
-
-    unique case (operation_i.pre_acc_shift_imm)
-      2'd0: mul_res_shifted = {{QWLEN * 2{1'b0}}, mul_res};
-      2'd1: mul_res_shifted = {{QWLEN{1'b0}}, mul_res, {QWLEN{1'b0}}};
-      2'd2: mul_res_shifted = {mul_res, {QWLEN * 2{1'b0}}};
-      2'd3: mul_res_shifted = {mul_res[63:0], {QWLEN * 3{1'b0}}};
-      default: mul_res_shifted = '0;
-    endcase
-  end
+  assign mul_res_shifted = unified_result[WLEN-1:0];
 
   `ASSERT_KNOWN_IF(PreAccShiftImmKnown, operation_i.pre_acc_shift_imm, mac_en_i)
 
