@@ -26,9 +26,8 @@ module sklansky_adder_256 (
         // Stage 1 (distance = 1)
         for (i = 0; i < 256; i = i + 1) begin : stage_1
             if ((i % 2) == 1) begin
-              assign g_s1[i] = g_0[i] | (p_0[i] & g_0[i - (i%2) + 0]);
-              assign p_s1[i] = p_0[i] & p_0[i - (i%2) + 0];
-
+                assign g_s1[i] = g_0[i] | (p_0[i] & g_0[i - (i%2) + 0]);
+                assign p_s1[i] = p_0[i] & p_0[i - (i%2) + 0];
             end else begin
                 assign g_s1[i] = g_0[i];
                 assign p_s1[i] = p_0[i];
@@ -38,9 +37,8 @@ module sklansky_adder_256 (
         // Stage 2 (distance = 2)
         for (i = 0; i < 256; i = i + 1) begin : stage_2
             if ((i % 4) >= 2) begin
-              assign g_s2[i] = g_s1[i] | (p_s1[i] & g_s1[i - (i%4) + 1]);
-              assign p_s2[i] = p_s1[i] & p_s1[i - (i%4) + 1];
-
+                assign g_s2[i] = g_s1[i] | (p_s1[i] & g_s1[i - (i%4) + 1]);
+                assign p_s2[i] = p_s1[i] & p_s1[i - (i%4) + 1];
             end else begin
                 assign g_s2[i] = g_s1[i];
                 assign p_s2[i] = p_s1[i];
@@ -50,9 +48,8 @@ module sklansky_adder_256 (
         // Stage 3 (distance = 4)
         for (i = 0; i < 256; i = i + 1) begin : stage_3
             if ((i % 8) >= 4) begin
-              assign g_s3[i] = g_s2[i] | (p_s2[i] & g_s2[i - (i%8) + 3]);
-              assign p_s3[i] = p_s2[i] & p_s2[i - (i%8) + 3];
-
+                assign g_s3[i] = g_s2[i] | (p_s2[i] & g_s2[i - (i%8) + 3]);
+                assign p_s3[i] = p_s2[i] & p_s2[i - (i%8) + 3];
             end else begin
                 assign g_s3[i] = g_s2[i];
                 assign p_s3[i] = p_s2[i];
@@ -62,9 +59,8 @@ module sklansky_adder_256 (
         // Stage 4 (distance = 8)
         for (i = 0; i < 256; i = i + 1) begin : stage_4
             if ((i % 16) >= 8) begin
-              assign g_s4[i] = g_s3[i] | (p_s3[i] & g_s3[i - (i%16) + 7]);
-              assign p_s4[i] = p_s3[i] & p_s3[i - (i%16) + 7];
-
+                assign g_s4[i] = g_s3[i] | (p_s3[i] & g_s3[i - (i%16) + 7]);
+                assign p_s4[i] = p_s3[i] & p_s3[i - (i%16) + 7];
             end else begin
                 assign g_s4[i] = g_s3[i];
                 assign p_s4[i] = p_s3[i];
@@ -74,9 +70,8 @@ module sklansky_adder_256 (
         // Stage 5 (distance = 16)
         for (i = 0; i < 256; i = i + 1) begin : stage_5
             if ((i % 32) >= 16) begin
-              assign g_s5[i] = (mode < 2'b10) ? g_s4[i] | (p_s4[i] & g_s4[i - (i%32) + 15])  : g_s4[i];
-              assign p_s5[i] = (mode < 2'b10) ? p_s4[i] & p_s4[i - (i%32) + 15]              : p_s4[i];
-
+                assign g_s5[i] = (mode < 2'b10) ? g_s4[i] | (p_s4[i] & g_s4[i - (i%32) + 15])  : g_s4[i];
+                assign p_s5[i] = (mode < 2'b10) ? p_s4[i] & p_s4[i - (i%32) + 15]              : p_s4[i];
             end else begin
                 assign g_s5[i] = g_s4[i];
                 assign p_s5[i] = p_s4[i];
@@ -86,9 +81,8 @@ module sklansky_adder_256 (
         // Stage 6 (distance = 32)
         for (i = 0; i < 256; i = i + 1) begin : stage_6
             if ((i % 64) >= 32) begin
-              assign g_s6[i] = (mode < 2'b01) ? g_s5[i] | (p_s5[i] & g_s5[i - (i%64) + 31]) : g_s5[i];
-              assign p_s6[i] = (mode < 2'b01) ? p_s5[i] & p_s5[i - (i%64) + 31]             : p_s5[i];
-
+                assign g_s6[i] = (mode < 2'b01) ? g_s5[i] | (p_s5[i] & g_s5[i - (i%64) + 31]) : g_s5[i];
+                assign p_s6[i] = (mode < 2'b01) ? p_s5[i] & p_s5[i - (i%64) + 31]             : p_s5[i];
             end else begin
                 assign g_s6[i] = g_s5[i];
                 assign p_s6[i] = p_s5[i];
@@ -98,9 +92,8 @@ module sklansky_adder_256 (
         // Stage 7 (distance = 64)
         for (i = 0; i < 256; i = i + 1) begin : stage_7
             if ((i % 128) >= 64) begin
-              assign g_s7[i] = (mode < 2'b01) ? g_s6[i] | (p_s6[i] & g_s6[i - (i%128) + 63]) : g_s6[i];
-              assign p_s7[i] = (mode < 2'b01) ? p_s6[i] & p_s6[i - (i%128) + 63]             : p_s6[i];
-
+                assign g_s7[i] = (mode < 2'b01) ? g_s6[i] | (p_s6[i] & g_s6[i - (i%128) + 63]) : g_s6[i];
+                assign p_s7[i] = (mode < 2'b01) ? p_s6[i] & p_s6[i - (i%128) + 63]             : p_s6[i];
             end else begin
                 assign g_s7[i] = g_s6[i];
                 assign p_s7[i] = p_s6[i];
@@ -110,9 +103,8 @@ module sklansky_adder_256 (
         // Stage 8 (distance = 128)
         for (i = 0; i < 256; i = i + 1) begin : stage_8
             if ((i % 256) >= 128) begin
-              assign g_s8[i] = (mode < 2'b01) ? g_s7[i] | (p_s7[i] & g_s7[i - (i%256) + 127]) : g_s7[i];
-              assign p_s8[i] = (mode < 2'b01) ? p_s7[i] & p_s7[i - (i%256) + 127]             : p_s7[i];
-
+                assign g_s8[i] = (mode < 2'b01) ? g_s7[i] | (p_s7[i] & g_s7[i - (i%256) + 127]) : g_s7[i];
+                assign p_s8[i] = (mode < 2'b01) ? p_s7[i] & p_s7[i - (i%256) + 127]             : p_s7[i];
             end else begin
                 assign g_s8[i] = g_s7[i];
                 assign p_s8[i] = p_s7[i];
@@ -120,7 +112,7 @@ module sklansky_adder_256 (
         end
     endgenerate
 
-    assign carry[0] = 1'b0; //cin;
+    assign carry[0] = (mode == 0) ? cin : 1'b0;
     generate
         for (i = 1; i < 256; i = i + 1) begin : carry_assign
           if ((i % 32) == 0)
@@ -128,7 +120,7 @@ module sklansky_adder_256 (
           else if ((i % 16) == 0)
             assign carry[i] = (mode < 2'b10) ? g_s8[i - 1] : 1'b0;
           else
-            assign carry[i] = g_s8[i - 1];
+            assign carry[i] = (mode == 0) ? g_s8[i - 1] | (p_s8[i - 1] & cin) : g_s8[i - 1];
         end
     endgenerate
 

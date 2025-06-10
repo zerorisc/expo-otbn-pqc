@@ -81,8 +81,8 @@ async def run_adder_test(dut):
     [("ref_add", 0, "yes")] +
     [("brent_kung_adder_256_mode0_only", 0, "yes")] +
     [("brent_kung_adder_256", i, "yes") for i in range(3)] +
-    [("sklansky_adder_256_mode0_only", 0, "no")] +
-    [("sklansky_adder_256", i, "no") for i in range(3)] +
+    [("sklansky_adder_256_mode0_only", 0, "yes")] +
+    [("sklansky_adder_256", i, "yes") for i in range(3)] +
     [("csa_adder_256", i, "yes") for i in range(3)]
 )
 def test_adder_sim(variant, mode, test_cin):
