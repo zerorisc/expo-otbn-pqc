@@ -76,7 +76,7 @@ async def mac_test(dut):
 
 
 def test_mod_mul_runner():
-    verilog_sources = ["../../prim/rtl/prim_mubi_pkg.sv", "../../prim/rtl/prim_secded_pkg.sv", "../../prim/rtl/prim_util_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_state_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_reg_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_pkg.sv", "../../otp_ctrl/rtl/otp_ctrl_pkg.sv","otbn_pkg.sv", "bn_vec_core/unified_mul.sv", "otbn_mac_bignum.sv", "../../../vendor/lowrisc_ibex/dv/uvm/core_ibex/common/prim/prim_and2.sv"]
+    verilog_sources = ["../../prim/rtl/prim_mubi_pkg.sv", "../../prim/rtl/prim_secded_pkg.sv", "../../prim/rtl/prim_util_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_state_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_reg_pkg.sv", "../../lc_ctrl/rtl/lc_ctrl_pkg.sv", "../../otp_ctrl/rtl/otp_ctrl_pkg.sv","otbn_pkg.sv", "bn_vec_core/unified_mul.sv", "bn_vec_core/brent_kung_adder_256_double.sv", "otbn_mac_bignum.sv", "../../../vendor/lowrisc_ibex/dv/uvm/core_ibex/common/prim/prim_and2.sv"]
 
     run(
         toplevel="otbn_mac_bignum",
