@@ -173,7 +173,17 @@ module otbn_mac_bignum
   assign adder_op_a = mul_res_shifted;
   assign adder_op_b = acc_blanked;
 
-  assign adder_result = adder_op_a + adder_op_b;
+//  assign adder_result = adder_op_a + adder_op_b;
+
+  brent_kung_adder_256_double adder (
+    .A(adder_op_a),
+    .B(adder_op_b),
+    .mode(2'b00),   // 00: scalar, 01: vec64, 10: vec32
+    .cin(1'b0),
+    .sum(adder_result),
+    .cout()
+  );
+ 
 
   // Split zero check between the two halves of the result. This is used for flag setting (see
   // below).
