@@ -100,7 +100,22 @@ module otbn_mac_bignum
   logic unused_ok;
   assign unused_ok = ^(rst_ni);
 
-  assign mul_res = mul_op_a * mul_op_b;
+//  assign mul_res = mul_op_a * mul_op_b;
+
+
+  logic [2*WLEN-1:0] unified_result;
+
+  unified_mul mul (
+    .mode(2'b00),            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
+    .word_sel_A(operation_i.operand_a_qw_sel),
+    .word_sel_B(operation_i.operand_b_qw_sel),
+    .half_sel(1'b0),
+    .A(operand_a_blanked),
+    .B(operand_b_blanked),
+    .result(unified_result)
+  );
+
+  assign mul_res = unified_result[WLEN/2-1:0];
 
   // Shift the QWLEN multiply result into a WLEN word before accumulating using the shift amount
   // supplied in the instruction (pre_acc_shift_imm).
