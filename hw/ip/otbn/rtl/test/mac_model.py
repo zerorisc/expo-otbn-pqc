@@ -30,7 +30,7 @@ class mac_predec_bignum_t:
     acc_rd_en: int
 
     def to_Logic(self) -> int:
-        return (self.acc_rd_en << 1) | self.op_en
+        return (self.op_en << 1) | self.acc_rd_en
 
 
 def mask(val, bits=256):
@@ -42,20 +42,32 @@ def select_quarter_word(val: int, sel: int) -> int:
     shift = sel * 64
     return (val >> shift) & 0xFFFFFFFFFFFFFFFF
 
+acc = 0
 
-def mac_model(op: mac_bignum_operation_t, acc: int) -> int:
+def mac_acc():
+  return acc
+
+def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
     """Python model of the MAC bignum hardware"""
+
+    global acc
+
     a_qw = select_quarter_word(op.operand_a, op.operand_a_qw_sel)
     b_qw = select_quarter_word(op.operand_b, op.operand_b_qw_sel)
     mul_res = a_qw * b_qw
 
-    if op.zero_acc:
-        acc_val = 0
+    mul_res = mask(mul_res << (op.pre_acc_shift_imm * 64))
+
+    if op.zero_acc or not predec.acc_rd_en:
+      acc = 0
+
+
+    res = mask(acc + mul_res)
+
+    if op.shift_acc:
+      acc = res >> 128
     else:
-        acc_val = acc
+      acc = res
 
-    mul_res = mul_res << (op.pre_acc_shift_imm * 64)
-
-    result = mask(acc_val + mul_res)
-    return result
+    return res
 

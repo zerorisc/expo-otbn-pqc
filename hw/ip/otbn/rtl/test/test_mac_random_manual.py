@@ -6,7 +6,7 @@ from cocotb.triggers import RisingEdge, FallingEdge, Timer, Join, First, ReadOnl
 from dataclasses import dataclass
 import random
 
-from mac_model import mac_model, mac_bignum_operation_t, mac_predec_bignum_t
+from mac_model import mac_model, mac_bignum_operation_t, mac_predec_bignum_t, mac_acc
 
 
 async def reset_dut(dut):
@@ -21,9 +21,10 @@ async def mac_test(dut):
     cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
     await reset_dut(dut)
 
-    await FallingEdge(dut.clk_i)
-
     for i in range(20):
+
+        await FallingEdge(dut.clk_i)
+
         operand_a = random.getrandbits(256)
         operand_b = random.getrandbits(256)
 
@@ -32,8 +33,7 @@ async def mac_test(dut):
         wr_hw_sel_upper = random.randint(0, 1)
         pre_acc_shift_imm = random.randint(0, 3)
         shift_acc = random.randint(0, 1)
-        zero_acc = 0 #1 if i==0 else 0 #random.randint(0, 1)
-        acc_val = 0 if zero_acc else dut.acc_no_intg_q.value.integer   # should also model this!
+        zero_acc = 1 if i==0 else random.randint(0, 1)
 
         op = mac_bignum_operation_t(
             operand_a=operand_a,
@@ -46,14 +46,17 @@ async def mac_test(dut):
             shift_acc=shift_acc
         )
 
-        expected = mac_model(op, acc=acc_val)
+        predec = mac_predec_bignum_t(
+            op_en=1,
+            acc_rd_en=0 if zero_acc else 1
+        )
 
         dut.operation_i.value = op.to_Logic()
 
-        dut.mac_predec_bignum_i.value = mac_predec_bignum_t(op_en=0, acc_rd_en=1).to_Logic()
+        dut.mac_predec_bignum_i.value = predec.to_Logic()
 
-        dut.mac_en_i.value = 0
-        dut.mac_commit_i.value = 0
+        dut.mac_en_i.value = 1
+        dut.mac_commit_i.value = 1
 
         dut.urnd_data_i.value = 0
         dut.sec_wipe_acc_urnd_i.value = 0
@@ -61,7 +64,15 @@ async def mac_test(dut):
         dut.ispr_acc_wr_data_intg_i.value = 0
         dut.ispr_acc_wr_en_i.value = 0
 
-        await FallingEdge(dut.clk_i)
+
+        acc_val = mac_acc()
+
+        #print(op, predec, hex(mac_acc()), hex(dut.acc_no_intg_q.value.integer))
+        expected = mac_model(op, predec)
+
+
+        await RisingEdge(dut.clk_i)
+
 
         result = dut.operation_result_o.value.integer
 
@@ -89,7 +100,7 @@ def test_mod_mul_runner():
                     "-I../../../../prim_generic/rtl/"],
         sim_build=f"sim_build/otbn_mac_bignum",
         verilog_sources=verilog_sources,
-        waves=False,
+        #waves=True,
         #plus_args=["--trace"]  # enable trace all in verilator simulation
     )
 
