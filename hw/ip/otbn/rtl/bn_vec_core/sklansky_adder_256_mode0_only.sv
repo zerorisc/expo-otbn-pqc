@@ -7,6 +7,8 @@ module sklansky_adder_256_mode0_only (
     output logic         cout
 );
 
+    logic [255:0] g, p;
+
     logic [255:0] g_0, p_0;
     logic [255:0] g_s1, p_s1;
     logic [255:0] g_s2, p_s2;
@@ -18,11 +20,19 @@ module sklansky_adder_256_mode0_only (
     logic [255:0] g_s8, p_s8;
     logic [255:0] carry;
 
-    assign g_0 = A & B;
-    assign p_0 = A ^ B;
+    assign g = A & B;
+    assign p = A ^ B;
+
+    assign g_0[0] = g[0]  | (p[0] & cin);
+    assign p_0[0] = 1'b0;
 
     genvar i;
     generate
+        for (i = 1; i < 256; i = i + 1) begin : setup
+            assign g_0[i] = g[i];
+            assign p_0[i] = p[i];
+        end
+
         // Stage 1 (distance = 1)
         for (i = 0; i < 256; i = i + 1) begin : stage_1
             if ((i % 2) == 1) begin
@@ -115,11 +125,11 @@ module sklansky_adder_256_mode0_only (
     assign carry[0] = cin;
     generate
         for (i = 1; i < 256; i = i + 1) begin : carry_assign
-            assign carry[i] = g_s8[i - 1] | (p_s8[i - 1] & cin);
+            assign carry[i] = g_s8[i - 1];
         end
     endgenerate
 
-    assign sum = p_0 ^ carry;
+    assign sum = p ^ carry;
     assign cout = g_s8[255];
 
 endmodule
