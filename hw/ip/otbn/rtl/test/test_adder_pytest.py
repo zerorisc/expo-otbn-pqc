@@ -79,6 +79,7 @@ async def run_adder_test(dut):
 @pytest.mark.parametrize(
     "variant,mode,test_cin",
     [("ref_add", 0, "yes")] +
+    [("ref_vec_add", 0, "yes")] +
     [("brent_kung_adder_256_mode0_only", 0, "yes")] +
     [("brent_kung_adder_256", i, "yes") for i in range(3)] +
     [("sklansky_adder_256_mode0_only", 0, "yes")] +
