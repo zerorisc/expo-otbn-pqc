@@ -63,6 +63,23 @@ csa_adder_256                 : i/o =  515/  257  lat =    0  nd =  1244  edge =
 
 ref_add                       : i/o =  515/  257  lat =    0  nd =  1495  edge =   4588  aig  =  6347  lev = 16
 
+=== ref_vec_add ===
+
+   Number of wires:               1405
+   Number of wire bits:          11385
+   Number of public wires:          31
+   Number of public wire bits:    1565
+   Number of memories:               0
+   Number of memory bits:            0
+   Number of processes:              0
+   Number of cells:               4297
+     $_AND_                       1977
+     $_MUX_                        768
+     $_OR_                         425
+     $_XOR_                       1127
+
+ref_vec_add                   : i/o =  515/  257  lat =    0  nd =  2281  edge =   7106  aig  = 10553  lev = 29
+
 === sklansky_adder_256_mode0_only ===
 
    Number of wires:               1304
