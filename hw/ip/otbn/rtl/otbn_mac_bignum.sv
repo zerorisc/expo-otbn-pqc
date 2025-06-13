@@ -34,19 +34,19 @@ module otbn_mac_bignum
   // The MAC operates on quarter-words, QWLEN gives the number of bits in a quarter-word.
   localparam int unsigned QWLEN = WLEN / 4;
 
-  logic [WLEN-1:0] adder_op_a;
-  logic [WLEN-1:0] adder_op_b;
-  logic [WLEN-1:0] adder_result;
+  logic [2*WLEN-1:0] adder_op_a;
+  logic [2*WLEN-1:0] adder_op_b;
+  logic [2*WLEN-1:0] adder_result;
   logic [1:0]      adder_result_hw_is_zero;
 
 //  logic [QWLEN-1:0]  mul_op_a;
 //  logic [QWLEN-1:0]  mul_op_b;
 //  logic [WLEN/2-1:0] mul_res;
-  logic [WLEN-1:0]   mul_res_shifted;
+  logic [2*WLEN-1:0]   mul_res_shifted;
 
-  logic [ExtWLEN-1:0] acc_intg_d;
-  logic [ExtWLEN-1:0] acc_intg_q;
-  logic [WLEN-1:0]    acc_blanked;
+  logic [2*ExtWLEN-1:0] acc_intg_d;
+  logic [2*ExtWLEN-1:0] acc_intg_q;
+  logic [2*WLEN-1:0]    acc_blanked;
   logic               acc_en;
 
   logic [WLEN-1:0] operand_a_blanked, operand_b_blanked;
@@ -106,13 +106,15 @@ module otbn_mac_bignum
   logic [2*WLEN-1:0] unified_result;
 
   unified_mul mul (
-    .mode(2'b00),            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
+    .data_type(operation_i.data_type),            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
     .word_sel_A(operation_i.operand_a_qw_sel),
     .word_sel_B(operation_i.operand_b_qw_sel),
-    .half_sel(1'b0),
+    .half_sel(operation_i.sel),
+    .lane_mode(operation_i.lane_mode),
+    .lane_index(operation_i.lane_index),
     .A(operand_a_blanked),
     .B(operand_b_blanked),
-    .mode_64_shift(operation_i.pre_acc_shift_imm),
+    .data_type_64_shift(operation_i.pre_acc_shift_imm),
     .result(unified_result)
   );
 
@@ -132,16 +134,16 @@ module otbn_mac_bignum
 //    endcase
 //  end
 
-  assign mul_res_shifted = unified_result[WLEN-1:0];
+  assign mul_res_shifted = unified_result;
 
   `ASSERT_KNOWN_IF(PreAccShiftImmKnown, operation_i.pre_acc_shift_imm, mac_en_i)
 
   // ECC encode and decode of accumulator register
-  logic [WLEN-1:0]                acc_no_intg_d;
-  logic [WLEN-1:0]                acc_no_intg_q;
-  logic [ExtWLEN-1:0]             acc_intg_calc;
-  logic [2*BaseWordsPerWLEN-1:0]  acc_intg_err;
-  for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : g_acc_words
+  logic [2*WLEN-1:0]                acc_no_intg_d;
+  logic [2*WLEN-1:0]                acc_no_intg_q;
+  logic [2*ExtWLEN-1:0]             acc_intg_calc;
+  logic [4*BaseWordsPerWLEN-1:0]  acc_intg_err;
+  for (genvar i_word = 0; i_word < 2*BaseWordsPerWLEN; i_word++) begin : g_acc_words
     prim_secded_inv_39_32_enc i_secded_enc (
       .data_i (acc_no_intg_d[i_word*32+:32]),
       .data_o (acc_intg_calc[i_word*39+:39])
@@ -166,7 +168,7 @@ module otbn_mac_bignum
 
   // SEC_CM: DATA_REG_SW.SCA
   // acc_rd_en is so if .Z set in MULQACC (zero_acc) so accumulator reads as 0
-  prim_blanker #(.Width(WLEN)) u_acc_blanker (
+  prim_blanker #(.Width(2*WLEN)) u_acc_blanker (
     .in_i (acc_no_intg_q),
     .en_i (mac_predec_bignum_i.acc_rd_en),
     .out_o(acc_blanked)
@@ -179,11 +181,20 @@ module otbn_mac_bignum
 //  assign adder_result = adder_op_a + adder_op_b;
 
   brent_kung_adder_256_double adder (
-    .A(adder_op_a),
-    .B(adder_op_b),
-    .mode(2'b00),   // 00: scalar, 01: vec64, 10: vec32
+    .A(adder_op_a[WLEN-1:0]),
+    .B(adder_op_b[WLEN-1:0]),
+    .data_type(operation_i.data_type),   // 00: scalar, 01: vec64, 10: vec32
     .cin(1'b0),
-    .sum(adder_result),
+    .sum(adder_result[WLEN-1:0]),
+    .cout()
+  );
+
+  brent_kung_adder_256_double adder16 (
+    .A(adder_op_a[WLEN+:WLEN]),
+    .B(adder_op_b[WLEN+:WLEN]),
+    .data_type(2'b10),   // 00: scalar, 01: vec64, 10: vec32
+    .cin(1'b0),
+    .sum(adder_result[WLEN+:WLEN]),
     .cout()
   );
  
@@ -225,7 +236,7 @@ module otbn_mac_bignum
     unique case (1'b1)
       // Non-encoded inputs have to be encoded before writing to the register.
       sec_wipe_acc_urnd_i: begin
-        acc_no_intg_d = urnd_data_i;
+        acc_no_intg_d = {{WLEN{1'b0}}, urnd_data_i};   // FIX ME!
         acc_intg_d = acc_intg_calc;
       end
       default: begin
@@ -233,9 +244,9 @@ module otbn_mac_bignum
         // data, otherwise it is drawn from the adder result. The new accumulator can be optionally
         // shifted right by one half-word (shift_acc).
         if (ispr_acc_wr_en_i) begin
-          acc_intg_d = ispr_acc_wr_data_intg_i;
+          acc_intg_d = {{ExtWLEN{1'b0}}, ispr_acc_wr_data_intg_i}; // FIX ME!
         end else begin
-          acc_no_intg_d = operation_i.shift_acc ? {{QWLEN*2{1'b0}}, adder_result[QWLEN*2+:QWLEN*2]}
+          acc_no_intg_d = operation_i.shift_acc ? {{(WLEN+QWLEN*2){1'b0}}, adder_result[QWLEN*2+:QWLEN*2]}
                                                 : adder_result;
           acc_intg_d = acc_intg_calc;
         end
@@ -253,11 +264,98 @@ module otbn_mac_bignum
     end
   end
 
-  assign ispr_acc_intg_o = acc_intg_q;
+  assign ispr_acc_intg_o = acc_intg_q[ExtWLEN-1:0]; // FIX ME!
 
   // The operation result is taken directly from the adder, shift_acc only applies to the new value
   // written to the accumulator.
-  assign operation_result_o = adder_result;
+  always_comb begin
+    case (operation_i.exec_mode)
+      2'b00 : begin
+        operation_result_o = adder_result[WLEN-1:0];
+      end
+      2'b01 : begin
+        case (operation_i.data_type)
+          2'b00 : begin
+            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
+          end
+          2'b01 : begin
+            operation_result_o = {operand_a_blanked[224+:32], adder_result[192+:32],
+                                  operand_a_blanked[160+:32], adder_result[128+:32],
+                                  operand_a_blanked[ 96+:32], adder_result[ 64+:32],
+                                  operand_a_blanked[ 32+:32], adder_result[  0+:32]};
+          end
+          2'b10 : begin
+            operation_result_o = {adder_result[480+:16], adder_result[448+:16],
+                                  adder_result[416+:16], adder_result[384+:16],
+                                  adder_result[352+:16], adder_result[320+:16],
+                                  adder_result[288+:16], adder_result[256+:16],
+                                  adder_result[224+:16], adder_result[192+:16],
+                                  adder_result[160+:16], adder_result[128+:16],
+                                  adder_result[ 96+:16], adder_result[ 64+:16],
+                                  adder_result[ 32+:16], adder_result[  0+:16]};
+          end
+          default: begin
+            operation_result_o = {WLEN{1'b0}};
+          end
+        endcase
+      end
+      2'b10 : begin
+        case (operation_i.data_type)
+          2'b00 : begin
+            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
+          end
+          2'b01 : begin
+            operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
+                                  adder_result[160+:32], operand_a_blanked[128+:32],
+                                  adder_result[ 96+:32], operand_a_blanked[ 64+:32],
+                                  adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+          end                                                             
+          2'b10 : begin                                                   
+            operation_result_o = {adder_result[496+:16], adder_result[464+:16],
+                                  adder_result[432+:16], adder_result[400+:16],
+                                  adder_result[368+:16], adder_result[336+:16],
+                                  adder_result[304+:16], adder_result[272+:16],
+                                  adder_result[240+:16], adder_result[208+:16],
+                                  adder_result[176+:16], adder_result[144+:16],
+                                  adder_result[112+:16], adder_result[ 80+:16],
+                                  adder_result[ 48+:16], adder_result[ 16+:16]};
+          end
+          default: begin
+            operation_result_o = {WLEN{1'b0}};
+          end
+        endcase
+      end
+//      2'b11 : begin
+//        case (operation_i.data_type)
+//          2'b00 : begin
+//            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
+//          end
+//          2'b01 : begin
+//            operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
+//                                  adder_result[160+:32], operand_a_blanked[128+:32],
+//                                  adder_result[ 96+:32], operand_a_blanked[ 64+:32],
+//                                  adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+//          end                                                             
+//          2'b10 : begin                                                   
+//            operation_result_o = {adder_result[240+:16], operand_a_blanked[224+:16],
+//                                  adder_result[208+:16], operand_a_blanked[192+:16],
+//                                  adder_result[176+:16], operand_a_blanked[160+:16],
+//                                  adder_result[144+:16], operand_a_blanked[128+:16],
+//                                  adder_result[112+:16], operand_a_blanked[ 96+:16],
+//                                  adder_result[ 80+:16], operand_a_blanked[ 64+:16],
+//                                  adder_result[ 48+:16], operand_a_blanked[ 32+:16]};
+//                                  adder_result[ 16+:16], operand_a_blanked[  0+:16]};
+//          end
+//          default: begin
+//            operation_result_o = {WLEN{1'b0}};
+//          end
+//        endcase
+//      end
+      default: begin
+        operation_result_o = adder_result[WLEN-1:0];
+      end
+    endcase
+  end
 
   assign expected_op_en     = mac_en_i;
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
