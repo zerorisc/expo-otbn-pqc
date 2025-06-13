@@ -3,7 +3,7 @@
 module ref_vec_add (
     input  logic [255:0] A,
     input  logic [255:0] B,
-    input  logic [1:0]   mode,   // 00: scalar, 01: vec32, 10: vec16
+    input  logic [1:0]   data_type,   // 00: scalar, 01: vec32, 10: vec16
     input  logic         cin,
     output logic [255:0] sum,
     output logic         cout
@@ -76,8 +76,8 @@ module ref_vec_add (
     end
     
 
-    assign sum = mode == 0 ? sum256[255:0] + {255'h0, cin} :
-                 mode == 1 ? {sum32_7[31:0], 
+    assign sum = data_type == 0 ? sum256[255:0] + {255'h0, cin} :
+                 data_type == 1 ? {sum32_7[31:0], 
                               sum32_6[31:0],
                               sum32_5[31:0],
                               sum32_4[31:0],
@@ -85,7 +85,7 @@ module ref_vec_add (
                               sum32_2[31:0],
                               sum32_1[31:0],
                               sum32_0[31:0]} :
-                 mode == 2 ? {sum16_15[15:0],
+                 data_type == 2 ? {sum16_15[15:0],
                               sum16_14[15:0],
                               sum16_13[15:0],
                               sum16_12[15:0],

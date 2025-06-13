@@ -6,7 +6,7 @@ from cocotb.triggers import RisingEdge, FallingEdge, Timer, Join, First, ReadOnl
 from dataclasses import dataclass
 import random
 
-from mac_model import mac_model, mac_bignum_operation_t, mac_predec_bignum_t, mac_acc
+from hw_model import mac_model, mac_bignum_operation_t, mac_predec_bignum_t, mac_acc
 
 
 async def reset_dut(dut):
@@ -30,20 +30,33 @@ async def mac_test(dut):
 
         operand_a_qw_sel = random.randint(0, 3)
         operand_b_qw_sel = random.randint(0, 3)
-        wr_hw_sel_upper = random.randint(0, 1)
-        pre_acc_shift_imm = random.randint(0, 3)
-        shift_acc = random.randint(0, 1)
+        wr_hw_sel_upper = 0 #random.randint(0, 1)
+        pre_acc_shift_imm = 0 #random.randint(0, 3)
+        shift_acc = 0 # random.randint(0, 1)
         zero_acc = 1 if i==0 else random.randint(0, 1)
 
+        data_type = random.randint(0, 2)
+        sel = random.randint(0, 1)
+
+        lane_mode = random.randint(0, 1) if data_type != 0b00 else 0
+        lane_index = 0 if lane_mode == 0 else random.randint(0, 15) if data_type == 0b10 else random.randint(0, 3) if data_type == 0b01 else 0
+
+        exec_mode = random.randint(0, 2)
+
         op = mac_bignum_operation_t(
-            operand_a=operand_a,
-            operand_b=operand_b,
-            operand_a_qw_sel=operand_a_qw_sel,
-            operand_b_qw_sel=operand_b_qw_sel,
-            wr_hw_sel_upper=wr_hw_sel_upper,
-            pre_acc_shift_imm=pre_acc_shift_imm,
-            zero_acc=zero_acc,
-            shift_acc=shift_acc
+            operand_a         = operand_a,
+            operand_b         = operand_b,
+            operand_a_qw_sel  = operand_a_qw_sel,
+            operand_b_qw_sel  = operand_b_qw_sel,
+            wr_hw_sel_upper   = wr_hw_sel_upper,
+            pre_acc_shift_imm = pre_acc_shift_imm,
+            zero_acc          = zero_acc,
+            shift_acc         = shift_acc,
+            data_type         = data_type,
+            sel               = sel,
+            lane_mode         = lane_mode,
+            lane_index        = lane_index,
+            exec_mode         = exec_mode
         )
 
         predec = mac_predec_bignum_t(
@@ -67,12 +80,14 @@ async def mac_test(dut):
 
         acc_val = mac_acc()
 
-        #print(op, predec, hex(mac_acc()), hex(dut.acc_no_intg_q.value.integer))
+        print(op, predec, hex(mac_acc()) == hex(dut.acc_no_intg_q.value.integer))
         expected = mac_model(op, predec)
 
 
         await RisingEdge(dut.clk_i)
 
+        print(hex(mac_acc()))
+        print(hex(dut.acc_no_intg_q.value.integer))
 
         result = dut.operation_result_o.value.integer
 
@@ -100,7 +115,7 @@ def test_mod_mul_runner():
                     "-I../../../../prim_generic/rtl/"],
         sim_build=f"sim_build/otbn_mac_bignum",
         verilog_sources=verilog_sources,
-        #waves=True,
-        #plus_args=["--trace"]  # enable trace all in verilator simulation
+        waves=True,
+        plus_args=["--trace"]  # enable trace all in verilator simulation
     )
 
