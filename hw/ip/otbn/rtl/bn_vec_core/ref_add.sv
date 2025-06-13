@@ -1,0 +1,20 @@
+`timescale 1ns/1ps
+
+module ref_add (
+    input  logic [255:0] A,
+    input  logic [255:0] B,
+    input  logic [1:0]   data_type,   // 00: scalar, 01: vec32, 10: vec16
+    input  logic         cin,
+    output logic [255:0] sum,
+    output logic         cout
+);
+
+    logic [256:0] C;
+
+    assign C = A + B + {255'b0, cin};
+
+    assign sum = C[255:0];
+    assign cout = C[256];
+
+endmodule
+
