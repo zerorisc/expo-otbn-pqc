@@ -4,13 +4,15 @@ module unified_mul #(
     parameter int SLEN = 32,
     parameter int HLEN = 16
 ) (
-    input  logic [1:0]             mode,            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
+    input  logic [1:0]             data_type,            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_A,
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_B,
     input  logic                   half_sel,
+    input  logic                   lane_mode,
+    input  logic [3:0]             lane_index,
     input  logic [WLEN-1:0]        A,
     input  logic [WLEN-1:0]        B,
-    input  logic [1:0]             mode_64_shift,
+    input  logic [1:0]             data_type_64_shift,
     output logic [2*WLEN-1:0]      result
 );
 
@@ -34,18 +36,18 @@ module unified_mul #(
     // Input Decomposition
     // -------------------------------------------------------------------
     always_comb begin
-        case (mode)
+        case (data_type)
             MODE_16: begin
                 for (int i = 0; i < NHALF; i++) begin
                     A16[i] = A[HLEN*i +: HLEN];
-                    B16[i] = B[HLEN*i +: HLEN];
+                    B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
                 end
             end
 
             MODE_32: begin
                 for (int i = 0; i < NDOUB; i++) begin
                     logic [SLEN-1:0] A32 = A[SLEN*(2*i + (half_sel ? 1 : 0)) +: SLEN];
-                    logic [SLEN-1:0] B32 = B[SLEN*(2*i + (half_sel ? 1 : 0)) +: SLEN];
+                    logic [SLEN-1:0] B32 = (lane_mode == 1'b0) ? B[SLEN*(2*i + (half_sel ? 1 : 0)) +: SLEN] : B[SLEN*lane_index +: SLEN];
                     A16[4*i + 0] = A32[HLEN-1:0];
                     A16[4*i + 1] = A32[HLEN-1:0];
                     A16[4*i + 2] = A32[SLEN-1:HLEN];
@@ -108,7 +110,7 @@ module unified_mul #(
     // -- 16x16 results --
     generate
         for (genvar i = 0; i < NHALF; i++) begin : gen_output_16
-            assign result_16[2*HLEN*i +: 2*HLEN] = (mode == MODE_16) ? products[i] : '0;
+            assign result_16[2*HLEN*i +: 2*HLEN] = (data_type == MODE_16) ? products[i] : '0;
         end
     endgenerate
 
@@ -127,7 +129,7 @@ module unified_mul #(
                            {{(HLEN){1'd0}}, p2, {(HLEN){1'd0}}} +
                            {p3, {(SLEN){1'd0}}};
 
-            if (mode == MODE_32)
+            if (data_type == MODE_32)
                 result_32[2*SLEN*i +: 2*SLEN] = partial32[i];
         end
     end
@@ -135,7 +137,7 @@ module unified_mul #(
     // -- 64x64 reconstruction using the 32x32 results --
     always_comb begin
         result_64 = '0;
-        if (mode == MODE_64) begin
+        if (data_type == MODE_64) begin
             result_64 = {{DLEN{1'b0}}, partial32[0]} +
                         {{SLEN{1'b0}}, partial32[1], {SLEN{1'b0}}} +
                         {{SLEN{1'b0}}, partial32[2], {SLEN{1'b0}}} +
@@ -147,10 +149,10 @@ module unified_mul #(
     // Unified Output Selection
     // -------------------------------------------------------------------
     always_comb begin
-        unique case (mode)
+        unique case (data_type)
             MODE_64: //result = {{(2*WLEN-2*DLEN){1'b0}}, result_64};
                 begin
-                  unique case (mode_64_shift)
+                  unique case (data_type_64_shift)
                     2'd0: result = {{WLEN {1'b0}}, {DLEN * 2{1'b0}}, result_64};
                     2'd1: result = {{WLEN {1'b0}}, {DLEN{1'b0}}, result_64, {DLEN{1'b0}}};
                     2'd2: result = {{WLEN {1'b0}}, result_64, {DLEN * 2{1'b0}}};

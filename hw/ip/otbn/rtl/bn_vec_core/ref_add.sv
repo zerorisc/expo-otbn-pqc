@@ -3,7 +3,7 @@
 module ref_add (
     input  logic [255:0] A,
     input  logic [255:0] B,
-    input  logic [1:0]   mode,   // 00: scalar, 01: vec32, 10: vec16
+    input  logic [1:0]   data_type,   // 00: scalar, 01: vec32, 10: vec16
     input  logic         cin,
     output logic [255:0] sum,
     output logic         cout

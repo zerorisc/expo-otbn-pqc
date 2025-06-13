@@ -1,10 +1,10 @@
 module csa_adder_256 (
     input  logic [255:0] A,
     input  logic [255:0] B,
-    input  logic [1:0]   mode,   // 00: scalar, 01: vec32, 10: vec16
-    input  logic         cin,    // scalar mode only
+    input  logic [1:0]   data_type,   // 00: scalar, 01: vec32, 10: vec16
+    input  logic         cin,    // scalar data_type only
     output logic [255:0] sum,
-    output logic         cout    // scalar mode only
+    output logic         cout    // scalar data_type only
 );
 
     // Block configuration
@@ -33,7 +33,7 @@ module csa_adder_256 (
     // Determine carry gating mask
     always_comb begin
         for (j = 0; j < NUM_BLOCKS; j++) begin
-            case (mode)
+            case (data_type)
                 2'b00: use_carry1[j] = (j != 0);                        // scalar: all blocks chained
                 2'b01: use_carry1[j] = (j % (32 / BLOCK_WIDTH) != 0);  // vec32: every 32-bit block
                 2'b10: use_carry1[j] = (j % (16 / BLOCK_WIDTH) != 0);  // vec16: every 16-bit block
@@ -45,7 +45,7 @@ module csa_adder_256 (
 
     // Generate each block
     always_comb begin
-        carry_in[0] = (mode == 2'b00) ? cin : 1'b0;
+        carry_in[0] = (data_type == 2'b00) ? cin : 1'b0;
 
     // Default initialize carry_out
     for (i = 0; i < NUM_BLOCKS; i++) begin
@@ -72,8 +72,8 @@ module csa_adder_256 (
         end
     end
 
-    // Final carry-out (only valid in scalar mode)
-    assign cout = (mode == 2'b00) ? carry_out[NUM_BLOCKS-1] : 1'b0;
+    // Final carry-out (only valid in scalar data_type)
+    assign cout = (data_type == 2'b00) ? carry_out[NUM_BLOCKS-1] : 1'b0;
 
 endmodule
 
