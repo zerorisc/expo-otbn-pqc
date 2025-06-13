@@ -543,6 +543,11 @@ package otbn_pkg;
     logic [1:0]      pre_acc_shift_imm;
     logic            zero_acc;
     logic            shift_acc;
+    logic [1:0]      data_type;
+    logic            sel;
+    logic            lane_mode;
+    logic [3:0]      lane_index;
+    logic [1:0]      exec_mode;
   } mac_bignum_operation_t;
 
   // Encoding generated with:
