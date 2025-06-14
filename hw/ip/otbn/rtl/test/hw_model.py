@@ -76,7 +76,7 @@ def reference_prod(A, B, data_type, word_sel_A, word_sel_B, half_sel, lane_mode=
             idx = 2 * i + int(half_sel)
             a = (A >> (idx * SLEN)) & ((1 << SLEN) - 1)
             b = (B >> (idx * SLEN)) & ((1 << SLEN) - 1) if lane_mode == 0 else (B >> (lane_index * SLEN)) & ((1 << SLEN) - 1)
-            expected |= (a * b) << (i*64)
+            expected |= (a * b) << ((i*2 + int(half_sel))*64)
 
         return expected
 
@@ -139,7 +139,7 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
     if op.zero_acc or not predec.acc_rd_en:
       acc = 0
 
-    res, _ = reference_sum(mul_res, acc, op.data_type, 0, [(4, 64), (16, 32)])
+    res, _ = reference_sum(mul_res, acc, op.data_type, 0, [(8, 64), (16, 32)])
 
     print(f"res: {hex(res)}")
 
@@ -149,7 +149,22 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
       acc = res
 
     if op.exec_mode == 0:
-      res = mask(res)
+      if op.data_type == 0:
+        res = mask(res)
+      elif op.data_type == 1:
+        res = (((res >> (  0 + 64*op.sel)) & (0xffffffffffffffff)) <<   0) | \
+              (((res >> (128 + 64*op.sel)) & (0xffffffffffffffff)) <<  64) | \
+              (((res >> (256 + 64*op.sel)) & (0xffffffffffffffff)) << 128) | \
+              (((res >> (384 + 64*op.sel)) & (0xffffffffffffffff)) << 192)
+      elif op.data_type == 2:
+        res = (((res >> (  0 + 32*op.sel)) & (0xffffffff)) <<   0) | \
+              (((res >> ( 64 + 32*op.sel)) & (0xffffffff)) <<  32) | \
+              (((res >> (128 + 32*op.sel)) & (0xffffffff)) <<  64) | \
+              (((res >> (192 + 32*op.sel)) & (0xffffffff)) <<  96) | \
+              (((res >> (256 + 32*op.sel)) & (0xffffffff)) << 128) | \
+              (((res >> (320 + 32*op.sel)) & (0xffffffff)) << 160) | \
+              (((res >> (384 + 32*op.sel)) & (0xffffffff)) << 192) | \
+              (((res >> (448 + 32*op.sel)) & (0xffffffff)) << 224)
     if op.exec_mode == 1:
       if op.data_type == 1:
         res = res          & (0xffffffff <<   0) | \

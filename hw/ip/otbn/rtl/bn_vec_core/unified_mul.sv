@@ -159,7 +159,33 @@ module unified_mul #(
                     2'd3: result = {{WLEN {1'b0}}, result_64[63:0], {DLEN * 3{1'b0}}};
                   endcase
                 end
-            MODE_32: result = {{(2*WLEN-2*SLEN*NDOUB){1'b0}}, result_32};
+            MODE_32: //result = {{(2*WLEN-2*SLEN*NDOUB){1'b0}}, result_32};
+                begin
+                  unique case (half_sel)
+                    1'd0:
+                      begin
+			 result[  0 +: 64] = result_32[  0 +: 64];
+                         result[ 64 +: 64] = 64'b0;
+			 result[128 +: 64] = result_32[ 64 +: 64];
+                         result[192 +: 64] = 64'b0;
+			 result[256 +: 64] = result_32[128 +: 64];
+                         result[320 +: 64] = 64'b0;
+			 result[384 +: 64] = result_32[192 +: 64];
+                         result[448 +: 64] = 64'b0;
+                      end
+                    1'd1:
+                      begin
+			 result[  0 +: 64] = 64'b0;
+                         result[ 64 +: 64] = result_32[  0 +: 64];
+			 result[128 +: 64] = 64'b0;
+                         result[192 +: 64] = result_32[ 64 +: 64];
+			 result[256 +: 64] = 64'b0;
+                         result[320 +: 64] = result_32[128 +: 64];
+			 result[384 +: 64] = 64'b0;
+                         result[448 +: 64] = result_32[192 +: 64];
+                      end
+                  endcase
+                end
             MODE_16: result = result_16;
             default: result = '0;
         endcase
