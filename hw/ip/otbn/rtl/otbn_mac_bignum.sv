@@ -190,9 +190,9 @@ module otbn_mac_bignum
   );
 
   brent_kung_adder_256_double adder16 (
-    .A(adder_op_a[WLEN+:WLEN]),
-    .B(adder_op_b[WLEN+:WLEN]),
-    .data_type(2'b10),   // 00: scalar, 01: vec64, 10: vec32
+    .A(operation_i.data_type == 2'b00 ? 256'b0 : adder_op_a[WLEN+:WLEN]),
+    .B(operation_i.data_type == 2'b00 ? 256'b0 : adder_op_b[WLEN+:WLEN]),
+    .data_type(operation_i.data_type),   // 00: scalar, 01: vec64, 10: vec32
     .cin(1'b0),
     .sum(adder_result[WLEN+:WLEN]),
     .cout()
@@ -271,12 +271,35 @@ module otbn_mac_bignum
   always_comb begin
     case (operation_i.exec_mode)
       2'b00 : begin
-        operation_result_o = adder_result[WLEN-1:0];
+        case (operation_i.data_type)
+          2'b00 : begin
+            operation_result_o = adder_result[WLEN-1:0];
+          end
+          2'b01 : begin
+            operation_result_o = {adder_result[384 + 64*operation_i.sel +: 64],
+                                  adder_result[256 + 64*operation_i.sel +: 64],
+                                  adder_result[128 + 64*operation_i.sel +: 64],
+                                  adder_result[      64*operation_i.sel +: 64]};
+          end
+          2'b10 : begin
+            operation_result_o = {adder_result[448 + 32*operation_i.sel +: 32],
+                                  adder_result[384 + 32*operation_i.sel +: 32],
+                                  adder_result[320 + 32*operation_i.sel +: 32],
+                                  adder_result[256 + 32*operation_i.sel +: 32],
+                                  adder_result[192 + 32*operation_i.sel +: 32],
+                                  adder_result[128 + 32*operation_i.sel +: 32],
+                                  adder_result[ 64 + 32*operation_i.sel +: 32],
+                                  adder_result[      32*operation_i.sel +: 32]};
+          end
+          default: begin
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
+          end
+        endcase
       end
       2'b01 : begin
         case (operation_i.data_type)
           2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
           end
           2'b01 : begin
             operation_result_o = {operand_a_blanked[224+:32], adder_result[192+:32],
@@ -295,14 +318,14 @@ module otbn_mac_bignum
                                   adder_result[ 32+:16], adder_result[  0+:16]};
           end
           default: begin
-            operation_result_o = {WLEN{1'b0}};
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
           end
         endcase
       end
       2'b10 : begin
         case (operation_i.data_type)
           2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
           end
           2'b01 : begin
             operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
@@ -321,7 +344,7 @@ module otbn_mac_bignum
                                   adder_result[ 48+:16], adder_result[ 16+:16]};
           end
           default: begin
-            operation_result_o = {WLEN{1'b0}};
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
           end
         endcase
       end
