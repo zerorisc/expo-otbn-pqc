@@ -21,7 +21,7 @@ async def mac_test(dut):
     cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
     await reset_dut(dut)
 
-    for i in range(20):
+    for i in range(32):
 
         await FallingEdge(dut.clk_i)
 
@@ -36,12 +36,13 @@ async def mac_test(dut):
         zero_acc = 1 if i==0 else random.randint(0, 1)
 
         data_type = random.randint(0, 2)
-        sel = random.randint(0, 1)
+
+        sel = random.randint(0, 1) if data_type != 0b00 else 0
 
         lane_mode = random.randint(0, 1) if data_type != 0b00 else 0
         lane_index = 0 if lane_mode == 0 else random.randint(0, 15) if data_type == 0b10 else random.randint(0, 3) if data_type == 0b01 else 0
 
-        exec_mode = random.randint(0, 2)
+        exec_mode = random.randint(0, 2) if data_type != 0b00 else 0
 
         op = mac_bignum_operation_t(
             operand_a         = operand_a,
@@ -81,6 +82,10 @@ async def mac_test(dut):
         acc_val = mac_acc()
 
         print(op, predec, hex(mac_acc()) == hex(dut.acc_no_intg_q.value.integer))
+        print(hex(mac_acc()))
+        print(hex(dut.acc_no_intg_q.value.integer))
+        print(hex(mac_acc() ^ dut.acc_no_intg_q.value.integer))
+
         expected = mac_model(op, predec)
 
 
