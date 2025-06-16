@@ -1288,7 +1288,7 @@ otbn_sim_test(
     srcs = [
         "bnmulv_test.s",
     ],
-    exp = "bnmulv_test.exp",
+    dexp = "bnmulv_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mult:bnmulv",
     ],
