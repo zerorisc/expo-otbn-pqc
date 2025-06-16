@@ -44,7 +44,7 @@ async def run_unified_test(dut):
 
             elif data_type == 0b01:
                 # 4x 32x32 data_type
-                out = result & ((1 << WLEN) - 1)
+                out = result & ((1 << (2 * WLEN)) - 1)
 
                 assert out == expected, f"32x32 FAIL: A={A}, B={B}, got={out}, expected={expected}"
 
