@@ -84,6 +84,14 @@ module otbn_decoder
   logic       mac_shift_out_bignum;
   logic       mac_en_bignum;
 
+  logic [4:0] mac_insn_rs2;
+
+  logic [1:0] mac_data_type;
+  logic       mac_sel;
+  logic       mac_lane_mode;
+  logic [3:0] mac_lane_index;
+  logic [1:0] mac_exec_mode;
+
   logic rf_ren_a_base;
   logic rf_ren_b_base;
 
@@ -153,8 +161,12 @@ module otbn_decoder
   assign mac_op_b_qw_sel_bignum     = insn[28:27];
   assign mac_wr_hw_sel_upper_bignum = insn[29];
   assign mac_pre_acc_shift_bignum   = insn[14:13];
-  assign mac_zero_acc_bignum        = insn[12];
   assign mac_shift_out_bignum       = insn[30];
+
+  assign mac_sel        = insn[27];
+  assign mac_lane_mode  = insn[25];
+  assign mac_lane_index = insn[23:20];
+  assign mac_exec_mode  = insn[31:30];
 
   logic d_inc_bignum;
   logic a_inc_bignum;
@@ -221,7 +233,7 @@ module otbn_decoder
 
   assign insn_dec_bignum_o = '{
     a:                   insn_rs1,
-    b:                   insn_rs2,
+    b:                   mac_insn_rs2,
     d:                   insn_rd,
     i:                   imm_i_type_bignum,
     rf_a_indirect:       rf_a_indirect_bignum,
@@ -245,6 +257,11 @@ module otbn_decoder
     mac_pre_acc_shift:   mac_pre_acc_shift_bignum,
     mac_zero_acc:        mac_zero_acc_bignum,
     mac_shift_out:       mac_shift_out_bignum,
+    mac_data_type:       mac_data_type,
+    mac_sel:             mac_sel,
+    mac_lane_mode:       mac_lane_mode,
+    mac_lane_index:      mac_lane_index,
+    mac_exec_mode:       mac_exec_mode,
     mac_en:              mac_en_bignum,
     rf_we:               rf_we_bignum,
     rf_wdata_sel:        rf_wdata_sel_bignum,
@@ -285,6 +302,9 @@ module otbn_decoder
     rf_ren_a_bignum        = 1'b0;
     rf_ren_b_bignum        = 1'b0;
     mac_en_bignum          = 1'b0;
+    mac_zero_acc_bignum    = 1'b0;
+    mac_data_type          = 2'b10;
+    mac_insn_rs2           = insn[24:20];
 
     rf_a_indirect_bignum   = 1'b0;
     rf_b_indirect_bignum   = 1'b0;
@@ -664,9 +684,37 @@ module otbn_decoder
         rf_wdata_sel_bignum = RfWdSelMac;
         mac_en_bignum       = 1'b1;
 
+        mac_zero_acc_bignum = insn[12];
+
         if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
           rf_we_bignum = 1'b1;
         end
+      end
+
+      ///////////////////////////////////////////
+      // Bignum mulv and mulvl                 //
+      ///////////////////////////////////////////
+
+      InsnOpcodeBignumMulv: begin
+        unique case (insn_alu[14:12])
+          3'b110: begin
+            insn_subset         = InsnSubsetBignum;
+            rf_ren_a_bignum     = 1'b1;
+            rf_ren_b_bignum     = 1'b1;
+            rf_wdata_sel_bignum = RfWdSelMac;
+            rf_we_bignum        = 1'b1;
+	    mac_en_bignum       = 1'b1;
+
+            mac_zero_acc_bignum = insn_alu[29:28] == 2'b10 ? 1'b1 : 1'b0;
+
+            mac_data_type  = insn[26] == 1'b0 ? 2'b11 : 2'b10;
+
+            if (insn[25] == 1'b1) begin  // lane mode
+              mac_insn_rs2 = {{4'b1000}, insn[24]};
+            end
+          end
+          default: ;
+        endcase
       end
 
       default: illegal_insn = 1'b1;
