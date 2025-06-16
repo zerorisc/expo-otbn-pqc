@@ -27,10 +27,10 @@ module brent_kung_adder_256_double (
     // Level 1 (distance 1)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 1 && (i & 1) == 1) begin
+            if (i >= 1 && (i & 1) == 1) begin : gen_l1_logic
                 assign G1[i] = G[i] | (P[i] & G[i-1]);
                 assign P1[i] = P[i] & P[i-1];
-            end else begin
+            end else begin : gen_l1
                 assign G1[i] = G[i];
                 assign P1[i] = P[i];
             end
@@ -40,10 +40,10 @@ module brent_kung_adder_256_double (
     // Level 2 (distance 2)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 3 && (i & 3) == 3) begin
+            if (i >= 3 && (i & 3) == 3) begin : gen_l2_logic
                 assign G2[i] = G1[i] | (P1[i] & G1[i-2]);
                 assign P2[i] = P1[i] & P1[i-2];
-            end else begin
+            end else begin : gen_l2
                 assign G2[i] = G1[i];
                 assign P2[i] = P1[i];
             end
@@ -53,10 +53,10 @@ module brent_kung_adder_256_double (
     // Level 3 (distance 4)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 7 && (i & 7) == 7) begin
+            if (i >= 7 && (i & 7) == 7) begin : gen_l3_logic
                 assign G3[i] = G2[i] | (P2[i] & G2[i-4]);
                 assign P3[i] = P2[i] & P2[i-4];
-            end else begin
+            end else begin : gen_l3
                 assign G3[i] = G2[i];
                 assign P3[i] = P2[i];
             end
@@ -66,10 +66,10 @@ module brent_kung_adder_256_double (
     // Level 4 (distance 8)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 15 && (i & 15) == 15) begin
+            if (i >= 15 && (i & 15) == 15) begin : gen_l4_logic
                 assign G4[i] = G3[i] | (P3[i] & G3[i-8]);
                 assign P4[i] = P3[i] & P3[i-8];
-            end else begin
+            end else begin : gen_l4
                 assign G4[i] = G3[i];
                 assign P4[i] = P3[i];
             end
@@ -79,10 +79,10 @@ module brent_kung_adder_256_double (
     // Level 5 (distance 16)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 31 && (i & 31) == 31) begin
+            if (i >= 31 && (i & 31) == 31) begin : gen_l5_logic
                 assign G5[i] = (data_type < 2) ? (G4[i] | (P4[i] & G4[i-16])) : G4[i];
                 assign P5[i] = (data_type < 2) ? (P4[i] & P4[i-16])           : P4[i];
-            end else begin
+            end else begin : gen_l5
                 assign G5[i] = G4[i];
                 assign P5[i] = P4[i];
             end
@@ -92,10 +92,10 @@ module brent_kung_adder_256_double (
     // Level 6 (distance 32)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 63 && (i & 63) == 63) begin
+            if (i >= 63 && (i & 63) == 63) begin : gen_l6_logic
                 assign G6[i] = (data_type < 1) ? (G5[i] | (P5[i] & G5[i-32])) : G5[i];
                 assign P6[i] = (data_type < 1) ? (P5[i] & P5[i-32])           : P5[i];
-            end else begin
+            end else begin : gen_l6_logic
                 assign G6[i] = G5[i];
                 assign P6[i] = P5[i];
             end
@@ -105,10 +105,10 @@ module brent_kung_adder_256_double (
     // Level 7 (distance 64)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i >= 127 && (i & 127) == 127) begin
+            if (i >= 127 && (i & 127) == 127) begin : gen_l7_logic
                 assign G7[i] = (data_type < 1) ? (G6[i] | (P6[i] & G6[i-64])) : G6[i];
                 assign P7[i] = (data_type < 1) ? (P6[i] & P6[i-64])           : P6[i];
-            end else begin
+            end else begin : gen_l7
                 assign G7[i] = G6[i];
                 assign P7[i] = P6[i];
             end
@@ -118,9 +118,9 @@ module brent_kung_adder_256_double (
     // Level 8 (distance 128, final G only)
     generate
         for (i = 0; i < 256; i++) begin
-            if (i == 255) begin
+            if (i == 255) begin : gen_l8_logic
                 assign G8[i] = (data_type < 1) ? (G7[i] | (P7[i] & G7[i-128])) : G7[i];
-            end else begin
+            end else begin : gen_l8
                 assign G8[i] = G7[i];
             end
         end

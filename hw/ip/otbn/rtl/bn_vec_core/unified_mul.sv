@@ -17,7 +17,7 @@ module unified_mul #(
 );
 
     localparam int NHALF = WLEN / HLEN;  // 16
-    localparam int NSING = WLEN / SLEN;  // 8
+//    localparam int NSING = WLEN / SLEN;  // 8
     localparam int NDOUB = WLEN / DLEN;  // 4
 
     // -------------------------------------------------------------------
@@ -94,7 +94,9 @@ module unified_mul #(
     // -------------------------------------------------------------------
     generate
         for (genvar i = 0; i < NHALF; i++) begin : gen_mults
-            logic [2*HLEN:0] product_full;
+            /* verilator lint_off UNUSEDSIGNAL */
+            logic [2*HLEN:0] product_full;  // "2*HLEN:0" to circumvent Verilator bug
+            /* verilator lint_on UNUSEDSIGNAL */
             assign product_full = A16[i] * B16[i];
             assign products[i] = product_full[2*HLEN-1:0];
         end
