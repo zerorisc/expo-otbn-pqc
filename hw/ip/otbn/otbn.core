@@ -37,6 +37,8 @@ filesets:
       - rtl/otbn_alu_base.sv
       - rtl/otbn_alu_bignum.sv
       - rtl/otbn_mac_bignum.sv
+      - rtl/bn_vec_core/unified_mul.sv
+      - rtl/bn_vec_core/brent_kung_adder_256_double.sv
       - rtl/otbn_loop_controller.sv
       - rtl/otbn_stack.sv
       - rtl/otbn_rnd.sv

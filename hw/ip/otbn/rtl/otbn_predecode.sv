@@ -466,6 +466,28 @@ module otbn_predecode
           end
         end
 
+        ///////////////////////////////////////////
+        // Bignum mulv and mulvl                 //
+        ///////////////////////////////////////////
+
+        InsnOpcodeBignumMulv: begin
+          unique case (imem_rdata_i[14:12])
+            3'b110: begin
+              rf_ren_a_bignum  = 1'b1;
+              rf_ren_b_bignum  = 1'b1;
+              mac_bignum_op_en = 1'b1;
+
+              rf_we_bignum                 = 1'b1;
+
+              if (imem_rdata_i[29:28] != 2'b10) begin
+                // zero_acc not set
+                mac_bignum_acc_rd_en = 1'b1;
+              end
+            end
+            default: ;
+          endcase
+        end
+
         default: ;
       endcase
     end

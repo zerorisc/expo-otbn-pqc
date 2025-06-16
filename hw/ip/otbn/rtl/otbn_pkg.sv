@@ -216,6 +216,7 @@ package otbn_pkg;
     InsnOpcodeBignumMisc     = 7'h0B,
     InsnOpcodeBignumArith    = 7'h2B,
     InsnOpcodeBignumMulqacc  = 7'h3B,
+    InsnOpcodeBignumMulv     = 7'h4b,
     InsnOpcodeBignumBaseMisc = 7'h7B
   } insn_opcode_e;
 
@@ -453,6 +454,13 @@ package otbn_pkg;
     logic [1:0]              mac_pre_acc_shift;
     logic                    mac_zero_acc;
     logic                    mac_shift_out;
+
+    logic [1:0]              mac_data_type;
+    logic                    mac_sel;
+    logic                    mac_lane_mode;
+    logic [3:0]              mac_lane_index;
+    logic [1:0]              mac_exec_mode;
+
     logic                    mac_en;
 
     logic                    rf_we;
