@@ -1801,7 +1801,7 @@ class BNMULVL(OTBNInsn):
             elif exec_mode == 3:
                 hi = (prodi >> size) & mask
                 if hi >= wrs2_v[i]:
-                    wrd_v[i] = hi - wrs2_v[i]
+                    hi -= wrs2_v[i]
                 wrd_v[i] = hi
 
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
