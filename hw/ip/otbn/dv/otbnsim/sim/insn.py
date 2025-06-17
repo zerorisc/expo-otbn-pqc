@@ -1629,7 +1629,7 @@ class BNMULV(OTBNInsn):
         sel = (self.type & 0b10) >> 1
         acc_mode = (self.type & 0b1100) >> 2
         exec_mode = (self.type & 0b110000) >> 4
-        eprint(f"exec_mode | acc_mode | sel | format = {exec_mode} | {acc_mode} | {sel} | {format}")
+        eprint(f"mode | exec_mode | acc_mode | sel | format = 0 | {exec_mode} | {acc_mode} | {sel} | {format}")
 
         if format:
             size = 32
@@ -1654,18 +1654,16 @@ class BNMULV(OTBNInsn):
         acch = state.wsrs.ACCH.read_unsigned()
         if acc_mode == 2:
             accl = 0
-            if format == 0:
-                acch = 0
+            acch = 0
 
-        acc_l = [extract_sub_word(accl, 2 * size, i) for i in range(num_lanes // 2)]
-        acc_h = [extract_sub_word(acch, 2 * size, i) for i in range(num_lanes // 2)]
-        acc = acc_l + acc_h
-        eprint(f"acc = {[hex(acci) for acci in acc]}")
+        accl_v = [extract_sub_word(accl, 2 * size, i) for i in range(num_lanes // 2)]
+        acch_v = [extract_sub_word(acch, 2 * size, i) for i in range(num_lanes // 2)]
+        acc_v = accl_v + acch_v
+        eprint(f"acc_v = {[hex(acci) for acci in acc_v]}")
             
         dmask = (1 << 2 * size) - 1
         mask = (1 << size) - 1
 
-        idx = 0
         eprint(f'lane_indices = {lane_indices}')
         for i in lane_indices:
             eprint(f'i = {i}')
@@ -1673,13 +1671,12 @@ class BNMULV(OTBNInsn):
             prodi = wrs1_v[i] * wrs2_v[i]
             eprint(f"ai * bi = {hex(wrs1_v[i])} * {hex(wrs2_v[i])} = {hex(prodi)}")
             
-            eprint(f"acci = {hex(acc[idx])}")
+            eprint(f"acci = {hex(acc_v[i])}")
             if acc_en:
-                prodi += acc[idx]
+                prodi += acc_v[i]
                 eprint(f"prodi + acci = {hex(prodi)}")
-                acc[idx] = prodi
-                eprint(f"acc = {[hex(acci) for acci in acc]}")
-            idx += 1
+                acc_v[i] = prodi
+                eprint(f"acc_v = {[hex(acci) for acci in acc_v]}")
                 
             if exec_mode == 0:
                 lo = prodi & mask
@@ -1690,20 +1687,22 @@ class BNMULV(OTBNInsn):
                 wrd_v[i] = prodi & mask
             elif exec_mode == 2:
                 wrd_v[i] = (prodi >> size) & mask
+            elif exec_mode == 3:
+                hi = (prodi >> size) & mask
+                if hi >= wrs2_v[i]:
+                    hi -= wrs2_v[i]
+                wrd_v[i] = hi
 
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
         if acc_en:
-            acc_o = sum((acc[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
+            acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
-            state.wsrs.ACCL.write_unsigned(accl)
-            if (format == 0) and (exec_mode != 0):
-                acch = (acc_o >> 256) & ((1 << 256) - 1)
-                state.wsrs.ACCH.write_unsigned(acch)
-        else:
-            state.wsrs.ACCL.write_unsigned(accl)
-            state.wsrs.ACCH.write_unsigned(acch)
+            acch = (acc_o >> 256) & ((1 << 256) - 1)
+        state.wsrs.ACCL.write_unsigned(accl)
+        state.wsrs.ACCH.write_unsigned(acch)
+
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
         eprint(f"acch at the end = {hex(acch)}")
@@ -1730,7 +1729,7 @@ class BNMULVL(OTBNInsn):
         sel = (self.type & 0b10) >> 1
         acc_mode = (self.type & 0b1100) >> 2
         exec_mode = (self.type & 0b110000) >> 4
-        eprint(f"exec_mode | acc_mode | sel | format = 1 | {exec_mode} | {acc_mode} | {sel} | {format}")
+        eprint(f"mode | exec_mode | acc_mode | sel | format = 1 | {exec_mode} | {acc_mode} | {sel} | {format}")
 
         wrs1 = state.wdrs.get_reg(self.wrs1).read_unsigned()
         wrd = state.wdrs.get_reg(self.wrd).read_unsigned()
@@ -1762,18 +1761,16 @@ class BNMULVL(OTBNInsn):
         acch = state.wsrs.ACCH.read_unsigned()
         if acc_mode == 2:
             accl = 0
-            if format == 0:
-                acch = 0
+            acch = 0
 
-        acc_l = [extract_sub_word(accl, 2 * size, i) for i in range(num_lanes // 2)]
-        acc_h = [extract_sub_word(acch, 2 * size, i) for i in range(num_lanes // 2)]
-        acc = acc_l + acc_h
-        eprint(f"acc = {[hex(acci) for acci in acc]}")
+        accl_v = [extract_sub_word(accl, 2 * size, i) for i in range(num_lanes // 2)]
+        acch_v = [extract_sub_word(acch, 2 * size, i) for i in range(num_lanes // 2)]
+        acc_v = accl_v + acch_v
+        eprint(f"acc_v = {[hex(acci) for acci in acc_v]}")
             
         dmask = (1 << 2 * size) - 1
         mask = (1 << size) - 1
 
-        idx = 0
         eprint(f'lane_indices = {lane_indices}')
         for i in lane_indices:
             eprint(f'i = {i}')
@@ -1781,13 +1778,12 @@ class BNMULVL(OTBNInsn):
             prodi = wrs1_v[i] * wrs2_v[i]
             eprint(f"ai * bi = {hex(wrs1_v[i])} * {hex(wrs2_v[i])} = {hex(prodi)}")
             
-            eprint(f"acci = {hex(acc[idx])}")
+            eprint(f"acci = {hex(acc_v[i])}")
             if acc_en:
-                prodi += acc[idx]
+                prodi += acc_v[i]
                 eprint(f"prodi + acci = {hex(prodi)}")
-                acc[idx] = prodi
-                eprint(f"acc = {[hex(acci) for acci in acc]}")
-            idx += 1
+                acc_v[i] = prodi
+                eprint(f"acc_v = {[hex(acci) for acci in acc_v]}")
                 
             if exec_mode == 0:
                 lo = prodi & mask
@@ -1808,15 +1804,12 @@ class BNMULVL(OTBNInsn):
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
         if acc_en:
-            acc_o = sum((acc[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
+            acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
-            state.wsrs.ACCL.write_unsigned(accl)
-            if (format == 0) and (exec_mode != 0):
-                acch = (acc_o >> 256) & ((1 << 256) - 1)
-                state.wsrs.ACCH.write_unsigned(acch)
-        else:
-            state.wsrs.ACCL.write_unsigned(accl)
-            state.wsrs.ACCH.write_unsigned(acch)
+            acch = (acc_o >> 256) & ((1 << 256) - 1)
+        state.wsrs.ACCL.write_unsigned(accl)
+        state.wsrs.ACCH.write_unsigned(acch)
+
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
         eprint(f"acch at the end = {hex(acch)}")
