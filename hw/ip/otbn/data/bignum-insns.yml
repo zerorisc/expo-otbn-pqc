@@ -1246,8 +1246,10 @@
                  .16H.acc.z.hi,
                  .8S.even.acc.z.hi, "", .8S.odd.acc.z.hi,
                  "", "", "", "",
-                 "", "", "", "", "", "", "", "",
-                 "", "", "", "", "", "", "", ""
+                 .16H.hi.cond, .8S.even.hi.cond, "", .8S.odd.hi.cond,
+                 .16H.acc.hi.cond, .8S.even.acc.hi.cond, "", .8S.odd.acc.hi.cond,
+                 .16H.acc.z.hi.cond, .8S.even.acc.z.hi.cond, "", .8S.odd.acc.z.hi.cond,
+                 "", "", "", ""
                  )
   glued-ops: true
   doc: |
@@ -1297,17 +1299,29 @@
         - type <= 43
       to: [acch, accl, wrd]
       from: [wrs1, wrs2]
+    - test:
+        - type >= 48
+        - type <= 51
+      to: [wrd]
+      from: [wrs1, wrs2]
+    - test:
+        - type >= 52
+        - type <= 55
+      to: [acch, accl, wrd]
+      from: [acch, accl, wrs1, wrs2]
+    - test:
+        - type >= 56
+        - type <= 59
+      to: [acch, accl, wrd]
+      from: [wrs1, wrs2]
   encoding:
     scheme: bnmulv
     mapping:
-      # type: type
       mode: b0
-      # sel: sel
       wrs2: wrs2
       wrs1: wrs1
       wrd: wrd
       funct3: b110
-      # acc_mode: acc_mode
       type: type
 
 - mnemonic: bn.mulv.l
