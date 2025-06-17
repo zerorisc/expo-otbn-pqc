@@ -8,6 +8,7 @@ main:
   li x4, 0
   li x5, 1
   li x6, 2
+  li x8, 3
   la x7, operand1
   bn.lid x4, 0(x7++)
   bn.lid x5, 0(x7++)
@@ -15,12 +16,23 @@ main:
   bn.mov w17, w1
 
   jal x1, test_bnmulv_8S
+
+  /* Zeroize ACCL and ACCH */
+  bn.wsrw 0xb, w31
+  bn.wsrw 0xc, w31
+
   jal x1, test_bnmulvl_8S
 
-  /* Zeroize ACCL */
+  /* Zeroize ACCL and ACCH */
   bn.wsrw 0xb, w31
+  bn.wsrw 0xc, w31
 
   jal x1, test_bnmulv_16H
+
+  /* Zeroize ACCL and ACCH */
+  bn.wsrw 0xb, w31
+  bn.wsrw 0xc, w31
+
   jal x1, test_bnmulvl_16H
 
   ecall
