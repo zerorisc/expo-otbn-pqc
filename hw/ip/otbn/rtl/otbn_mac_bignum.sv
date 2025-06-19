@@ -10,7 +10,9 @@ module otbn_mac_bignum
   input logic clk_i,
   input logic rst_ni,
 
+/* verilator lint_off UNUSEDSIGNAL */
   input mac_bignum_operation_t operation_i,
+/* verilator lint_on UNUSEDSIGNAL */
   input logic                  mac_en_i,
   input logic                  mac_commit_i,
 
@@ -142,7 +144,9 @@ module otbn_mac_bignum
   logic [2*WLEN-1:0]                acc_no_intg_d;
   logic [2*WLEN-1:0]                acc_no_intg_q;
   logic [2*ExtWLEN-1:0]             acc_intg_calc;
+/* verilator lint_off UNUSEDSIGNAL */
   logic [4*BaseWordsPerWLEN-1:0]  acc_intg_err;
+/* verilator lint_on UNUSEDSIGNAL */
   for (genvar i_word = 0; i_word < 2*BaseWordsPerWLEN; i_word++) begin : g_acc_words
     prim_secded_inv_39_32_enc i_secded_enc (
       .data_i (acc_no_intg_d[i_word*32+:32]),
@@ -162,7 +166,7 @@ module otbn_mac_bignum
   // current operation does not zero the accumulation register.
   logic acc_used;
   assign acc_used = mac_en_i & ~operation_i.zero_acc;
-  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err);
+  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[2*BaseWordsPerWLEN-1:0]);
 
   // Accumulator logic
 
@@ -268,6 +272,8 @@ module otbn_mac_bignum
 
   // The operation result is taken directly from the adder, shift_acc only applies to the new value
   // written to the accumulator.
+//  assign operation_result_o = adder_result[WLEN-1:0];
+
   always_comb begin
     case (operation_i.exec_mode)
       2'b00 : begin
@@ -299,7 +305,7 @@ module otbn_mac_bignum
       2'b01 : begin
         case (operation_i.data_type)
           2'b00 : begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
+            operation_result_o = adder_result[WLEN-1:0];
           end
           2'b01 : begin
             operation_result_o = {operand_a_blanked[224+:32], adder_result[192+:32],
@@ -325,7 +331,7 @@ module otbn_mac_bignum
       2'b10 : begin
         case (operation_i.data_type)
           2'b00 : begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
+            operation_result_o = adder_result[WLEN-1:0];
           end
           2'b01 : begin
             operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
@@ -348,11 +354,11 @@ module otbn_mac_bignum
           end
         endcase
       end
-//      2'b11 : begin
-//        case (operation_i.data_type)
-//          2'b00 : begin
-//            operation_result_o = adder_result[WLEN-1:0];  // ERROR!
-//          end
+      2'b11 : begin
+        case (operation_i.data_type)
+          2'b00 : begin
+            operation_result_o = adder_result[WLEN-1:0];
+          end
 //          2'b01 : begin
 //            operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
 //                                  adder_result[160+:32], operand_a_blanked[128+:32],
@@ -369,11 +375,11 @@ module otbn_mac_bignum
 //                                  adder_result[ 48+:16], operand_a_blanked[ 32+:16]};
 //                                  adder_result[ 16+:16], operand_a_blanked[  0+:16]};
 //          end
-//          default: begin
-//            operation_result_o = {WLEN{1'b0}};
-//          end
-//        endcase
-//      end
+          default: begin
+            operation_result_o = {WLEN{1'b0}};   // ERROR!
+          end
+        endcase
+      end
       default: begin
         operation_result_o = adder_result[WLEN-1:0];
       end
