@@ -17,21 +17,21 @@ main:
 
   jal x1, test_bnmulv_8S
 
-  /* Zeroize ACCL and ACCH */
+  /* Zeroize ACC and ACCH */
+  bn.wsrw 0x3, w31
   bn.wsrw 0xb, w31
-  bn.wsrw 0xc, w31
 
   jal x1, test_bnmulvl_8S
 
-  /* Zeroize ACCL and ACCH */
+  /* Zeroize ACC and ACCH */
+  bn.wsrw 0x3, w31
   bn.wsrw 0xb, w31
-  bn.wsrw 0xc, w31
 
   jal x1, test_bnmulv_16H
 
-  /* Zeroize ACCL and ACCH */
+  /* Zeroize ACC and ACCH */
+  bn.wsrw 0x3, w31
   bn.wsrw 0xb, w31
-  bn.wsrw 0xc, w31
 
   jal x1, test_bnmulvl_16H
 
