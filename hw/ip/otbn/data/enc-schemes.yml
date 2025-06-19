@@ -147,6 +147,11 @@ custom3:
   parents:
     - rv(opcode=b11110)
 
+# A partial scheme for custom instructions with opcode b11111
+custom5:
+  parents:
+    - rv(opcode=b10010)
+
 # A partial scheme for instructions that produce a dest WDR.
 wrd:
   fields:
