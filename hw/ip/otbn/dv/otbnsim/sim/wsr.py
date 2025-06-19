@@ -356,6 +356,8 @@ class WSRFile:
         self.KeyS0H = KeyWSR('KeyS0H', 256, self.KeyS0)
         self.KeyS1L = KeyWSR('KeyS1L', 0, self.KeyS1)
         self.KeyS1H = KeyWSR('KeyS1H', 256, self.KeyS1)
+        self.ACCL = DumbWSR('ACCL')
+        self.ACCH = DumbWSR('ACCH')
 
         self._by_idx = {
             0: self.MOD,
@@ -366,6 +368,8 @@ class WSRFile:
             5: self.KeyS0H,
             6: self.KeyS1L,
             7: self.KeyS1H,
+            11: self.ACCL,
+            12: self.ACCH,
         }
 
     def on_start(self) -> None:
@@ -412,6 +416,8 @@ class WSRFile:
         self.ACC.commit()
         self.KeyS0.commit()
         self.KeyS1.commit()
+        self.ACCL.commit()
+        self.ACCH.commit()
 
     def abort(self) -> None:
         self.MOD.abort()
@@ -422,6 +428,8 @@ class WSRFile:
         # instruction itself gets aborted.
         self.KeyS0.commit()
         self.KeyS1.commit()
+        self.ACCL.abort()
+        self.ACCH.abort()
 
     def changes(self) -> List[Trace]:
         ret: List[Trace] = []
@@ -430,6 +438,8 @@ class WSRFile:
         ret += self.ACC.changes()
         ret += self.KeyS0.changes()
         ret += self.KeyS1.changes()
+        ret += self.ACCL.changes()
+        ret += self.ACCH.changes()
         return ret
 
     def set_sideload_keys(self,
@@ -441,3 +451,5 @@ class WSRFile:
     def wipe(self) -> None:
         self.MOD.write_invalid()
         self.ACC.write_invalid()
+        self.ACCL.write_invalid()
+        self.ACCH.write_invalid()
