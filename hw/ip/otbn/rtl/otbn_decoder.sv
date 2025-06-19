@@ -303,7 +303,7 @@ module otbn_decoder
     rf_ren_b_bignum        = 1'b0;
     mac_en_bignum          = 1'b0;
     mac_zero_acc_bignum    = 1'b0;
-    mac_data_type          = 2'b10;
+    mac_data_type          = 2'b00;
     mac_insn_rs2           = insn[24:20];
 
     rf_a_indirect_bignum   = 1'b0;
