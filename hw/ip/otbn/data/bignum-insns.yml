@@ -1277,27 +1277,27 @@
     - test:
         - type >= 4
         - type <= 7
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 20
         - type <= 23
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 36
         - type <= 39
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 8
         - type <= 11
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1, wrs2]
     - test:
         - type >= 40
         - type <= 43
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1, wrs2]
     - test:
         - type >= 48
@@ -1307,12 +1307,12 @@
     - test:
         - type >= 52
         - type <= 55
-      to: [acch, accl, wrd]
-      from: [acch, accl, wrs1, wrs2]
+      to: [acch, acc, wrd]
+      from: [acch, acc, wrs1, wrs2]
     - test:
         - type >= 56
         - type <= 59
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1, wrs2]
   encoding:
     scheme: bnmulv
@@ -1384,27 +1384,27 @@
     - test:
         - type >= 4
         - type <= 7
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 20
         - type <= 23
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 36
         - type <= 39
-      to: [acch, accl]
-      from: [acch, accl]
+      to: [acch, acc]
+      from: [acch, acc]
     - test:
         - type >= 8
         - type <= 11
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1]
     - test:
         - type >= 40
         - type <= 43
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1]
     - test:
         - type >= 48
@@ -1414,12 +1414,12 @@
     - test:
         - type >= 52
         - type <= 55
-      to: [acch, accl, wrd]
-      from: [acch, accl, wrs1]
+      to: [acch, acc, wrd]
+      from: [acch, acc, wrs1]
     - test:
         - type >= 56
         - type <= 59
-      to: [acch, accl, wrd]
+      to: [acch, acc, wrd]
       from: [wrs1]
   encoding:
     scheme: bnmulvl
