@@ -1280,3 +1280,14 @@ otbn_consttime_test(
         ":x25519_test1",
     ],
 )
+
+otbn_sim_test(
+    name = "bnmulv_test",
+    srcs = [
+        "bnmulv_test.s",
+    ],
+    dexp = "bnmulv_test.dexp",
+    deps = [
+        "//sw/otbn/crypto/new_mult:bnmulv",
+    ],
+)
