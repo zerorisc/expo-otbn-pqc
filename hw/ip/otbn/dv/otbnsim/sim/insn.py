@@ -1693,6 +1693,8 @@ class BNMULV(OTBNInsn):
                     hi -= wrs2_v[i]
                 wrd_v[i] = hi
 
+            eprint(f"wrd_v[{i}] = {hex(wrd_v[i])}")
+
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
