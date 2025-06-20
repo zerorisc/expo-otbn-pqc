@@ -703,7 +703,8 @@ module otbn_decoder
             rf_ren_b_bignum     = 1'b1;
             rf_wdata_sel_bignum = RfWdSelMac;
             rf_we_bignum        = 1'b1;
-	    mac_en_bignum       = 1'b1;
+
+	    mac_en_bignum       = insn_alu[29:28] == 2'b00 ? 1'b0 : 1'b1;
 
             mac_shift_out_bignum = 1'b0;
 

@@ -263,9 +263,78 @@ bn.xor        w30,   w30,   w30
 bn.mulqacc.so w30.L, w27.2, w28.3, 64
 bn.mulqacc.so w30.U, w27.3, w28.3, 0
 
-bn.mulv.8S.even.acc.z.lo w2, w28, w27
+bn.mulv.8S.even.acc.z.lo w28, w28, w27
+bn.mulv.8S.odd.acc.lo w28, w28, w27
 bn.mulv.8S.even.hi w12, w16, w15
+bn.mulv.8S.odd.hi w12, w16, w15
+bn.mulv.8S.odd w12, w16, w15
+bn.mulv.8S.even w12, w16, w15
 bn.mulv.16H.acc.hi w4, w5, w6
+bn.mulv.16H.acc.z.hi w14, w15, w16
+bn.mulv.16H.lo w5, w5, w6
+bn.mulv.16H.hi w5, w5, w6
+
+bn.mulv.16H.even w12, w16, w15
+bn.mulv.8S.even w12, w16, w15
+bn.mulv.16H.odd w12, w16, w15
+bn.mulv.8S.odd w12, w16, w15
+bn.mulv.16H.even.acc w12, w16, w15
+bn.mulv.8S.even.acc w12, w16, w15
+bn.mulv.16H.odd.acc w12, w16, w15
+bn.mulv.8S.odd.acc w12, w16, w15
+bn.mulv.16H.even.acc.z w12, w16, w15
+bn.mulv.8S.even.acc.z w12, w16, w15
+bn.mulv.16H.odd.acc.z w12, w16, w15
+bn.mulv.8S.odd.acc.z w12, w16, w15
+bn.mulv.16H.lo w12, w16, w15
+bn.mulv.8S.even.lo w12, w16, w15
+bn.mulv.8S.odd.lo w12, w16, w15
+bn.mulv.16H.acc.lo w12, w16, w15
+bn.mulv.8S.even.acc.lo w12, w16, w15
+bn.mulv.8S.odd.acc.lo w12, w16, w15
+bn.mulv.16H.acc.z.lo w12, w16, w15
+bn.mulv.8S.even.acc.z.lo w12, w16, w15
+bn.mulv.8S.odd.acc.z.lo w12, w16, w15
+bn.mulv.16H.hi w12, w16, w15
+bn.mulv.8S.even.hi w12, w16, w15
+bn.mulv.8S.odd.hi w12, w16, w15
+bn.mulv.16H.acc.hi w12, w16, w15
+bn.mulv.8S.even.acc.hi w12, w16, w15
+bn.mulv.8S.odd.acc.hi w12, w16, w15
+bn.mulv.16H.acc.z.hi w12, w16, w15
+bn.mulv.8S.even.acc.z.hi w12, w16, w15
+bn.mulv.8S.odd.acc.z.hi w12, w16, w15
+
+bn.mulv.l.16H.even w12, w10, sw1.3
+bn.mulv.l.8S.even w12, w10, sw1.3
+bn.mulv.l.16H.odd w12, w10, sw1.3
+bn.mulv.l.8S.odd w12, w10, sw1.3
+bn.mulv.l.16H.even.acc w12, w10, sw1.3
+bn.mulv.l.8S.even.acc w12, w10, sw1.3
+bn.mulv.l.16H.odd.acc w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc w12, w10, sw1.3
+bn.mulv.l.16H.even.acc.z w12, w10, sw1.3
+bn.mulv.l.8S.even.acc.z w12, w10, sw1.3
+bn.mulv.l.16H.odd.acc.z w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc.z w12, w10, sw1.3
+bn.mulv.l.16H.lo w12, w10, sw1.3
+bn.mulv.l.8S.even.lo w12, w10, sw1.3
+bn.mulv.l.8S.odd.lo w12, w10, sw1.3
+bn.mulv.l.16H.acc.lo w12, w10, sw1.3
+bn.mulv.l.8S.even.acc.lo w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc.lo w12, w10, sw1.3
+bn.mulv.l.16H.acc.z.lo w12, w10, sw1.3
+bn.mulv.l.8S.even.acc.z.lo w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc.z.lo w12, w10, sw1.3
+bn.mulv.l.16H.hi w12, w10, sw1.3
+bn.mulv.l.8S.even.hi w12, w10, sw1.3
+bn.mulv.l.8S.odd.hi w12, w10, sw1.3
+bn.mulv.l.16H.acc.hi w12, w10, sw1.3
+bn.mulv.l.8S.even.acc.hi w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc.hi w12, w10, sw1.3
+bn.mulv.l.16H.acc.z.hi w12, w10, sw1.3
+bn.mulv.l.8S.even.acc.z.hi w12, w10, sw1.3
+bn.mulv.l.8S.odd.acc.z.hi w12, w10, sw1.3
 
 # w31 = w28[127:0] * w27[127:0] = 0x37adadae_f9dbff5e_73880075_5466a52c_67a8c221_6978ad1b_25769434_0f09b7c8
 bn.mulqacc.Z       w27.0, w28.0, 0
