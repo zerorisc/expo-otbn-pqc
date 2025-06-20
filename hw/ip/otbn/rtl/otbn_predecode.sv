@@ -479,7 +479,7 @@ module otbn_predecode
 
               rf_we_bignum                 = 1'b1;
 
-              if (imem_rdata_i[29:28] != 2'b10) begin
+              if (imem_rdata_i[29:28] == 2'b01) begin
                 // zero_acc not set
                 mac_bignum_acc_rd_en = 1'b1;
               end
