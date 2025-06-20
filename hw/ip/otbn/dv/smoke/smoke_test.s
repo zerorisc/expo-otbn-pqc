@@ -263,6 +263,10 @@ bn.xor        w30,   w30,   w30
 bn.mulqacc.so w30.L, w27.2, w28.3, 64
 bn.mulqacc.so w30.U, w27.3, w28.3, 0
 
+bn.mulv.8S.even.acc.z.lo w2, w28, w27
+bn.mulv.8S.even.hi w12, w16, w15
+bn.mulv.16H.acc.hi w4, w5, w6
+
 # w31 = w28[127:0] * w27[127:0] = 0x37adadae_f9dbff5e_73880075_5466a52c_67a8c221_6978ad1b_25769434_0f09b7c8
 bn.mulqacc.Z       w27.0, w28.0, 0
 bn.mulqacc         w27.0, w28.1, 64
