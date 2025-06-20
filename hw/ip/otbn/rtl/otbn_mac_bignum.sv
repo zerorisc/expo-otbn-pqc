@@ -208,28 +208,42 @@ module otbn_mac_bignum
   assign adder_result_hw_is_zero[0] = adder_result[WLEN/2-1:0] == 'h0;
   assign adder_result_hw_is_zero[1] = adder_result[WLEN/2+:WLEN/2] == 'h0;
 
-  assign operation_flags_o.L    = adder_result[0];
-  // L is always updated for .WO, and for .SO when writing to the lower half-word
-  assign operation_flags_en_o.L = operation_i.shift_acc ? ~operation_i.wr_hw_sel_upper : 1'b1;
-
-  // For .SO M is taken from the top-bit of shifted out half-word, otherwise it is taken from the
-  // top-bit of the full result.
-  assign operation_flags_o.M    = operation_i.shift_acc ? adder_result[WLEN/2-1] :
-                                                          adder_result[WLEN-1];
-  // M is always updated for .WO, and for .SO when writing to the upper half-word.
-  assign operation_flags_en_o.M = operation_i.shift_acc ? operation_i.wr_hw_sel_upper : 1'b1;
-
-  // For .SO Z is calculated from the shifted out half-word, otherwise it is calculated on the full
-  // result.
-  assign operation_flags_o.Z    = operation_i.shift_acc ? adder_result_hw_is_zero[0] :
-                                                          &adder_result_hw_is_zero;
-
-  // Z is updated for .WO. For .SO updates are based upon result and half-word:
-  // - When writing to lower half-word always update Z.
-  // - When writing to upper half-word clear Z if result is non-zero otherwise leave it alone.
-  assign operation_flags_en_o.Z =
-      operation_i.shift_acc & operation_i.wr_hw_sel_upper ? ~adder_result_hw_is_zero[0] :
-                                                            1'b1;
+  always_comb begin
+    case (operation_i.data_type)
+      2'b00 : begin
+          operation_flags_o.L    = adder_result[0];
+          // L is always updated for .WO, and for .SO when writing to the lower half-word
+          operation_flags_en_o.L = operation_i.shift_acc ? ~operation_i.wr_hw_sel_upper : 1'b1;
+        
+          // For .SO M is taken from the top-bit of shifted out half-word, otherwise it is taken from the
+          // top-bit of the full result.
+          operation_flags_o.M    = operation_i.shift_acc ? adder_result[WLEN/2-1] :
+                                                                  adder_result[WLEN-1];
+          // M is always updated for .WO, and for .SO when writing to the upper half-word.
+          operation_flags_en_o.M = operation_i.shift_acc ? operation_i.wr_hw_sel_upper : 1'b1;
+        
+          // For .SO Z is calculated from the shifted out half-word, otherwise it is calculated on the full
+          // result.
+          operation_flags_o.Z    = operation_i.shift_acc ? adder_result_hw_is_zero[0] :
+                                                                  &adder_result_hw_is_zero;
+        
+          // Z is updated for .WO. For .SO updates are based upon result and half-word:
+          // - When writing to lower half-word always update Z.
+          // - When writing to upper half-word clear Z if result is non-zero otherwise leave it alone.
+          operation_flags_en_o.Z =
+              operation_i.shift_acc & operation_i.wr_hw_sel_upper ? ~adder_result_hw_is_zero[0] :
+                                                                    1'b1;
+      end
+      default: begin
+           operation_flags_o.L =  1'b0;
+           operation_flags_en_o.L =  1'b0;
+           operation_flags_o.M = 1'b0;
+           operation_flags_en_o.M =  1'b0;
+           operation_flags_o.Z =  1'b0;
+           operation_flags_en_o.Z = 1'b0;
+      end
+    endcase
+  end
 
   // MAC never sets the carry flag
   assign operation_flags_o.C    = 1'b0;
@@ -308,10 +322,20 @@ module otbn_mac_bignum
             operation_result_o = adder_result[WLEN-1:0];
           end
           2'b01 : begin
-            operation_result_o = {operand_a_blanked[224+:32], adder_result[192+:32],
-                                  operand_a_blanked[160+:32], adder_result[128+:32],
-                                  operand_a_blanked[ 96+:32], adder_result[ 64+:32],
-                                  operand_a_blanked[ 32+:32], adder_result[  0+:32]};
+            case (operation_i.sel)
+              1'b0: begin
+                operation_result_o = {operand_a_blanked[224+:32], adder_result[384+:32],
+                                      operand_a_blanked[160+:32], adder_result[256+:32],
+                                      operand_a_blanked[ 96+:32], adder_result[128+:32],
+                                      operand_a_blanked[ 32+:32], adder_result[  0+:32]};
+              end
+              1'b1: begin
+                operation_result_o = {adder_result[384+:32], operand_a_blanked[224-32+:32],
+                                      adder_result[256+:32], operand_a_blanked[160-32+:32],
+                                      adder_result[128+:32], operand_a_blanked[ 96-32+:32],
+                                      adder_result[  0+:32], operand_a_blanked[ 32-32+:32]};
+              end
+            endcase
           end
           2'b10 : begin
             operation_result_o = {adder_result[480+:16], adder_result[448+:16],
@@ -334,10 +358,20 @@ module otbn_mac_bignum
             operation_result_o = adder_result[WLEN-1:0];
           end
           2'b01 : begin
-            operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
-                                  adder_result[160+:32], operand_a_blanked[128+:32],
-                                  adder_result[ 96+:32], operand_a_blanked[ 64+:32],
-                                  adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+            case (operation_i.sel)
+              1'b0: begin
+                operation_result_o = {operand_a_blanked[192+32+:32], adder_result[416+:32],
+                                      operand_a_blanked[128+32+:32], adder_result[288+:32],
+                                      operand_a_blanked[ 64+32+:32], adder_result[160+:32],
+                                      operand_a_blanked[  0+32+:32], adder_result[ 32+:32]};
+              end
+              1'b1: begin
+                operation_result_o = {adder_result[416+:32], operand_a_blanked[192+:32],
+                                      adder_result[288+:32], operand_a_blanked[128+:32],
+                                      adder_result[160+:32], operand_a_blanked[ 64+:32],
+                                      adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+              end
+            endcase
           end                                                             
           2'b10 : begin                                                   
             operation_result_o = {adder_result[496+:16], adder_result[464+:16],
@@ -385,6 +419,15 @@ module otbn_mac_bignum
       end
     endcase
   end
+
+/* verilator lint_off UNUSEDSIGNAL */
+  logic zero_acc;
+  logic acc_rd_en;
+  logic op_en;
+/* verilator lint_on UNUSEDSIGNAL */
+  assign zero_acc = operation_i.zero_acc;
+  assign acc_rd_en =  mac_predec_bignum_i.acc_rd_en;
+  assign op_en = mac_predec_bignum_i.op_en;
 
   assign expected_op_en     = mac_en_i;
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
