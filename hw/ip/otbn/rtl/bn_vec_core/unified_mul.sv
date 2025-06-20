@@ -7,6 +7,7 @@ module unified_mul #(
     input  logic [1:0]             data_type,            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_A,
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_B,
+    input  logic [1:0]             exec_mode,
     input  logic                   half_sel,
     input  logic                   lane_mode,
     input  logic [3:0]             lane_index,
@@ -38,10 +39,24 @@ module unified_mul #(
     always_comb begin
         case (data_type)
             MODE_16: begin
-                for (int i = 0; i < NHALF; i++) begin
-                    A16[i] = A[HLEN*i +: HLEN];
-                    B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
-                end
+               case (exec_mode)
+                 2'b00: begin
+                     for (int i = {31'b0,half_sel}; i < NHALF; i+=2) begin
+                         A16[i] = A[HLEN*i +: HLEN];
+                         B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
+                     end
+                     for (int i = {31'b0, (1'b1 - half_sel)}; i < NHALF; i+=2) begin
+                         A16[i] = 16'b0;
+                         B16[i] = 16'b0;
+                     end
+                   end
+                 default: begin
+                   for (int i = 0; i < NHALF; i++) begin
+                       A16[i] = A[HLEN*i +: HLEN];
+                       B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
+                   end
+                 end
+               endcase
             end
 
             MODE_32: begin

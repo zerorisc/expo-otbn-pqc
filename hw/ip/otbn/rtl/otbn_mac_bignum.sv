@@ -111,6 +111,7 @@ module otbn_mac_bignum
     .data_type(operation_i.data_type),            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
     .word_sel_A(operation_i.operand_a_qw_sel),
     .word_sel_B(operation_i.operand_b_qw_sel),
+    .exec_mode(operation_i.exec_mode),
     .half_sel(operation_i.sel),
     .lane_mode(operation_i.lane_mode),
     .lane_index(operation_i.lane_index),
@@ -330,10 +331,10 @@ module otbn_mac_bignum
                                       operand_a_blanked[ 32+:32], adder_result[  0+:32]};
               end
               1'b1: begin
-                operation_result_o = {adder_result[384+:32], operand_a_blanked[224-32+:32],
-                                      adder_result[256+:32], operand_a_blanked[160-32+:32],
-                                      adder_result[128+:32], operand_a_blanked[ 96-32+:32],
-                                      adder_result[  0+:32], operand_a_blanked[ 32-32+:32]};
+                operation_result_o = {adder_result[384+64+:32], operand_a_blanked[192+:32],
+                                      adder_result[256+64+:32], operand_a_blanked[128+:32],
+                                      adder_result[128+64+:32], operand_a_blanked[ 64+:32],
+                                      adder_result[  0+64+:32], operand_a_blanked[  0+:32]};
               end
             endcase
           end
@@ -360,16 +361,16 @@ module otbn_mac_bignum
           2'b01 : begin
             case (operation_i.sel)
               1'b0: begin
-                operation_result_o = {operand_a_blanked[192+32+:32], adder_result[416+:32],
-                                      operand_a_blanked[128+32+:32], adder_result[288+:32],
-                                      operand_a_blanked[ 64+32+:32], adder_result[160+:32],
-                                      operand_a_blanked[  0+32+:32], adder_result[ 32+:32]};
+                operation_result_o = {operand_a_blanked[224+:32], adder_result[416+:32],
+                                      operand_a_blanked[160+:32], adder_result[288+:32],
+                                      operand_a_blanked[ 96+:32], adder_result[160+:32],
+                                      operand_a_blanked[ 32+:32], adder_result[ 32+:32]};
               end
               1'b1: begin
-                operation_result_o = {adder_result[416+:32], operand_a_blanked[192+:32],
-                                      adder_result[288+:32], operand_a_blanked[128+:32],
-                                      adder_result[160+:32], operand_a_blanked[ 64+:32],
-                                      adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+                operation_result_o = {adder_result[416+64+:32], operand_a_blanked[192+:32],
+                                      adder_result[288+64+:32], operand_a_blanked[128+:32],
+                                      adder_result[160+64+:32], operand_a_blanked[ 64+:32],
+                                      adder_result[ 32+64+:32], operand_a_blanked[  0+:32]};
               end
             endcase
           end                                                             
@@ -429,7 +430,7 @@ module otbn_mac_bignum
   assign acc_rd_en =  mac_predec_bignum_i.acc_rd_en;
   assign op_en = mac_predec_bignum_i.op_en;
 
-  assign expected_op_en     = mac_en_i;
+  assign expected_op_en     = mac_en_i | (operation_i.data_type != 2'b00);;
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
 
   // SEC_CM: CTRL.REDUN

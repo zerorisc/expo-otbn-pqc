@@ -1309,7 +1309,7 @@ class BNMULV(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, i) for i in range(num_lanes)]
-        wrd_v = [extract_sub_word(wrd, size, i) for i in range(num_lanes)]
+        wrd_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
@@ -1363,6 +1363,8 @@ class BNMULV(OTBNInsn):
                     hi -= wrs2_v[i]
                 wrd_v[i] = hi
 
+            eprint(f"wrd_v[{i}] = {hex(wrd_v[i])}")
+
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
@@ -1370,8 +1372,9 @@ class BNMULV(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACC.write_unsigned(accl)
-        state.wsrs.ACCH.write_unsigned(acch)
+
+            state.wsrs.ACC.write_unsigned(accl)
+            state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
@@ -1416,7 +1419,9 @@ class BNMULVL(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, self.lane_index) for i in range(num_lanes)]
-        wrd_v = [extract_sub_word(wrd, size, i) for i in range(num_lanes)]
+        wrd_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
+
+        eprint(f"wrs2: {hex(wrs2)}")
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
@@ -1477,8 +1482,9 @@ class BNMULVL(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACC.write_unsigned(accl)
-        state.wsrs.ACCH.write_unsigned(acch)
+
+            state.wsrs.ACC.write_unsigned(accl)
+            state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
