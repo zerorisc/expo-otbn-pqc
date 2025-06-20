@@ -216,7 +216,7 @@ package otbn_pkg;
     InsnOpcodeBignumMisc     = 7'h0B,
     InsnOpcodeBignumArith    = 7'h2B,
     InsnOpcodeBignumMulqacc  = 7'h3B,
-    InsnOpcodeBignumMulv     = 7'h4b,
+    InsnOpcodeBignumMulv     = 7'h4B,
     InsnOpcodeBignumBaseMisc = 7'h7B
   } insn_opcode_e;
 
