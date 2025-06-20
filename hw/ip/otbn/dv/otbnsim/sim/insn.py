@@ -1618,7 +1618,6 @@ class BNMULV(OTBNInsn):
     def execute(self, state: OTBNState) -> None:
         wrs1 = state.wdrs.get_reg(self.wrs1).read_unsigned()
         wrs2 = state.wdrs.get_reg(self.wrs2).read_unsigned()
-        wrd = state.wdrs.get_reg(self.wrd).read_unsigned()
 
         # Extract fields in the encoding:
         #    format:    0 = .16H, 1 = .8S
@@ -1639,7 +1638,7 @@ class BNMULV(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, i) for i in range(num_lanes)]
-        wrd_v = [extract_sub_word(wrd, size, i) for i in range(num_lanes)]
+        wrd_v = wrs1_v
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
@@ -1732,7 +1731,6 @@ class BNMULVL(OTBNInsn):
         eprint(f"mode | exec_mode | acc_mode | sel | format = 1 | {exec_mode} | {acc_mode} | {sel} | {format}")
 
         wrs1 = state.wdrs.get_reg(self.wrs1).read_unsigned()
-        wrd = state.wdrs.get_reg(self.wrd).read_unsigned()
         if self.lane_reg:
             wrs2 = state.wdrs.get_reg(17).read_unsigned()
         else:
@@ -1746,7 +1744,7 @@ class BNMULVL(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, self.lane_index) for i in range(num_lanes)]
-        wrd_v = [extract_sub_word(wrd, size, i) for i in range(num_lanes)]
+        wrd_v = wrs1_v
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
