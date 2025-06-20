@@ -1639,7 +1639,7 @@ class BNMULV(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, i) for i in range(num_lanes)]
-        wrd_v = wrs1_v
+        wrd_v = wrs1_v.copy()
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
@@ -1745,7 +1745,7 @@ class BNMULVL(OTBNInsn):
 
         wrs1_v = [extract_sub_word(wrs1, size, i) for i in range(num_lanes)]
         wrs2_v = [extract_sub_word(wrs2, size, self.lane_index) for i in range(num_lanes)]
-        wrd_v = wrs1_v
+        wrd_v = wrs1_v.copy()
 
         if (format == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
