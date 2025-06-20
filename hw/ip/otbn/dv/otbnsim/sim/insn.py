@@ -1605,6 +1605,7 @@ class BNTRN(OTBNInsn):
             eprint(f"trn: {format(a,'064x')}, {format(b,'064x')}, {format(result, '064x')}")
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
+
 class BNMULV(OTBNInsn):
     insn = insn_for_mnemonic('bn.mulv', 4)
 
@@ -1699,8 +1700,8 @@ class BNMULV(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACC.write_unsigned(accl)
-        state.wsrs.ACCH.write_unsigned(acch)
+            state.wsrs.ACC.write_unsigned(accl)
+            state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
@@ -1805,8 +1806,8 @@ class BNMULVL(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACC.write_unsigned(accl)
-        state.wsrs.ACCH.write_unsigned(acch)
+            state.wsrs.ACC.write_unsigned(accl)
+            state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
         eprint(f"accl at the end = {hex(accl)}")
