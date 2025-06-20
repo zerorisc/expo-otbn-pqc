@@ -3,14 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Dict, Iterator, Optional
+import sys
 
 from .constants import ErrBits
 from .flags import FlagReg
 from .isa import (OTBNInsn, RV32RegReg, RV32RegImm,
                   RV32ImmShift, insn_for_mnemonic, logical_byte_shift,
-                  extract_quarter_word)
+                  extract_quarter_word, extract_sub_word)
 from .state import OTBNState
 
+def eprint(text):
+    print(text, file=sys.stderr)
 
 class ADD(RV32RegReg):
     insn = insn_for_mnemonic('add', 3)
@@ -1317,7 +1320,7 @@ class BNMULV(OTBNInsn):
                 lane_indices = range(0, num_lanes, 2)
 
         acc_en = (acc_mode == 1) or (acc_mode == 2)
-        accl = state.wsrs.ACCL.read_unsigned()
+        accl = state.wsrs.ACC.read_unsigned()
         acch = state.wsrs.ACCH.read_unsigned()
         if acc_mode == 2:
             accl = 0
@@ -1367,7 +1370,7 @@ class BNMULV(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACCL.write_unsigned(accl)
+        state.wsrs.ACC.write_unsigned(accl)
         state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
@@ -1424,7 +1427,7 @@ class BNMULVL(OTBNInsn):
                 lane_indices = range(0, num_lanes, 2)
 
         acc_en = (acc_mode == 1) or (acc_mode == 2)
-        accl = state.wsrs.ACCL.read_unsigned()
+        accl = state.wsrs.ACC.read_unsigned()
         acch = state.wsrs.ACCH.read_unsigned()
         if acc_mode == 2:
             accl = 0
@@ -1474,7 +1477,7 @@ class BNMULVL(OTBNInsn):
             acc_o = sum((acc_v[i] & dmask) << (i * 2 * size) for i in range(num_lanes))
             accl = acc_o & ((1 << 256) - 1)
             acch = (acc_o >> 256) & ((1 << 256) - 1)
-        state.wsrs.ACCL.write_unsigned(accl)
+        state.wsrs.ACC.write_unsigned(accl)
         state.wsrs.ACCH.write_unsigned(acch)
 
         eprint(f"result at the end = {hex(result)}")
