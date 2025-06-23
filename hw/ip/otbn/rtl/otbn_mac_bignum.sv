@@ -10,9 +10,7 @@ module otbn_mac_bignum
   input logic clk_i,
   input logic rst_ni,
 
-/* verilator lint_off UNUSEDSIGNAL */
   input mac_bignum_operation_t operation_i,
-/* verilator lint_on UNUSEDSIGNAL */
   input logic                  mac_en_i,
   input logic                  mac_commit_i,
 
@@ -31,7 +29,11 @@ module otbn_mac_bignum
 
   output logic [ExtWLEN-1:0] ispr_acc_intg_o,
   input  logic [ExtWLEN-1:0] ispr_acc_wr_data_intg_i,
-  input  logic               ispr_acc_wr_en_i
+  input  logic               ispr_acc_wr_en_i,
+
+  output logic [ExtWLEN-1:0] ispr_acch_intg_o,
+  input  logic [ExtWLEN-1:0] ispr_acch_wr_data_intg_i,
+  input  logic               ispr_acch_wr_en_i
 );
   // The MAC operates on quarter-words, QWLEN gives the number of bits in a quarter-word.
   localparam int unsigned QWLEN = WLEN / 4;
@@ -46,14 +48,22 @@ module otbn_mac_bignum
 //  logic [WLEN/2-1:0] mul_res;
   logic [2*WLEN-1:0]   mul_res_shifted;
 
-  logic [2*ExtWLEN-1:0] acc_intg_d;
-  logic [2*ExtWLEN-1:0] acc_intg_q;
-  logic [2*WLEN-1:0]    acc_blanked;
+  logic [ExtWLEN-1:0] acc_intg_d;
+  logic [ExtWLEN-1:0] acc_intg_q;
+  logic [WLEN-1:0]    acc_blanked;
   logic               acc_en;
 
-  logic [WLEN-1:0] operand_a_blanked, operand_b_blanked;
+  logic [ExtWLEN-1:0] acch_intg_d;
+  logic [ExtWLEN-1:0] acch_intg_q;
+  logic [WLEN-1:0]    acch_blanked;
+  logic               acch_en;
 
-  logic expected_acc_rd_en, expected_op_en;
+  logic [WLEN-1:0] operand_a_blanked;
+  logic [WLEN-1:0] operand_b_blanked;
+
+  logic expected_acc_rd_en;
+//  logic expected_acch_rd_en;
+  logic expected_op_en;
 
   // SEC_CM: DATA_REG_SW.SCA
   prim_blanker #(.Width(WLEN)) u_operand_a_blanker (
@@ -142,13 +152,11 @@ module otbn_mac_bignum
   `ASSERT_KNOWN_IF(PreAccShiftImmKnown, operation_i.pre_acc_shift_imm, mac_en_i)
 
   // ECC encode and decode of accumulator register
-  logic [2*WLEN-1:0]                acc_no_intg_d;
-  logic [2*WLEN-1:0]                acc_no_intg_q;
-  logic [2*ExtWLEN-1:0]             acc_intg_calc;
-/* verilator lint_off UNUSEDSIGNAL */
-  logic [4*BaseWordsPerWLEN-1:0]  acc_intg_err;
-/* verilator lint_on UNUSEDSIGNAL */
-  for (genvar i_word = 0; i_word < 2*BaseWordsPerWLEN; i_word++) begin : g_acc_words
+  logic [WLEN-1:0]                acc_no_intg_d;
+  logic [WLEN-1:0]                acc_no_intg_q;
+  logic [ExtWLEN-1:0]             acc_intg_calc;
+  logic [2*BaseWordsPerWLEN-1:0]  acc_intg_err;
+  for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : g_acc_words
     prim_secded_inv_39_32_enc i_secded_enc (
       .data_i (acc_no_intg_d[i_word*32+:32]),
       .data_o (acc_intg_calc[i_word*39+:39])
@@ -162,26 +170,54 @@ module otbn_mac_bignum
     assign acc_no_intg_q[i_word*32+:32] = acc_intg_q[i_word*39+:32];
   end
 
+  // ECC encode and decode of accumulator high register
+  logic [WLEN-1:0]                acch_no_intg_d;
+  logic [WLEN-1:0]                acch_no_intg_q;
+  logic [ExtWLEN-1:0]             acch_intg_calc;
+  //logic [2*BaseWordsPerWLEN-1:0]  acch_intg_err;  // FIX ME!
+  for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : g_acch_words
+    prim_secded_inv_39_32_enc i_secdedh_enc (
+      .data_i (acch_no_intg_d[i_word*32+:32]),
+      .data_o (acch_intg_calc[i_word*39+:39])
+    );
+    prim_secded_inv_39_32_dec i_secdedh_dec (
+      .data_i     (acch_intg_q[i_word*39+:39]),
+      .data_o     (/* unused because we abort on any integrity error */),
+      .syndrome_o (/* unused */),
+      .err_o      (/* FIX ME!! acch_intg_err[i_word*2+:2] */)
+    );
+    assign acch_no_intg_q[i_word*32+:32] = acch_intg_q[i_word*39+:32];
+  end
+
   // Propagate integrity error only if accumulator register is used: `acc_intg_q` flows into
   // `operation_result_o` via `acc`, `adder_op_b`, and `adder_result` iff the MAC is enabled and the
   // current operation does not zero the accumulation register.
   logic acc_used;
   assign acc_used = mac_en_i & ~operation_i.zero_acc;
-  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[2*BaseWordsPerWLEN-1:0]);
+  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[2*BaseWordsPerWLEN-1:0]); // FIX ME - add acch
+
+  //logic acch_used;
+  //assign acch_used = mac_en_i & ~operation_i.zero_acc & (operation_i.data_type != 2'b00);
 
   // Accumulator logic
 
   // SEC_CM: DATA_REG_SW.SCA
   // acc_rd_en is so if .Z set in MULQACC (zero_acc) so accumulator reads as 0
-  prim_blanker #(.Width(2*WLEN)) u_acc_blanker (
+  prim_blanker #(.Width(WLEN)) u_acc_blanker (
     .in_i (acc_no_intg_q),
     .en_i (mac_predec_bignum_i.acc_rd_en),
     .out_o(acc_blanked)
   );
 
+  prim_blanker #(.Width(WLEN)) u_acch_blanker (
+    .in_i (acch_no_intg_q),
+    .en_i (mac_predec_bignum_i.acc_rd_en & (operation_i.data_type != 2'b00)),
+    .out_o(acch_blanked)
+  );
+
   // Add shifted multiplier result to current accumulator.
   assign adder_op_a = mul_res_shifted;
-  assign adder_op_b = acc_blanked;
+  assign adder_op_b = {acch_blanked, acc_blanked};
 
 //  assign adder_result = adder_op_a + adder_op_b;
 
@@ -255,7 +291,7 @@ module otbn_mac_bignum
     unique case (1'b1)
       // Non-encoded inputs have to be encoded before writing to the register.
       sec_wipe_acc_urnd_i: begin
-        acc_no_intg_d = {{WLEN{1'b0}}, urnd_data_i};   // FIX ME!
+        acc_no_intg_d = urnd_data_i;
         acc_intg_d = acc_intg_calc;
       end
       default: begin
@@ -263,11 +299,30 @@ module otbn_mac_bignum
         // data, otherwise it is drawn from the adder result. The new accumulator can be optionally
         // shifted right by one half-word (shift_acc).
         if (ispr_acc_wr_en_i) begin
-          acc_intg_d = {{ExtWLEN{1'b0}}, ispr_acc_wr_data_intg_i}; // FIX ME!
+          acc_intg_d = ispr_acc_wr_data_intg_i;
         end else begin
-          acc_no_intg_d = operation_i.shift_acc ? {{(WLEN+QWLEN*2){1'b0}}, adder_result[QWLEN*2+:QWLEN*2]}
-                                                : adder_result;
+          acc_no_intg_d = operation_i.shift_acc ? {{QWLEN*2{1'b0}}, adder_result[QWLEN*2+:QWLEN*2]}
+                                                : adder_result[0+:WLEN];
           acc_intg_d = acc_intg_calc;
+        end
+      end
+    endcase
+  end
+
+  always_comb begin
+    acch_no_intg_d = '0;
+    unique case (1'b1)
+      // Non-encoded inputs have to be encoded before writing to the register.
+      sec_wipe_acc_urnd_i: begin   // FIX ME!
+        acch_no_intg_d = urnd_data_i;   // FIX ME!
+        acch_intg_d = acch_intg_calc;
+      end
+      default: begin
+        if (ispr_acch_wr_en_i) begin
+          acch_intg_d = ispr_acch_wr_data_intg_i;
+        end else begin
+          acch_no_intg_d = adder_result[WLEN+:WLEN];
+          acch_intg_d = acch_intg_calc;
         end
       end
     endcase
@@ -276,14 +331,19 @@ module otbn_mac_bignum
   // Only write to accumulator if the MAC is enabled or an ACC ISPR write is occuring or secure
   // wipe of the internal state is occuring.
   assign acc_en = (mac_en_i & mac_commit_i) | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
+  assign acch_en = (mac_en_i & mac_commit_i & (operation_i.data_type != 2'b00)) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME
 
   always_ff @(posedge clk_i) begin
     if (acc_en) begin
       acc_intg_q <= acc_intg_d;
     end
+    if (acch_en) begin
+      acch_intg_q <= acch_intg_d;
+    end
   end
 
-  assign ispr_acc_intg_o = acc_intg_q[ExtWLEN-1:0]; // FIX ME!
+  assign ispr_acc_intg_o = acc_intg_q;
+  assign ispr_acch_intg_o = acch_intg_q;
 
   // The operation result is taken directly from the adder, shift_acc only applies to the new value
   // written to the accumulator.
@@ -421,23 +481,17 @@ module otbn_mac_bignum
     endcase
   end
 
-/* verilator lint_off UNUSEDSIGNAL */
-  logic zero_acc;
-  logic acc_rd_en;
-  logic op_en;
-/* verilator lint_on UNUSEDSIGNAL */
-  assign zero_acc = operation_i.zero_acc;
-  assign acc_rd_en =  mac_predec_bignum_i.acc_rd_en;
-  assign op_en = mac_predec_bignum_i.op_en;
-
-  assign expected_op_en     = mac_en_i | (operation_i.data_type != 2'b00);;
+  assign expected_op_en     = mac_en_i | (operation_i.data_type != 2'b00);
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
+//  assign expected_acch_rd_en = ~operation_i.zero_acc & mac_en_i & (operation_i.data_type != 2'b00);
 
   // SEC_CM: CTRL.REDUN
   assign predec_error_o = |{expected_op_en     != mac_predec_bignum_i.op_en,
                             expected_acc_rd_en != mac_predec_bignum_i.acc_rd_en};
+                            //expected_acch_rd_en != mac_predec_bignum_i.acch_rd_en};
 
-  assign sec_wipe_err_o = sec_wipe_acc_urnd_i & ~sec_wipe_running_i;
+  assign sec_wipe_err_o = sec_wipe_acc_urnd_i & ~sec_wipe_running_i; // FIX ME acch
 
   `ASSERT(NoISPRAccWrAndMacEn, ~(ispr_acc_wr_en_i & mac_en_i))
 endmodule
+

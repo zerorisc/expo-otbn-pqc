@@ -521,6 +521,7 @@ module otbn_predecode
         WsrKeyS0H: ispr_addr = IsprKeyS0H;
         WsrKeyS1L: ispr_addr = IsprKeyS1L;
         WsrKeyS1H: ispr_addr = IsprKeyS1H;
+        WsrAccH:    ispr_addr = IsprAccH;
         default: ;
       endcase
     end

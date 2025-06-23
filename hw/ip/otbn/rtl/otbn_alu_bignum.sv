@@ -98,6 +98,10 @@ module otbn_alu_bignum
   output logic [ExtWLEN-1:0]          ispr_acc_wr_data_intg_o,
   output logic                        ispr_acc_wr_en_o,
 
+  input  logic [ExtWLEN-1:0]          ispr_acch_intg_i,
+  output logic [ExtWLEN-1:0]          ispr_acch_wr_data_intg_o,
+  output logic                        ispr_acch_wr_en_o,
+
   output logic                        reg_intg_violation_err_o,
 
   input  logic                        sec_wipe_mod_urnd_i,
@@ -412,7 +416,6 @@ module otbn_alu_bignum
   assign ispr_acc_wr_en_o   =
     ((ispr_addr_i == IsprAcc) & ispr_bignum_wr_en_i & ispr_wr_commit_i) | ispr_init_i;
 
-
   logic [ExtWLEN-1:0] ispr_acc_bignum_wdata_intg_blanked;
 
   // SEC_CM: DATA_REG_SW.SCA
@@ -428,18 +431,38 @@ module otbn_alu_bignum
   assign ispr_acc_wr_data_intg_o = ispr_init_i ? EccWideZeroWord
                                                : ispr_acc_bignum_wdata_intg_blanked;
 
+
+  assign ispr_acch_wr_en_o   =
+    ((ispr_addr_i == IsprAccH) & ispr_bignum_wr_en_i & ispr_wr_commit_i) | ispr_init_i;
+
+  logic [ExtWLEN-1:0] ispr_acch_bignum_wdata_intg_blanked;
+
+  // SEC_CM: DATA_REG_SW.SCA
+  prim_blanker #(.Width(ExtWLEN)) u_ispr_acch_bignum_wdata_intg_blanker (
+    .in_i (ispr_bignum_wdata_intg_i),
+    .en_i (ispr_predec_bignum_i.ispr_wr_en[IsprAccH]),
+    .out_o(ispr_acch_bignum_wdata_intg_blanked)
+  );
+  // If the blanker is enabled, the output will not carry the correct ECC bits.  This is not
+  // a problem because a blanked value should never be used.  If the blanked value is used
+  // nonetheless, an integrity error arises.
+
+  assign ispr_acch_wr_data_intg_o = ispr_init_i ? EccWideZeroWord
+                                               : ispr_acch_bignum_wdata_intg_blanked;
+
   // ISPR read data is muxed out in two stages:
   // 1. Select amongst the ISPRs that have no integrity bits. The output has integrity calculated
   //    for it.
   // 2. Select between the ISPRs that have integrity bits and the result of the first stage.
 
   // Number of ISPRs that have integrity protection
-  localparam int NIntgIspr = 2;
+  localparam int NIntgIspr = 3;
   // IDs fpr ISPRs with integrity
-  localparam int IsprModIntg = 0;
-  localparam int IsprAccIntg = 1;
+  localparam int IsprModIntg  = 0;
+  localparam int IsprAccIntg  = 1;
+  localparam int IsprAccHIntg = 2;
   // ID representing all ISPRs with no integrity
-  localparam int IsprNoIntg = 2;
+  localparam int IsprNoIntg = 3;
 
   logic [NIntgIspr:0] ispr_rdata_intg_mux_sel;
   logic [ExtWLEN-1:0] ispr_rdata_intg_mux_in    [NIntgIspr+1];
@@ -449,6 +472,7 @@ module otbn_alu_bignum
   // MOD and ACC supply their own integrity so these values are unused
   assign ispr_rdata_no_intg_mux_in[IsprMod] = 0;
   assign ispr_rdata_no_intg_mux_in[IsprAcc] = 0;
+  assign ispr_rdata_no_intg_mux_in[IsprAccH] = 0;
 
   assign ispr_rdata_no_intg_mux_in[IsprRnd]    = rnd_data_i;
   assign ispr_rdata_no_intg_mux_in[IsprUrnd]   = urnd_data_i;
@@ -487,10 +511,12 @@ module otbn_alu_bignum
   // Second stage
   assign ispr_rdata_intg_mux_in[IsprModIntg] = mod_intg_q;
   assign ispr_rdata_intg_mux_in[IsprAccIntg] = ispr_acc_intg_i;
+  assign ispr_rdata_intg_mux_in[IsprAccHIntg] = ispr_acch_intg_i;
   assign ispr_rdata_intg_mux_in[IsprNoIntg]  = ispr_rdata_intg_calc;
 
   assign ispr_rdata_intg_mux_sel[IsprModIntg] = ispr_predec_bignum_i.ispr_rd_en[IsprMod];
   assign ispr_rdata_intg_mux_sel[IsprAccIntg] = ispr_predec_bignum_i.ispr_rd_en[IsprAcc];
+  assign ispr_rdata_intg_mux_sel[IsprAccHIntg] = ispr_predec_bignum_i.ispr_rd_en[IsprAccH];
 
   assign ispr_rdata_intg_mux_sel[IsprNoIntg]  =
     |{ispr_predec_bignum_i.ispr_rd_en[IsprKeyS1H:IsprKeyS0L],

@@ -343,7 +343,8 @@ bn.mulqacc         w27.1, w28.0, 64
 bn.mulqacc.wo w31, w27.1, w28.1, 128
 
 # w0 = acc = 0x37adadae_f9dbff5e_73880075_5466a52c_67a8c221_6978ad1b_25769434_0f09b7c8
-bn.wsrr w0, 0x3 /* ACC */
+bn.wsrr w0, ACC /* ACC */
+bn.wsrr w0, ACCH /* ACCH */
 
 # Nested loop testing, inner adds repeated a total of 3 * 5 = 15 times
 # x28 = 4, x29 = 3
