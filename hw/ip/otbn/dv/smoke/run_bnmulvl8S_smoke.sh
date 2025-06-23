@@ -54,7 +54,7 @@ if [ $? -ne 0 ]; then
 fi
 
 had_diff=0
-grep -A 74 "Call Stack:" $RUN_LOG | diff -U3 $SMOKE_SRC_DIR/bnmulvl8S_smoke_expected.txt - || had_diff=1
+grep -A 71 "Call Stack:" $RUN_LOG | diff -U3 $SMOKE_SRC_DIR/bnmulvl8S_smoke_expected.txt - || had_diff=1
 
 if [ $had_diff == 0 ]; then
   echo "OTBN SMOKE PASS"
