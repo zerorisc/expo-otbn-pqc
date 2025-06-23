@@ -118,7 +118,7 @@ module otbn_mac_bignum
   logic [2*WLEN-1:0] unified_result;
 
   unified_mul mul (
-    .data_type(operation_i.data_type),            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
+    .word_mode({operation_i.mulv, operation_i.data_type}),            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
     .word_sel_A(operation_i.operand_a_qw_sel),
     .word_sel_B(operation_i.operand_b_qw_sel),
     .exec_mode(operation_i.exec_mode),
@@ -211,7 +211,7 @@ module otbn_mac_bignum
 
   prim_blanker #(.Width(WLEN)) u_acch_blanker (
     .in_i (acch_no_intg_q),
-    .en_i (mac_predec_bignum_i.acc_rd_en & (operation_i.data_type != 2'b00)),
+    .en_i (mac_predec_bignum_i.acc_rd_en & operation_i.mulv),
     .out_o(acch_blanked)
   );
 
@@ -224,16 +224,16 @@ module otbn_mac_bignum
   brent_kung_adder_256_double adder (
     .A(adder_op_a[WLEN-1:0]),
     .B(adder_op_b[WLEN-1:0]),
-    .data_type(operation_i.data_type),   // 00: scalar, 01: vec64, 10: vec32
+    .word_mode({operation_i.mulv, operation_i.data_type}),   // 00: scalar, 11: vec64, 10: vec32
     .cin(1'b0),
     .sum(adder_result[WLEN-1:0]),
     .cout()
   );
 
   brent_kung_adder_256_double adder16 (
-    .A(operation_i.data_type == 2'b00 ? 256'b0 : adder_op_a[WLEN+:WLEN]),
-    .B(operation_i.data_type == 2'b00 ? 256'b0 : adder_op_b[WLEN+:WLEN]),
-    .data_type(operation_i.data_type),   // 00: scalar, 01: vec64, 10: vec32
+    .A(operation_i.mulv ? adder_op_a[WLEN+:WLEN] : 256'b0),
+    .B(operation_i.mulv ? adder_op_b[WLEN+:WLEN] : 256'b0),
+    .word_mode({1'b1, operation_i.data_type}),   // 00: scalar, 11: vec64, 10: vec32
     .cin(1'b0),
     .sum(adder_result[WLEN+:WLEN]),
     .cout()
@@ -246,8 +246,8 @@ module otbn_mac_bignum
   assign adder_result_hw_is_zero[1] = adder_result[WLEN/2+:WLEN/2] == 'h0;
 
   always_comb begin
-    case (operation_i.data_type)
-      2'b00 : begin
+    case (operation_i.mulv)
+      1'b0 : begin
           operation_flags_o.L    = adder_result[0];
           // L is always updated for .WO, and for .SO when writing to the lower half-word
           operation_flags_en_o.L = operation_i.shift_acc ? ~operation_i.wr_hw_sel_upper : 1'b1;
@@ -331,7 +331,7 @@ module otbn_mac_bignum
   // Only write to accumulator if the MAC is enabled or an ACC ISPR write is occuring or secure
   // wipe of the internal state is occuring.
   assign acc_en = (mac_en_i & mac_commit_i) | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
-  assign acch_en = (mac_en_i & mac_commit_i & (operation_i.data_type != 2'b00)) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME
+  assign acch_en = (mac_en_i & mac_commit_i & operation_i.mulv) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME
 
   always_ff @(posedge clk_i) begin
     if (acc_en) begin
@@ -350,138 +350,133 @@ module otbn_mac_bignum
 //  assign operation_result_o = adder_result[WLEN-1:0];
 
   always_comb begin
-    case (operation_i.exec_mode)
-      2'b00 : begin
-        case (operation_i.data_type)
-          2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];
-          end
-          2'b01 : begin
-            operation_result_o = {adder_result[384 + 64*operation_i.sel +: 64],
-                                  adder_result[256 + 64*operation_i.sel +: 64],
-                                  adder_result[128 + 64*operation_i.sel +: 64],
-                                  adder_result[      64*operation_i.sel +: 64]};
-          end
-          2'b10 : begin
-            operation_result_o = {adder_result[448 + 32*operation_i.sel +: 32],
-                                  adder_result[384 + 32*operation_i.sel +: 32],
-                                  adder_result[320 + 32*operation_i.sel +: 32],
-                                  adder_result[256 + 32*operation_i.sel +: 32],
-                                  adder_result[192 + 32*operation_i.sel +: 32],
-                                  adder_result[128 + 32*operation_i.sel +: 32],
-                                  adder_result[ 64 + 32*operation_i.sel +: 32],
-                                  adder_result[      32*operation_i.sel +: 32]};
-          end
-          default: begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
-          end
-        endcase
-      end
-      2'b01 : begin
-        case (operation_i.data_type)
-          2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];
-          end
-          2'b01 : begin
-            case (operation_i.sel)
-              1'b0: begin
-                operation_result_o = {operand_a_blanked[224+:32], adder_result[384+:32],
-                                      operand_a_blanked[160+:32], adder_result[256+:32],
-                                      operand_a_blanked[ 96+:32], adder_result[128+:32],
-                                      operand_a_blanked[ 32+:32], adder_result[  0+:32]};
-              end
-              1'b1: begin
-                operation_result_o = {adder_result[384+64+:32], operand_a_blanked[192+:32],
-                                      adder_result[256+64+:32], operand_a_blanked[128+:32],
-                                      adder_result[128+64+:32], operand_a_blanked[ 64+:32],
-                                      adder_result[  0+64+:32], operand_a_blanked[  0+:32]};
-              end
-            endcase
-          end
-          2'b10 : begin
-            operation_result_o = {adder_result[480+:16], adder_result[448+:16],
-                                  adder_result[416+:16], adder_result[384+:16],
-                                  adder_result[352+:16], adder_result[320+:16],
-                                  adder_result[288+:16], adder_result[256+:16],
-                                  adder_result[224+:16], adder_result[192+:16],
-                                  adder_result[160+:16], adder_result[128+:16],
-                                  adder_result[ 96+:16], adder_result[ 64+:16],
-                                  adder_result[ 32+:16], adder_result[  0+:16]};
-          end
-          default: begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
-          end
-        endcase
-      end
-      2'b10 : begin
-        case (operation_i.data_type)
-          2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];
-          end
-          2'b01 : begin
-            case (operation_i.sel)
-              1'b0: begin
-                operation_result_o = {operand_a_blanked[224+:32], adder_result[416+:32],
-                                      operand_a_blanked[160+:32], adder_result[288+:32],
-                                      operand_a_blanked[ 96+:32], adder_result[160+:32],
-                                      operand_a_blanked[ 32+:32], adder_result[ 32+:32]};
-              end
-              1'b1: begin
-                operation_result_o = {adder_result[416+64+:32], operand_a_blanked[192+:32],
-                                      adder_result[288+64+:32], operand_a_blanked[128+:32],
-                                      adder_result[160+64+:32], operand_a_blanked[ 64+:32],
-                                      adder_result[ 32+64+:32], operand_a_blanked[  0+:32]};
-              end
-            endcase
-          end                                                             
-          2'b10 : begin                                                   
-            operation_result_o = {adder_result[496+:16], adder_result[464+:16],
-                                  adder_result[432+:16], adder_result[400+:16],
-                                  adder_result[368+:16], adder_result[336+:16],
-                                  adder_result[304+:16], adder_result[272+:16],
-                                  adder_result[240+:16], adder_result[208+:16],
-                                  adder_result[176+:16], adder_result[144+:16],
-                                  adder_result[112+:16], adder_result[ 80+:16],
-                                  adder_result[ 48+:16], adder_result[ 16+:16]};
-          end
-          default: begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
-          end
-        endcase
-      end
-      2'b11 : begin
-        case (operation_i.data_type)
-          2'b00 : begin
-            operation_result_o = adder_result[WLEN-1:0];
-          end
-//          2'b01 : begin
-//            operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
-//                                  adder_result[160+:32], operand_a_blanked[128+:32],
-//                                  adder_result[ 96+:32], operand_a_blanked[ 64+:32],
-//                                  adder_result[ 32+:32], operand_a_blanked[  0+:32]};
-//          end                                                             
-//          2'b10 : begin                                                   
-//            operation_result_o = {adder_result[240+:16], operand_a_blanked[224+:16],
-//                                  adder_result[208+:16], operand_a_blanked[192+:16],
-//                                  adder_result[176+:16], operand_a_blanked[160+:16],
-//                                  adder_result[144+:16], operand_a_blanked[128+:16],
-//                                  adder_result[112+:16], operand_a_blanked[ 96+:16],
-//                                  adder_result[ 80+:16], operand_a_blanked[ 64+:16],
-//                                  adder_result[ 48+:16], operand_a_blanked[ 32+:16]};
-//                                  adder_result[ 16+:16], operand_a_blanked[  0+:16]};
-//          end
-          default: begin
-            operation_result_o = {WLEN{1'b0}};   // ERROR!
-          end
-        endcase
-      end
-      default: begin
-        operation_result_o = adder_result[WLEN-1:0];
-      end
-    endcase
+    case (operation_i.mulv)
+       1'b0 : begin
+         operation_result_o = adder_result[WLEN-1:0];
+       end
+       default: begin
+         case (operation_i.exec_mode)
+           2'b00 : begin
+             case (operation_i.data_type)
+               1'b1 : begin
+                 operation_result_o = {adder_result[384 + 64*operation_i.sel +: 64],
+                                       adder_result[256 + 64*operation_i.sel +: 64],
+                                       adder_result[128 + 64*operation_i.sel +: 64],
+                                       adder_result[      64*operation_i.sel +: 64]};
+               end
+               1'b0 : begin
+                 operation_result_o = {adder_result[448 + 32*operation_i.sel +: 32],
+                                       adder_result[384 + 32*operation_i.sel +: 32],
+                                       adder_result[320 + 32*operation_i.sel +: 32],
+                                       adder_result[256 + 32*operation_i.sel +: 32],
+                                       adder_result[192 + 32*operation_i.sel +: 32],
+                                       adder_result[128 + 32*operation_i.sel +: 32],
+                                       adder_result[ 64 + 32*operation_i.sel +: 32],
+                                       adder_result[      32*operation_i.sel +: 32]};
+               end
+               default: begin
+                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+               end
+             endcase
+           end
+           2'b01 : begin
+             case (operation_i.data_type)
+               1'b1 : begin
+                 case (operation_i.sel)
+                   1'b0: begin
+                     operation_result_o = {operand_a_blanked[224+:32], adder_result[384+:32],
+                                           operand_a_blanked[160+:32], adder_result[256+:32],
+                                           operand_a_blanked[ 96+:32], adder_result[128+:32],
+                                           operand_a_blanked[ 32+:32], adder_result[  0+:32]};
+                   end
+                   1'b1: begin
+                     operation_result_o = {adder_result[384+64+:32], operand_a_blanked[192+:32],
+                                           adder_result[256+64+:32], operand_a_blanked[128+:32],
+                                           adder_result[128+64+:32], operand_a_blanked[ 64+:32],
+                                           adder_result[  0+64+:32], operand_a_blanked[  0+:32]};
+                   end
+                 endcase
+               end
+               1'b0 : begin
+                 operation_result_o = {adder_result[480+:16], adder_result[448+:16],
+                                       adder_result[416+:16], adder_result[384+:16],
+                                       adder_result[352+:16], adder_result[320+:16],
+                                       adder_result[288+:16], adder_result[256+:16],
+                                       adder_result[224+:16], adder_result[192+:16],
+                                       adder_result[160+:16], adder_result[128+:16],
+                                       adder_result[ 96+:16], adder_result[ 64+:16],
+                                       adder_result[ 32+:16], adder_result[  0+:16]};
+               end
+               default: begin
+                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+               end
+             endcase
+           end
+           2'b10 : begin
+             case (operation_i.data_type)
+               1'b1 : begin
+                 case (operation_i.sel)
+                   1'b0: begin
+                     operation_result_o = {operand_a_blanked[224+:32], adder_result[416+:32],
+                                           operand_a_blanked[160+:32], adder_result[288+:32],
+                                           operand_a_blanked[ 96+:32], adder_result[160+:32],
+                                           operand_a_blanked[ 32+:32], adder_result[ 32+:32]};
+                   end
+                   1'b1: begin
+                     operation_result_o = {adder_result[416+64+:32], operand_a_blanked[192+:32],
+                                           adder_result[288+64+:32], operand_a_blanked[128+:32],
+                                           adder_result[160+64+:32], operand_a_blanked[ 64+:32],
+                                           adder_result[ 32+64+:32], operand_a_blanked[  0+:32]};
+                   end
+                 endcase
+               end                                                             
+               1'b0 : begin                                                   
+                 operation_result_o = {adder_result[496+:16], adder_result[464+:16],
+                                       adder_result[432+:16], adder_result[400+:16],
+                                       adder_result[368+:16], adder_result[336+:16],
+                                       adder_result[304+:16], adder_result[272+:16],
+                                       adder_result[240+:16], adder_result[208+:16],
+                                       adder_result[176+:16], adder_result[144+:16],
+                                       adder_result[112+:16], adder_result[ 80+:16],
+                                       adder_result[ 48+:16], adder_result[ 16+:16]};
+               end
+               default: begin
+                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+               end
+             endcase
+           end
+           2'b11 : begin
+             case (operation_i.data_type)
+//               2'b01 : begin
+//                 operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
+//                                       adder_result[160+:32], operand_a_blanked[128+:32],
+//                                       adder_result[ 96+:32], operand_a_blanked[ 64+:32],
+//                                       adder_result[ 32+:32], operand_a_blanked[  0+:32]};
+//               end                                                             
+//               2'b10 : begin                                                   
+//                 operation_result_o = {adder_result[240+:16], operand_a_blanked[224+:16],
+//                                       adder_result[208+:16], operand_a_blanked[192+:16],
+//                                       adder_result[176+:16], operand_a_blanked[160+:16],
+//                                       adder_result[144+:16], operand_a_blanked[128+:16],
+//                                       adder_result[112+:16], operand_a_blanked[ 96+:16],
+//                                       adder_result[ 80+:16], operand_a_blanked[ 64+:16],
+//                                       adder_result[ 48+:16], operand_a_blanked[ 32+:16]};
+//                                       adder_result[ 16+:16], operand_a_blanked[  0+:16]};
+//               end
+               default: begin
+                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+               end
+             endcase
+           end
+           default: begin
+             operation_result_o = adder_result[WLEN-1:0];
+           end
+         endcase
+       end
+     endcase
   end
 
-  assign expected_op_en     = mac_en_i | (operation_i.data_type != 2'b00);
+  assign expected_op_en     = mac_en_i | operation_i.mulv;
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
 //  assign expected_acch_rd_en = ~operation_i.zero_acc & mac_en_i & (operation_i.data_type != 2'b00);
 

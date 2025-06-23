@@ -8,12 +8,16 @@ import cocotb_test.simulator
 import pytest
 
 from hw_model import reference_prod, WLEN, DLEN
+from hw_model import MODE_64
+from hw_model import MODE_32
+from hw_model import MODE_16
+
 
 @cocotb.test()
 async def run_unified_test(dut):
     """Randomized test for unified multiplier in all data_types."""
 
-    for data_type in [0b00, 0b01, 0b10]:
+    for data_type in [MODE_16, MODE_32, MODE_64]:
         for _ in range(32):
             A = random.getrandbits(WLEN)
             B = random.getrandbits(WLEN)
@@ -36,23 +40,23 @@ async def run_unified_test(dut):
 
             print("data_type:", data_type)
 
-            if data_type == 0b00:
+            if data_type == MODE_64:
                 # 64x64 data_type
                 out = result & ((1 << (2 * DLEN)) - 1)
 
                 assert out == expected, f"64x64 FAIL: A={A}, B={B}, got={out}, expected={expected}"
 
-            elif data_type == 0b01:
+            elif data_type == MODE_32:
                 # 4x 32x32 data_type
                 out = result & ((1 << (2 * WLEN)) - 1)
 
                 assert out == expected, f"32x32 FAIL: A={A}, B={B}, got={out}, expected={expected}"
 
-            elif data_type == 0b10:
+            elif data_type == MODE_16:
                 # 16x 16x16 data_type
                 out = result & ((1 << (2 * WLEN)) - 1)
 
-                assert out == expected, f"16x16 FAIL: A={A}, B={B}, got={out}, expected={expected}"
+                assert out == expected, f"16x16 FAIL: A={A}, B={B}, got={hex(out)}, expected={hex(expected)}"
 
 
 def test_unified_mult_build():

@@ -1026,6 +1026,7 @@ module otbn_controller
   assign mac_bignum_operation_o.zero_acc          = insn_dec_bignum_i.mac_zero_acc;
   assign mac_bignum_operation_o.shift_acc         = insn_dec_bignum_i.mac_shift_out;
 
+  assign mac_bignum_operation_o.mulv              = insn_dec_bignum_i.mac_mulv;
   assign mac_bignum_operation_o.data_type         = insn_dec_bignum_i.mac_data_type;
   assign mac_bignum_operation_o.sel               = insn_dec_bignum_i.mac_sel;
   assign mac_bignum_operation_o.lane_mode         = insn_dec_bignum_i.mac_lane_mode;
