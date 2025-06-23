@@ -26,6 +26,18 @@ main:
   bn.mulv.l.16H.acc.z.hi      w15, w0, sw1.3
   /* bn.mulv.l.16H.acc.z.hi.cond w16, w0, sw1.3 */
 
+  /* Zeroize temporarily destination registers of .hi.cond instructions
+   * just for testing with expected results. Please comment these lines
+   * out once .hi.cond is supported in the RTL and replace w6, w11 and w16
+   * with the followin values in bnmulvl16H_smoke_expected.txt:
+   * w6  | 0x3c011e8a_166029b2_28110c8c_481906d8_25d61479_28974773_21632e00_430a026b
+   * w11 | 0xa0a12ac3_0a1b5765_50e13231_20651b62_47f60280_52f81dcc_362a689e_0c2b09ad
+   * w16 | 0x3c011e8a_166029b2_28110c8c_481906d8_25d61479_28974773_21632e00_430a026b
+   */
+  bn.xor w6, w6, w6
+  bn.xor w11, w11, w11
+  bn.xor w16, w16, w16
+
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */
   bn.xor w1, w1, w1

@@ -35,6 +35,23 @@ main:
   /* bn.mulv.8S.even.acc.z.hi.cond w24, w0, w1
   bn.mulv.8S.odd.acc.z.hi.cond w25, w0, w1 */
 
+  /* Zeroize temporarily destination registers of .hi.cond instructions
+   * just for testing with expected results. Please comment these lines
+   * out once .hi.cond is supported in the RTL and replace w8, w9, w16,
+   * w17, w24 and w25 with the followin values in bnmulv8S_smoke_expected.txt:
+   * w8  | 0xc17c6279_41dfcb33_81332876_176923f7_7a024204_5f866648_6baa9455_c305e42a
+   * w9  | 0x5c4b6e80_48268673_38184d50_e87a1613_5373bb02_82e2e662_21647797_d82c07cd
+   * w16 | 0xc17c6279_077f2ccd_81332876_43dd01eb_7a024204_7e199923_6baa9455_0c1790a8
+   * w17 | 0x712dba00_48268673_713b52a1_e87a1613_4dceec09_82e2e662_362c0984_d82c07cd
+   * w24 | 0xc17c6279_41dfcb33_81332876_176923f7_7a024204_5f866648_6baa9455_c305e42a
+   * w25 | 0x5c4b6e80_48268673_38184d50_e87a1613_5373bb02_82e2e662_21647797_d82c07cd
+   */
+  bn.xor w8, w8, w8
+  bn.xor w9, w9, w9
+  bn.xor w16, w16, w16
+  bn.xor w17, w17, w17
+  bn.xor w24, w24, w24
+  bn.xor w25, w25, w25
 
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */
