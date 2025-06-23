@@ -434,7 +434,7 @@ class WSRFile:
         ret += self.ACC.changes()
         ret += self.KeyS0.changes()
         ret += self.KeyS1.changes()
-        # ret += self.ACCH.changes()
+        ret += self.ACCH.changes()
         return ret
 
     def set_sideload_keys(self,

@@ -87,6 +87,7 @@ module otbn_tracer (
     unique case (ispr)
       IsprMod: return "MOD";
       IsprAcc: return "ACC";
+      IsprAccH: return "ACCH";
       IsprRnd: return "RND";
       IsprFlags: return "FLAGS";
       IsprUrnd: return "URND";

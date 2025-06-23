@@ -1419,6 +1419,7 @@ module otbn_controller
         ispr_addr_bignum = IsprKeyS1H;
         key_invalid = ~sideload_key_shares_valid_i[1];
       end
+      WsrAccH: ispr_addr_bignum = IsprAccH;
       default: wsr_illegal_addr = 1'b1;
     endcase
   end
