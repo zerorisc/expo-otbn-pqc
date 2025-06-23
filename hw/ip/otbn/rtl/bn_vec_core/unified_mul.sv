@@ -4,7 +4,7 @@ module unified_mul #(
     parameter int SLEN = 32,
     parameter int HLEN = 16
 ) (
-    input  logic [1:0]             data_type,            // 00 = 64x64, 01 = 4x32x32, 10 = 16x16x16
+    input  logic [1:0]             word_mode,            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_A,
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_B,
     input  logic [1:0]             exec_mode,
@@ -30,14 +30,14 @@ module unified_mul #(
     logic [2*SLEN-1:0] partial32 [0:NDOUB-1];
 
     localparam MODE_64 = 2'b00;
-    localparam MODE_32 = 2'b01;
+    localparam MODE_32 = 2'b11;
     localparam MODE_16 = 2'b10;
 
     // -------------------------------------------------------------------
     // Input Decomposition
     // -------------------------------------------------------------------
     always_comb begin
-        case (data_type)
+        case (word_mode)
             MODE_16: begin
                case (exec_mode)
                  2'b00: begin
@@ -127,7 +127,7 @@ module unified_mul #(
     // -- 16x16 results --
     generate
         for (genvar i = 0; i < NHALF; i++) begin : gen_output_16
-            assign result_16[2*HLEN*i +: 2*HLEN] = (data_type == MODE_16) ? products[i] : '0;
+            assign result_16[2*HLEN*i +: 2*HLEN] = (word_mode == MODE_16) ? products[i] : '0;
         end
     endgenerate
 
@@ -146,7 +146,7 @@ module unified_mul #(
                            {{(HLEN){1'd0}}, p2, {(HLEN){1'd0}}} +
                            {p3, {(SLEN){1'd0}}};
 
-            if (data_type == MODE_32)
+            if (word_mode == MODE_32)
                 result_32[2*SLEN*i +: 2*SLEN] = partial32[i];
         end
     end
@@ -154,7 +154,7 @@ module unified_mul #(
     // -- 64x64 reconstruction using the 32x32 results --
     always_comb begin
         result_64 = '0;
-        if (data_type == MODE_64) begin
+        if (word_mode == MODE_64) begin
             result_64 = {{DLEN{1'b0}}, partial32[0]} +
                         {{SLEN{1'b0}}, partial32[1], {SLEN{1'b0}}} +
                         {{SLEN{1'b0}}, partial32[2], {SLEN{1'b0}}} +
@@ -166,7 +166,7 @@ module unified_mul #(
     // Unified Output Selection
     // -------------------------------------------------------------------
     always_comb begin
-        unique case (data_type)
+        unique case (word_mode)
             MODE_64: //result = {{(2*WLEN-2*DLEN){1'b0}}, result_64};
                 begin
                   unique case (data_type_64_shift)

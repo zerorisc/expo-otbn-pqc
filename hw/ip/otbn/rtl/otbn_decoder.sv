@@ -86,7 +86,8 @@ module otbn_decoder
 
   logic [4:0] mac_insn_rs2;
 
-  logic [1:0] mac_data_type;
+  logic       mac_mulv;
+  logic       mac_data_type;
   logic       mac_sel;
   logic       mac_lane_mode;
   logic [3:0] mac_lane_index;
@@ -256,6 +257,7 @@ module otbn_decoder
     mac_pre_acc_shift:   mac_pre_acc_shift_bignum,
     mac_zero_acc:        mac_zero_acc_bignum,
     mac_shift_out:       mac_shift_out_bignum,
+    mac_mulv:            mac_mulv,
     mac_data_type:       mac_data_type,
     mac_sel:             mac_sel,
     mac_lane_mode:       mac_lane_mode,
@@ -302,7 +304,8 @@ module otbn_decoder
     rf_ren_b_bignum        = 1'b0;
     mac_en_bignum          = 1'b0;
     mac_zero_acc_bignum    = 1'b0;
-    mac_data_type          = 2'b00;
+    mac_mulv               = 1'b0;
+    mac_data_type          = 1'b0;
     mac_shift_out_bignum   = insn[30];
     mac_insn_rs2           = insn[24:20];
 
@@ -710,7 +713,8 @@ module otbn_decoder
 
             mac_zero_acc_bignum = insn_alu[29:28] == 2'b10 ? 1'b1 : 1'b0;
 
-            mac_data_type  = insn[26] == 1'b0 ? 2'b10 : 2'b01;
+            mac_mulv      = 1'b1;
+            mac_data_type = insn[26];
 
             if (insn[25] == 1'b1) begin  // lane mode
               mac_insn_rs2 = {{4'b1000}, insn[24]};

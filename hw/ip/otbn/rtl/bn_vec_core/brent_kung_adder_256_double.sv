@@ -1,11 +1,15 @@
 module brent_kung_adder_256_double (
     input  logic [255:0] A,
     input  logic [255:0] B,
-    input  logic [1:0]   data_type,   // 00: scalar, 01: vec64, 10: vec32
+    input  logic [1:0]   word_mode,   // 00: scalar, 11: vec64, 10: vec32
     input  logic         cin,
     output logic [255:0] sum,
     output logic         cout
 );
+
+    localparam MODE_64 = 2'b00;
+//    localparam MODE_32 = 2'b11;
+    localparam MODE_16 = 2'b10;
 
     logic [255:0] G, P;
     logic [256:0] C;
@@ -80,8 +84,8 @@ module brent_kung_adder_256_double (
     generate
         for (i = 0; i < 256; i++) begin
             if (i >= 31 && (i & 31) == 31) begin : gen_l5_logic
-                assign G5[i] = (data_type < 2) ? (G4[i] | (P4[i] & G4[i-16])) : G4[i];
-                assign P5[i] = (data_type < 2) ? (P4[i] & P4[i-16])           : P4[i];
+                assign G5[i] = (word_mode != MODE_16) ? (G4[i] | (P4[i] & G4[i-16])) : G4[i];
+                assign P5[i] = (word_mode != MODE_16) ? (P4[i] & P4[i-16])           : P4[i];
             end else begin : gen_l5
                 assign G5[i] = G4[i];
                 assign P5[i] = P4[i];
@@ -93,8 +97,8 @@ module brent_kung_adder_256_double (
     generate
         for (i = 0; i < 256; i++) begin
             if (i >= 63 && (i & 63) == 63) begin : gen_l6_logic
-                assign G6[i] = (data_type < 1) ? (G5[i] | (P5[i] & G5[i-32])) : G5[i];
-                assign P6[i] = (data_type < 1) ? (P5[i] & P5[i-32])           : P5[i];
+                assign G6[i] = (word_mode == MODE_64) ? (G5[i] | (P5[i] & G5[i-32])) : G5[i];
+                assign P6[i] = (word_mode == MODE_64) ? (P5[i] & P5[i-32])           : P5[i];
             end else begin : gen_l6_logic
                 assign G6[i] = G5[i];
                 assign P6[i] = P5[i];
@@ -106,8 +110,8 @@ module brent_kung_adder_256_double (
     generate
         for (i = 0; i < 256; i++) begin
             if (i >= 127 && (i & 127) == 127) begin : gen_l7_logic
-                assign G7[i] = (data_type < 1) ? (G6[i] | (P6[i] & G6[i-64])) : G6[i];
-                assign P7[i] = (data_type < 1) ? (P6[i] & P6[i-64])           : P6[i];
+                assign G7[i] = (word_mode == MODE_64) ? (G6[i] | (P6[i] & G6[i-64])) : G6[i];
+                assign P7[i] = (word_mode == MODE_64) ? (P6[i] & P6[i-64])           : P6[i];
             end else begin : gen_l7
                 assign G7[i] = G6[i];
                 assign P7[i] = P6[i];
@@ -119,7 +123,7 @@ module brent_kung_adder_256_double (
     generate
         for (i = 0; i < 256; i++) begin
             if (i == 255) begin : gen_l8_logic
-                assign G8[i] = (data_type < 1) ? (G7[i] | (P7[i] & G7[i-128])) : G7[i];
+                assign G8[i] = (word_mode == MODE_64) ? (G7[i] | (P7[i] & G7[i-128])) : G7[i];
             end else begin : gen_l8
                 assign G8[i] = G7[i];
             end
@@ -128,7 +132,7 @@ module brent_kung_adder_256_double (
 
     // Step 3: Down-sweep — assign carries using prefix fanout
     always_comb begin
-        C[  0] = (data_type == 2'b00) ? cin : 1'b0;
+        C[  0] = (word_mode == MODE_64) ? cin : 1'b0;
         C[  1] = G8[  0] | (P7[  0] & C[  0]);
         C[  2] = G8[  1] | (P7[  1] & C[  0]);
         C[  3] = G8[  2] | (P7[  2] & C[  2]);
@@ -160,7 +164,7 @@ module brent_kung_adder_256_double (
         C[ 29] = G8[ 28] | (P7[ 28] & C[ 28]);
         C[ 30] = G8[ 29] | (P7[ 29] & C[ 28]);
         C[ 31] = G8[ 30] | (P7[ 30] & C[ 30]);
-        C[ 32] = (data_type < 2) ? (G8[ 31] | (P7[ 31] & C[  0])) : 1'b0;
+        C[ 32] = (word_mode != MODE_16) ? (G8[ 31] | (P7[ 31] & C[  0])) : 1'b0;
         C[ 33] = G8[ 32] | (P7[ 32] & C[ 32]);
         C[ 34] = G8[ 33] | (P7[ 33] & C[ 32]);
         C[ 35] = G8[ 34] | (P7[ 34] & C[ 34]);
@@ -192,7 +196,7 @@ module brent_kung_adder_256_double (
         C[ 61] = G8[ 60] | (P7[ 60] & C[ 60]);
         C[ 62] = G8[ 61] | (P7[ 61] & C[ 60]);
         C[ 63] = G8[ 62] | (P7[ 62] & C[ 62]);
-        C[ 64] = (data_type < 1) ? (G8[ 63] | (P7[ 63] & C[  0])) : 1'b0;
+        C[ 64] = (word_mode == MODE_64) ? (G8[ 63] | (P7[ 63] & C[  0])) : 1'b0;
         C[ 65] = G8[ 64] | (P7[ 64] & C[ 64]);
         C[ 66] = G8[ 65] | (P7[ 65] & C[ 64]);
         C[ 67] = G8[ 66] | (P7[ 66] & C[ 66]);
@@ -224,7 +228,7 @@ module brent_kung_adder_256_double (
         C[ 93] = G8[ 92] | (P7[ 92] & C[ 92]);
         C[ 94] = G8[ 93] | (P7[ 93] & C[ 92]);
         C[ 95] = G8[ 94] | (P7[ 94] & C[ 94]);
-        C[ 96] = (data_type < 2) ? (G8[ 95] | (P7[ 95] & C[ 64])) : 1'b0;
+        C[ 96] = (word_mode != MODE_16) ? (G8[ 95] | (P7[ 95] & C[ 64])) : 1'b0;
         C[ 97] = G8[ 96] | (P7[ 96] & C[ 96]);
         C[ 98] = G8[ 97] | (P7[ 97] & C[ 96]);
         C[ 99] = G8[ 98] | (P7[ 98] & C[ 98]);
@@ -256,7 +260,7 @@ module brent_kung_adder_256_double (
         C[125] = G8[124] | (P7[124] & C[124]);
         C[126] = G8[125] | (P7[125] & C[124]);
         C[127] = G8[126] | (P7[126] & C[126]);
-        C[128] = (data_type < 1) ? (G8[127] | (P7[127] & C[  0])) : 1'b0;
+        C[128] = (word_mode == MODE_64) ? (G8[127] | (P7[127] & C[  0])) : 1'b0;
         C[129] = G8[128] | (P7[128] & C[128]);
         C[130] = G8[129] | (P7[129] & C[128]);
         C[131] = G8[130] | (P7[130] & C[130]);
@@ -288,7 +292,7 @@ module brent_kung_adder_256_double (
         C[157] = G8[156] | (P7[156] & C[156]);
         C[158] = G8[157] | (P7[157] & C[156]);
         C[159] = G8[158] | (P7[158] & C[158]);
-        C[160] = (data_type < 2) ? (G8[159] | (P7[159] & C[128])) : 1'b0;
+        C[160] = (word_mode != MODE_16) ? (G8[159] | (P7[159] & C[128])) : 1'b0;
         C[161] = G8[160] | (P7[160] & C[160]);
         C[162] = G8[161] | (P7[161] & C[160]);
         C[163] = G8[162] | (P7[162] & C[162]);
@@ -320,7 +324,7 @@ module brent_kung_adder_256_double (
         C[189] = G8[188] | (P7[188] & C[188]);
         C[190] = G8[189] | (P7[189] & C[188]);
         C[191] = G8[190] | (P7[190] & C[190]);
-        C[192] = (data_type < 1) ? (G8[191] | (P7[191] & C[128])) : 1'b0;
+        C[192] = (word_mode == MODE_64) ? (G8[191] | (P7[191] & C[128])) : 1'b0;
         C[193] = G8[192] | (P7[192] & C[192]);
         C[194] = G8[193] | (P7[193] & C[192]);
         C[195] = G8[194] | (P7[194] & C[194]);
@@ -352,7 +356,7 @@ module brent_kung_adder_256_double (
         C[221] = G8[220] | (P7[220] & C[220]);
         C[222] = G8[221] | (P7[221] & C[220]);
         C[223] = G8[222] | (P7[222] & C[222]);
-        C[224] = (data_type < 2) ? (G8[223] | (P7[223] & C[192])) : 1'b0;
+        C[224] = (word_mode != MODE_16) ? (G8[223] | (P7[223] & C[192])) : 1'b0;
         C[225] = G8[224] | (P7[224] & C[224]);
         C[226] = G8[225] | (P7[225] & C[224]);
         C[227] = G8[226] | (P7[226] & C[226]);
@@ -394,7 +398,7 @@ module brent_kung_adder_256_double (
         end
     endgenerate
 
-    assign cout = (data_type == 2'b00) ? C[256] : 1'b0;
+    assign cout = (word_mode == MODE_64) ? C[256] : 1'b0;
 
 endmodule
 

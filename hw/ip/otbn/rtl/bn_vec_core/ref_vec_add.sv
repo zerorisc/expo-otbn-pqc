@@ -3,11 +3,15 @@
 module ref_vec_add (
     input  logic [255:0] A,
     input  logic [255:0] B,
-    input  logic [1:0]   data_type,   // 00: scalar, 01: vec32, 10: vec16
+    input  logic [1:0]   word_mode,   // 00: scalar, 11: vec32, 10: vec16
     input  logic         cin,
     output logic [255:0] sum,
     output logic         cout
 );
+
+    localparam MODE_64 = 2'b00;
+    localparam MODE_32 = 2'b11;
+    localparam MODE_16 = 2'b10;
 
     logic [16:0] sum16_0 ;
     logic [16:0] sum16_1 ;
@@ -76,8 +80,8 @@ module ref_vec_add (
     end
     
 
-    assign sum = data_type == 0 ? sum256[255:0] + {255'h0, cin} :
-                 data_type == 1 ? {sum32_7[31:0], 
+    assign sum = word_mode == MODE_64 ? sum256[255:0] + {255'h0, cin} :
+                 word_mode == MODE_32 ? {sum32_7[31:0], 
                               sum32_6[31:0],
                               sum32_5[31:0],
                               sum32_4[31:0],
@@ -85,7 +89,7 @@ module ref_vec_add (
                               sum32_2[31:0],
                               sum32_1[31:0],
                               sum32_0[31:0]} :
-                 data_type == 2 ? {sum16_15[15:0],
+                 word_mode == MODE_16 ? {sum16_15[15:0],
                               sum16_14[15:0],
                               sum16_13[15:0],
                               sum16_12[15:0],
