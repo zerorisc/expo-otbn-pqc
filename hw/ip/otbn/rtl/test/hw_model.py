@@ -58,9 +58,12 @@ DLEN = 64
 SLEN = 32
 HLEN = 16
 
+MODE_64 = 0b00
+MODE_16 = 0b10
+MODE_32 = 0b11
 
 def reference_prod(A, B, data_type, word_sel_A, word_sel_B, half_sel, lane_mode=0, lane_index=0):
-    if data_type == 0b00:
+    if data_type == MODE_64:
         # 64x64 data_type
         a = (A >> (word_sel_A * DLEN)) & ((1 << DLEN) - 1)
         b = (B >> (word_sel_B * DLEN)) & ((1 << DLEN) - 1)
@@ -68,7 +71,7 @@ def reference_prod(A, B, data_type, word_sel_A, word_sel_B, half_sel, lane_mode=
 
         return expected
 
-    elif data_type == 0b01:
+    elif data_type == MODE_32:
         # 4x 32x32 data_type
         expected = 0
 
@@ -80,24 +83,26 @@ def reference_prod(A, B, data_type, word_sel_A, word_sel_B, half_sel, lane_mode=
 
         return expected
 
-    elif data_type == 0b10:
+    elif data_type == MODE_16:
         # 16x 16x16 data_type
         expected = 0
 
         for i in range(16):
             a = (A >> (i * HLEN)) & ((1 << HLEN) - 1)
             b = (B >> (i * HLEN)) & ((1 << HLEN) - 1) if lane_mode == 0 else (B >> (lane_index * HLEN)) & ((1 << HLEN) - 1)
-            expected |= (a * b) << (i*32)
+            expected |= (a * b * (1 if i & 1 == half_sel else 0)) << (i*32)
+
+            print(expected)
 
         return expected
 
 
 def reference_sum(A, B, data_type, cin, wsize=[(8, 32), (16, 16)]):
-    if data_type == 0:
+    if data_type == MODE_64:
         full = (A + B + cin) & ((1 << 256) - 1)
         cout = (A + B + cin) >> 256
         return full, cout
-    elif data_type == 1:
+    elif data_type == MODE_32:
         result = 0
         for i in range(wsize[0][0]):
             mask = (1 << wsize[0][1]) - 1
@@ -106,7 +111,7 @@ def reference_sum(A, B, data_type, cin, wsize=[(8, 32), (16, 16)]):
             s = (a + b) & mask
             result |= (s << (wsize[0][1] * i))
         return result, 0
-    elif data_type == 2:
+    elif data_type == MODE_16:
         result = 0
         for i in range(wsize[1][0]):
             mask = (1 << wsize[1][1]) - 1
@@ -149,14 +154,14 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
       acc = res
 
     if op.exec_mode == 0:
-      if op.data_type == 0:
+      if op.data_type == MODE_64:
         res = mask(res)
       elif op.data_type == 1:
         res = (((res >> (  0 + 64*op.sel)) & (0xffffffffffffffff)) <<   0) | \
               (((res >> (128 + 64*op.sel)) & (0xffffffffffffffff)) <<  64) | \
               (((res >> (256 + 64*op.sel)) & (0xffffffffffffffff)) << 128) | \
               (((res >> (384 + 64*op.sel)) & (0xffffffffffffffff)) << 192)
-      elif op.data_type == 2:
+      elif op.data_type == MODE_32:
         res = (((res >> (  0 + 32*op.sel)) & (0xffffffff)) <<   0) | \
               (((res >> ( 64 + 32*op.sel)) & (0xffffffff)) <<  32) | \
               (((res >> (128 + 32*op.sel)) & (0xffffffff)) <<  64) | \
@@ -166,7 +171,7 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
               (((res >> (384 + 32*op.sel)) & (0xffffffff)) << 192) | \
               (((res >> (448 + 32*op.sel)) & (0xffffffff)) << 224)
     if op.exec_mode == 1:
-      if op.data_type == 1:
+      if op.data_type == MODE_16:
         res = res          & (0xffffffff <<   0) | \
               op.operand_a & (0xffffffff <<  32) | \
               res          & (0xffffffff <<  64) | \
@@ -176,7 +181,7 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
               res          & (0xffffffff << 192) | \
               op.operand_a & (0xffffffff << 224)
 
-      elif op.data_type == 2:
+      elif op.data_type == MODE_16:
         res = ((res & (0xffff <<   0)) >>   0) | \
               ((res & (0xffff <<  32)) >>  16) | \
               ((res & (0xffff <<  64)) >>  32) | \
@@ -195,7 +200,7 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
               ((res & (0xffff << 480)) >> 240)
 
     elif op.exec_mode == 2:
-      if op.data_type == 1:
+      if op.data_type == MODE_32:
         res = op.operand_a & (0xffffffff <<   0) | \
               res          & (0xffffffff <<  32) | \
               op.operand_a & (0xffffffff <<  64) | \
@@ -205,7 +210,7 @@ def mac_model(op: mac_bignum_operation_t, predec: mac_predec_bignum_t) -> int:
               op.operand_a & (0xffffffff << 192) | \
               res          & (0xffffffff << 224)
 
-      elif op.data_type == 2:
+      elif op.data_type == MODE_16:
         res = ((res & (0xffff << (16+  0))) >>  16) | \
               ((res & (0xffff << (16+ 32))) >>  32) | \
               ((res & (0xffff << (16+ 64))) >>  48) | \
