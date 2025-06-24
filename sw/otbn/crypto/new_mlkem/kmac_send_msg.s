@@ -4,6 +4,7 @@
 
 .text
 
+.equ x5, t0
 /*
  * Send a variable-length message to the Keccak core.
  *
