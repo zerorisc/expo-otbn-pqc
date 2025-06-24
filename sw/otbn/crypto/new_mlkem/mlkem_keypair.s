@@ -153,7 +153,7 @@
  *
  * clobbered registers: a0-a4, t0-t5, w8, w16
  */
-.globl indcpa_keypair
+
 indcpa_keypair:
   /* Stack address mapping */
   #define STACK_PK_ADDR        -32
@@ -213,13 +213,14 @@ indcpa_keypair:
     jal  x1, poly_getnoise_eta_1
     addi a2, a2, 1
 
+  bn.wsrr w16, 0x0
   /*** NTT skpv ***/
   li   a0, STACK_SKPV
   add  a0, fp, a0
   la   a1, twiddles_ntt
   add  a2, zero, a0
   .rept KYBER_K
-    jal x1, ntt_kyber
+    jal x1, ntt
   .endr
 
   /*** Packing sk ***/
@@ -238,13 +239,14 @@ indcpa_keypair:
     jal  x1, poly_gen_matrix
     addi a2, a2, 1
 
+    bn.wsrr w16, 0x0
     /* Mutliply this generated poly with sk */
     addi a1, a1, POLY /* point back to A[0][0] */
     li   x29, STACK_SKPV
     add  x29, fp, x29 /* point to sk[0] */
     add  a3, a1, x0   /* output at A[0][0] */
     la   x28, twiddles_basemul
-    jal  x1, basemul_kyber
+    jal  x1, basemul
 
     .rept KYBER_K-1
       /* Gen next mat poly */
@@ -252,16 +254,19 @@ indcpa_keypair:
       jal  x1, poly_gen_matrix
       addi a2, a2, 1
 
+      bn.wsrr w16, 0x0
       /* Mutliply this generated poly with sk */
       addi a1, a1, POLY /* points back to A[0][1] */
       addi a3, a1, POLY /* points back to A[0][0] for accumulation */
       la   x28, twiddles_basemul
-      jal  x1, basemul_acc_kyber
+      jal  x1, basemul_acc
       addi a1, a1, POLY /* points back to A[0][1] */
     .endr 
     addi a2, a2, KYBER_GEN_MATRIX_NONCE 
   .endr 
 
+  bn.wsrr w16, 0x0
+  bn.xor  w31, w31, w31
   /*** poly_tomont ***/
   li  a0, STACK_A
   add a0, fp, a0
@@ -283,13 +288,14 @@ indcpa_keypair:
     jal  x1, poly_getnoise_eta_1
     addi a2, a2, 1
 
+  bn.wsrr w16, 0x0
   /*** NTT e ***/
   li   a0, STACK_SKPV
   add  a0, fp, a0
   la   a1, twiddles_ntt
   add  a2, zero, a0
   .rept KYBER_K
-    jal x1, ntt_kyber
+    jal x1, ntt
   .endr
 
   /* Polyvec add */
