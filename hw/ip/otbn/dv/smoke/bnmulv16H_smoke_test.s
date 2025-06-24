@@ -8,35 +8,21 @@ main:
   bn.lid x4, 0(x6)
   bn.lid x5, 32(x6)
 
-  /* All instructions with .hi.cond are commented out because it seems
-   * that this exec_mode is not yet implemented. */
   bn.mulv.16H.even          w2, w0, w1
   bn.mulv.16H.odd           w3, w0, w1
   bn.mulv.16H.lo            w4, w0, w1
   bn.mulv.16H.hi            w5, w0, w1
-  /* bn.mulv.16H.hi.cond       w6, w0, w1 */
+  bn.mulv.16H.hi.cond       w6, w0, w1
   bn.mulv.16H.even.acc      w7, w0, w1
   bn.mulv.16H.odd.acc       w8, w0, w1
   bn.mulv.16H.acc.lo        w9, w0, w1
   bn.mulv.16H.acc.hi        w10, w0, w1
-  /* bn.mulv.16H.acc.hi.cond   w11, w0, w1 */
+  bn.mulv.16H.acc.hi.cond   w11, w0, w1
   bn.mulv.16H.even.acc.z    w12, w0, w1
   bn.mulv.16H.odd.acc.z     w13, w0, w1
   bn.mulv.16H.acc.z.lo      w14, w0, w1
   bn.mulv.16H.acc.z.hi      w15, w0, w1
-  /* bn.mulv.16H.acc.z.hi.cond w16, w0, w1 */
-
-  /* Zeroize temporarily destination registers of .hi.cond instructions
-   * just for testing with expected results. Please comment these lines
-   * out once .hi.cond is supported in the RTL and replace w6, w11 and w16
-   * with the followin values in bnmulv16H_smoke_expected.txt:
-   * w6  | 0x5c4b1ec8_41df0c77_381723d1_17680c3d_537325b1_5f853a7a_21637b54_c30502b6
-   * w11 | 0x712c2b1a_077d1a20_713a8f47_43db30f6_4dcd049a_7e16a8ee_362a1877_0c160ada
-   * w16 | 0x5c4b1ec8_41df0c77_381723d1_17680c3d_537325b1_5f853a7a_21637b54_c30502b6
-   */
-  bn.xor w6, w6, w6
-  bn.xor w11, w11, w11
-  bn.xor w16, w16, w16
+  bn.mulv.16H.acc.z.hi.cond w16, w0, w1
 
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */

@@ -41,6 +41,7 @@ module otbn_mac_bignum
   logic [2*WLEN-1:0] adder_op_a;
   logic [2*WLEN-1:0] adder_op_b;
   logic [2*WLEN-1:0] adder_result;
+//  logic [  WLEN-1:0] cond_sub_result;
   logic [1:0]      adder_result_hw_is_zero;
 
 //  logic [QWLEN-1:0]  mul_op_a;
@@ -349,23 +350,27 @@ module otbn_mac_bignum
   // written to the accumulator.
 //  assign operation_result_o = adder_result[WLEN-1:0];
 
+  logic [WLEN-1:0] pre_cond;
+  logic [WLEN-1:0] cond_sub_B;
+
   always_comb begin
+    cond_sub_B = 256'b0;
     case (operation_i.mulv)
        1'b0 : begin
-         operation_result_o = adder_result[WLEN-1:0];
+         pre_cond = adder_result[WLEN-1:0];
        end
        default: begin
          case (operation_i.exec_mode)
            2'b00 : begin
              case (operation_i.data_type)
                1'b1 : begin
-                 operation_result_o = {adder_result[384 + 64*operation_i.sel +: 64],
+                 pre_cond = {adder_result[384 + 64*operation_i.sel +: 64],
                                        adder_result[256 + 64*operation_i.sel +: 64],
                                        adder_result[128 + 64*operation_i.sel +: 64],
                                        adder_result[      64*operation_i.sel +: 64]};
                end
                1'b0 : begin
-                 operation_result_o = {adder_result[448 + 32*operation_i.sel +: 32],
+                 pre_cond = {adder_result[448 + 32*operation_i.sel +: 32],
                                        adder_result[384 + 32*operation_i.sel +: 32],
                                        adder_result[320 + 32*operation_i.sel +: 32],
                                        adder_result[256 + 32*operation_i.sel +: 32],
@@ -375,7 +380,7 @@ module otbn_mac_bignum
                                        adder_result[      32*operation_i.sel +: 32]};
                end
                default: begin
-                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+                 pre_cond = {WLEN{1'b0}};   // ERROR!
                end
              endcase
            end
@@ -384,13 +389,13 @@ module otbn_mac_bignum
                1'b1 : begin
                  case (operation_i.sel)
                    1'b0: begin
-                     operation_result_o = {operand_a_blanked[224+:32], adder_result[384+:32],
+                     pre_cond = {operand_a_blanked[224+:32], adder_result[384+:32],
                                            operand_a_blanked[160+:32], adder_result[256+:32],
                                            operand_a_blanked[ 96+:32], adder_result[128+:32],
                                            operand_a_blanked[ 32+:32], adder_result[  0+:32]};
                    end
                    1'b1: begin
-                     operation_result_o = {adder_result[384+64+:32], operand_a_blanked[192+:32],
+                     pre_cond = {adder_result[384+64+:32], operand_a_blanked[192+:32],
                                            adder_result[256+64+:32], operand_a_blanked[128+:32],
                                            adder_result[128+64+:32], operand_a_blanked[ 64+:32],
                                            adder_result[  0+64+:32], operand_a_blanked[  0+:32]};
@@ -398,7 +403,7 @@ module otbn_mac_bignum
                  endcase
                end
                1'b0 : begin
-                 operation_result_o = {adder_result[480+:16], adder_result[448+:16],
+                 pre_cond = {adder_result[480+:16], adder_result[448+:16],
                                        adder_result[416+:16], adder_result[384+:16],
                                        adder_result[352+:16], adder_result[320+:16],
                                        adder_result[288+:16], adder_result[256+:16],
@@ -408,30 +413,63 @@ module otbn_mac_bignum
                                        adder_result[ 32+:16], adder_result[  0+:16]};
                end
                default: begin
-                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+                 pre_cond = {WLEN{1'b0}};   // ERROR!
                end
              endcase
            end
-           2'b10 : begin
+           2'b10, 2'b11 : begin
              case (operation_i.data_type)
                1'b1 : begin
                  case (operation_i.sel)
                    1'b0: begin
-                     operation_result_o = {operand_a_blanked[224+:32], adder_result[416+:32],
+                     pre_cond = {operand_a_blanked[224+:32], adder_result[416+:32],
                                            operand_a_blanked[160+:32], adder_result[288+:32],
                                            operand_a_blanked[ 96+:32], adder_result[160+:32],
                                            operand_a_blanked[ 32+:32], adder_result[ 32+:32]};
+
+                     if (operation_i.exec_mode == 2'b11) begin
+                       case (operation_i.lane_mode)
+                         1'b0: begin
+                           for (int i = 0; i < 4; i++) begin
+                             cond_sub_B[i*64 +: 64] = {32'b0,
+                                                       operand_b_blanked[64*i +: 32]};
+                           end
+                         end
+                         1'b1: begin
+                           for (int i = 0; i < 4; i++) begin
+                             cond_sub_B[i*64 +: 64] = {32'b0,
+                                                       operand_b_blanked[32*operation_i.lane_index +: 32]};
+                           end
+                         end
+                       endcase
+                     end
                    end
                    1'b1: begin
-                     operation_result_o = {adder_result[416+64+:32], operand_a_blanked[192+:32],
+                     pre_cond = {adder_result[416+64+:32], operand_a_blanked[192+:32],
                                            adder_result[288+64+:32], operand_a_blanked[128+:32],
                                            adder_result[160+64+:32], operand_a_blanked[ 64+:32],
                                            adder_result[ 32+64+:32], operand_a_blanked[  0+:32]};
+                     if (operation_i.exec_mode == 2'b11) begin
+                       case (operation_i.lane_mode)
+                         1'b0: begin
+                           for (int i = 0; i < 4; i++) begin
+                             cond_sub_B[i*64 +: 64] = {operand_b_blanked[64*i+32 +: 32],
+                                                       32'b0};
+                           end
+                         end
+                         1'b1: begin
+                           for (int i = 0; i < 4; i++) begin
+                             cond_sub_B[i*64 +: 64] = {operand_b_blanked[32*operation_i.lane_index +: 32],
+                                                       32'b0};
+                           end
+                         end
+                       endcase
+                     end
                    end
                  endcase
                end                                                             
                1'b0 : begin                                                   
-                 operation_result_o = {adder_result[496+:16], adder_result[464+:16],
+                 pre_cond = {adder_result[496+:16], adder_result[464+:16],
                                        adder_result[432+:16], adder_result[400+:16],
                                        adder_result[368+:16], adder_result[336+:16],
                                        adder_result[304+:16], adder_result[272+:16],
@@ -439,42 +477,49 @@ module otbn_mac_bignum
                                        adder_result[176+:16], adder_result[144+:16],
                                        adder_result[112+:16], adder_result[ 80+:16],
                                        adder_result[ 48+:16], adder_result[ 16+:16]};
+                 if (operation_i.exec_mode == 2'b11) begin
+                   case (operation_i.lane_mode)
+                     1'b0: begin
+                       for (int i = 0; i < 16; i++) begin
+                         cond_sub_B[i*16 +: 16] = operand_b_blanked[16*i +: 16];
+                       end
+                     end
+                     1'b1: begin
+                       for (int i = 0; i < 16; i++) begin
+                         cond_sub_B[i*16 +: 16] = operand_b_blanked[16*operation_i.lane_index +: 16];
+                       end
+                     end
+                   endcase
+                 end
                end
                default: begin
-                 operation_result_o = {WLEN{1'b0}};   // ERROR!
-               end
-             endcase
-           end
-           2'b11 : begin
-             case (operation_i.data_type)
-//               2'b01 : begin
-//                 operation_result_o = {adder_result[224+:32], operand_a_blanked[192+:32],
-//                                       adder_result[160+:32], operand_a_blanked[128+:32],
-//                                       adder_result[ 96+:32], operand_a_blanked[ 64+:32],
-//                                       adder_result[ 32+:32], operand_a_blanked[  0+:32]};
-//               end                                                             
-//               2'b10 : begin                                                   
-//                 operation_result_o = {adder_result[240+:16], operand_a_blanked[224+:16],
-//                                       adder_result[208+:16], operand_a_blanked[192+:16],
-//                                       adder_result[176+:16], operand_a_blanked[160+:16],
-//                                       adder_result[144+:16], operand_a_blanked[128+:16],
-//                                       adder_result[112+:16], operand_a_blanked[ 96+:16],
-//                                       adder_result[ 80+:16], operand_a_blanked[ 64+:16],
-//                                       adder_result[ 48+:16], operand_a_blanked[ 32+:16]};
-//                                       adder_result[ 16+:16], operand_a_blanked[  0+:16]};
-//               end
-               default: begin
-                 operation_result_o = {WLEN{1'b0}};   // ERROR!
+                 pre_cond = {WLEN{1'b0}};   // ERROR!
                end
              endcase
            end
            default: begin
-             operation_result_o = adder_result[WLEN-1:0];
+             pre_cond = adder_result[WLEN-1:0];
            end
          endcase
        end
      endcase
   end
+
+  cond_sub cond (
+    .A(pre_cond),
+    .B(cond_sub_B),
+    .word_mode(operation_i.data_type),   // 0: vec16, 1: vec32
+    .cin(1'b1),
+//    .sum(cond_sub_result),
+    .sum(operation_result_o),
+    .cout()
+  ); 
+
+//  assign operation_result_o = operation_i.exec_mode == 2'b11 ? cond_sub_result : pre_cond;
+  //assign operation_result_o = pre_cond;
+
+  
+
 
   assign expected_op_en     = mac_en_i | operation_i.mulv;
   assign expected_acc_rd_en = ~operation_i.zero_acc & mac_en_i;
