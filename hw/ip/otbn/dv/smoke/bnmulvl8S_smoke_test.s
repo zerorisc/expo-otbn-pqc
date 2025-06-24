@@ -8,51 +8,31 @@ main:
   bn.lid x4, 0(x6)
   bn.lid x5, 32(x6)
 
-  /* All instructions with .hi.cond are commented out because it seems
-   * that this exec_mode is not yet implemented. */
   bn.mulv.l.8S.even          w2, w0, sw0.5
   bn.mulv.l.8S.odd           w3, w0, sw0.5
   bn.mulv.l.8S.even.lo       w4, w0, sw0.5
   bn.mulv.l.8S.odd.lo        w5, w0, sw0.5
   bn.mulv.l.8S.even.hi       w6, w0, sw0.5
   bn.mulv.l.8S.odd.hi        w7, w0, sw0.5
-  /* bn.mulv.l.8S.even.hi.cond w8, w0, sw0.5
-  bn.mulv.l.8S.odd.hi.cond w9, w0, sw0.5 */
+  bn.mulv.l.8S.even.hi.cond  w8, w0, sw0.5
+  bn.mulv.l.8S.odd.hi.cond   w9, w0, sw0.5
   bn.mulv.l.8S.even.acc      w10, w0, sw0.5
   bn.mulv.l.8S.odd.acc       w11, w0, sw0.5
   bn.mulv.l.8S.even.acc.lo   w12, w0, sw0.5
   bn.mulv.l.8S.odd.acc.lo    w13, w0, sw0.5
   bn.mulv.l.8S.even.acc.hi   w14, w0, sw0.5
   bn.mulv.l.8S.odd.acc.hi    w15, w0, sw0.5
-  /* bn.mulv.l.8S.even.acc.hi.cond w1, w0, sw0.5
-  bn.mulv.l.8S.odd.acc.hi.cond w17, w0, sw0.5 */
+  bn.mulv.l.8S.even.acc.hi.cond w1, w0, sw0.5
+  bn.mulv.l.8S.odd.acc.hi.cond w17, w0, sw0.5
   bn.mulv.l.8S.even.acc.z    w18, w0, sw0.5
   bn.mulv.l.8S.odd.acc.z     w19, w0, sw0.5
   bn.mulv.l.8S.even.acc.z.lo w20, w0, sw0.5
   bn.mulv.l.8S.odd.acc.z.lo  w21, w0, sw0.5
   bn.mulv.l.8S.even.acc.z.hi w22, w0, sw0.5
   bn.mulv.l.8S.odd.acc.z.hi  w23, w0, sw0.5
-  /* bn.mulv.l.8S.even.acc.z.hi.cond w24, w0, sw0.5
-  bn.mulv.l.8S.odd.acc.z.hi.cond w25, w0, sw0.5 */
+  bn.mulv.l.8S.even.acc.z.hi.cond w24, w0, sw0.5
+  bn.mulv.l.8S.odd.acc.z.hi.cond w25, w0, sw0.5
 
-  /* Zeroize temporarily destination registers of .hi.cond instructions
-   * just for testing with expected results. Please comment these lines
-   * out once .hi.cond is supported in the RTL and replace w8, w9, w1,
-   * w17, w24 and w25 with the followin values in bnmulvl8S_smoke_expected.txt:
-   * w8  | 0xc17c6279_1f5361bc_81332876_64ef5706_7a024204_38d3c08e_6baa9455_5ddb151e
-   * w9  | 0x540190f6_48268673_38184d50_e87a1613_34f908f6_82e2e662_2ebee549_d82c07cd
-   * w1  | 0xc17c6279_0e27a451_81332876_24977977_7a024204_74291f99_6baa9455_084671d8
-   * w17 | 0x500643db_48268673_713b52a1_e87a1613_64be4137_82e2e662_4bd5b282_d82c07cd
-   * w24 | 0xc17c6279_1f5361bc_81332876_64ef5706_7a024204_38d3c08e_6baa9455_5ddb151e
-   * w25 | 0x540190f6_48268673_38184d50_e87a1613_34f908f6_82e2e662_2ebee549_d82c07cd
-   */
-  bn.xor w8, w8, w8
-  bn.xor w9, w9, w9
-  bn.xor w1, w1, w1
-  bn.xor w17, w17, w17
-  bn.xor w24, w24, w24
-  bn.xor w25, w25, w25
-  
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */
   bn.xor w26, w26, w26

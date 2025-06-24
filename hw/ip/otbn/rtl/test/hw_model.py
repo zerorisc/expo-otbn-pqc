@@ -125,6 +125,29 @@ def reference_sum(A, B, data_type, cin, wsize=[(8, 32), (16, 16)]):
         raise ValueError("Invalid mode")
 
 
+def reference_cond_sub(A, B, data_type, cin, wsize=[(8, 32), (16, 16)]):
+    if data_type == 0:
+        result = 0
+        for i in range(wsize[1][0]):
+            mask = (1 << wsize[1][1]) - 1
+            a = (A >> (wsize[1][1] * i)) & mask
+            b = (B >> (wsize[1][1] * i)) & mask
+            s = (a - b) & mask if (a - b >= 0) else a
+            result |= (s << (wsize[1][1] * i))
+        return result, 0
+    elif data_type == 1:
+        result = 0
+        for i in range(wsize[0][0]):
+            mask = (1 << wsize[0][1]) - 1
+            a = (A >> (wsize[0][1] * i)) & mask
+            b = (B >> (wsize[0][1] * i)) & mask
+            s = (a - b) & mask if (a - b >= 0) else a
+            result |= (s << (wsize[0][1] * i))
+        return result, 0
+    else:
+        raise ValueError("Invalid mode")
+
+
 acc = 0
 
 def mac_acc():
