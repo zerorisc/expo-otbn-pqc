@@ -188,32 +188,35 @@ indcpa_dec:
   /*** unpack_sk ***/
   jal x1, unpack_sk
 
+  bn.wsrr w16, 0x0
   /*** NTT ***/
   li  a0, STACK_DEC_B
   add a0, fp, a0 
   la  a1, twiddles_ntt
   add a2, zero, a0 
   .rept KYBER_K 
-    jal x1, ntt_kyber
+    jal x1, ntt
   .endr 
 
+  bn.wsrr w16, 0x0
   /*** Vector vector multiplication ***/
   addi x29, a0, K_POLYS
   addi a1, a2, 512
   add  a3, zero, x29
   la   x28, twiddles_basemul
-  jal  x1, basemul_kyber
+  jal  x1, basemul
   .rept KYBER_K-1
     addi a3, a3, POLY
     la   x28, twiddles_basemul
-    jal  x1, basemul_acc_kyber 
+    jal  x1, basemul_acc 
   .endr 
 
+  bn.wsrr w16, 0x0
   /*** INTT ***/
   add a0, a0, K_POLYS 
   la  a1, twiddles_intt
   add a2, zero, a0 
-  jal x1, intt_kyber
+  jal x1, intt
 
   /*** SUB ***/
   li   a0, STACK_DEC_V
