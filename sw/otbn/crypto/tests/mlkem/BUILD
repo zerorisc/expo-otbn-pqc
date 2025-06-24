@@ -286,6 +286,7 @@ otbn_sim_test(
     dexp = "kyber512_mlkem_dec_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mlkem:mlkem512_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem512_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem512_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem512_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem512_poly",
@@ -306,7 +307,8 @@ otbn_sim_test(
     copts = ["-DKYBER_K=2"],
     dexp = "kyber512_mlkem_false_dec_test.dexp",
     deps = [
-        "//sw/otbn/crypto/new_mlkem:mlkem512_deencap",
+        "//sw/otbn/crypto/new_mlkem:mlkem512_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem512_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem512_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem512_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem512_poly",
@@ -368,6 +370,7 @@ otbn_sim_test(
     dexp = "kyber768_mlkem_dec_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mlkem:mlkem768_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem768_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem768_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem768_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem768_poly",
@@ -389,6 +392,7 @@ otbn_sim_test(
     dexp = "kyber768_mlkem_false_dec_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mlkem:mlkem768_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem768_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem768_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem768_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem768_poly",
@@ -450,6 +454,7 @@ otbn_sim_test(
     dexp = "kyber1024_mlkem_dec_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mlkem:mlkem1024_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem1024_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_poly",
@@ -471,6 +476,7 @@ otbn_sim_test(
     dexp = "kyber1024_mlkem_false_dec_test.dexp",
     deps = [
         "//sw/otbn/crypto/new_mlkem:mlkem1024_decap",
+        "//sw/otbn/crypto/new_mlkem:mlkem1024_encap",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_pack_keys",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_pack_ciphertext",
         "//sw/otbn/crypto/new_mlkem:mlkem1024_poly",

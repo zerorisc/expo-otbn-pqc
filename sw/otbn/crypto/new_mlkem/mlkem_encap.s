@@ -230,15 +230,17 @@ indcpa_enc:
     add  a0, zero, a4
     addi a2, a2, 1  
 
+  bn.wsrr w16, 0x0
   /*** NTT sp ***/
   li  a0, STACK_ENC_SP 
   add a0, fp, a0
   la  a1, twiddles_ntt
   add a2, zero, a0 
   .rept KYBER_K
-    jal x1, ntt_kyber
+    jal x1, ntt
   .endr
 
+  bn.wsrr w16, 0x0
   /** v = sp * pkpv **/ 
   li   x29, STACK_ENC_PKPV 
   add  x29, fp, x29
@@ -247,19 +249,20 @@ indcpa_enc:
   li   a3, STACK_ENC_V
   add  a3, fp, a3
   la   x28, twiddles_basemul
-  jal  x1, basemul_kyber
+  jal  x1, basemul
   .rept KYBER_K-1
     addi a3, a3, POLY
     la   x28, twiddles_basemul
-    jal  x1, basemul_acc_kyber 
+    jal  x1, basemul_acc 
   .endr
 
+  bn.wsrr w16, 0x0
   /*** INTT v ***/
   li  a0, STACK_ENC_V
   add a0, fp, a0 
   add a2, zero, a0 
   la  a1, twiddles_intt
-  jal x1, intt_kyber
+  jal x1, intt
 
   /*** CBD epp ***/
   lw   a0, STACK_ENC_COINS_ADDR(fp)
@@ -293,36 +296,39 @@ indcpa_enc:
     jal  x1, poly_gen_matrix
     addi a2, a2, 0x0100
 
+    bn.wsrr w16, 0x0
     /* Mutliply this generated poly with sk */
     addi a1, a1, POLY /* point back to A[0][0] */
     li   x29, STACK_ENC_SP
     add  x29, fp, x29 /* point to sk[0] */
     add  a3, a1, x0   /* output at A[0][0] */
     la   x28, twiddles_basemul
-    jal  x1, basemul_kyber
+    jal  x1, basemul
     .rept KYBER_K-1
       /* Gen next mat poly */
       addi a0, fp, STACK_ENC_SEED
       jal  x1, poly_gen_matrix
       addi a2, a2, 0x0100
 
+      bn.wsrr w16, 0x0
       /* Mutliply this generated poly with sk */
       addi a1, a1, POLY /* points back to A[0][1] */
       addi a3, a1, POLY /* points back to A[0][0] for accumulation */
       la   x28, twiddles_basemul
-      jal  x1, basemul_acc_kyber
+      jal  x1, basemul_acc
       addi a1, a1, POLY /* points back to A[0][1] */
     .endr 
     addi a2, a2, KYBER_GEN_MATRIX_AT_NONCE 
   .endr
 
+  bn.wsrr w16, 0x0
   /*** INTT ***/
   li  a0, STACK_ENC_AT
   add a0, fp, a0 
   la  a1, twiddles_intt
   add a2, zero, a0 
   .rept KYBER_K
-    jal x1, intt_kyber
+    jal x1, intt
   .endr 
 
   /*** CBD ep ***/
