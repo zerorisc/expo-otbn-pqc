@@ -100,22 +100,23 @@ poly_tomsg:
   bn.lid x6, 0(x11)
   bn.lid x7, 0(x13)
   
-  bn.rshi w3, w31, w3 >> 4 /* 80635 */
+  bn.rshi w16, w31, w3 >> 4 /* 80635 */
   bn.xor  w31, w31, w31
-  LOOPI 16, 15
+  LOOPI 16, 16
     bn.lid       x4, 0(x10++)  /* Load input */
     bn.shv.16H   w0, w0 << 1   /* <= 1 */ 
     bn.addv.16H  w0, w0, w2    /* += 1665 */
-    LOOPI 2, 10
+    LOOPI 2, 11
       LOOPI 8, 3
-        bn.rshi    w1, w0, w1 >> 16  /* write one coeff to w1 */
-        bn.rshi    w1, w31, w1 >> 16 /* make the coeff 32-bit */
-        bn.rshi    w0, w31, w0 >> 16 /* shift out used coeff */
-      bn.mulv.l.8S w1, w1, w3, 0     /* *= 80635 */
-      bn.shv.8S    w1, w1 >> 28      /* >>= 28 */
+        bn.rshi w1, w0, w1 >> 16  /* write one coeff to w1 */
+        bn.rshi w1, w31, w1 >> 16 /* make the coeff 32-bit */
+        bn.rshi w0, w31, w0 >> 16 /* shift out used coeff */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0     /* *= 80635 */
+      bn.mulv.l.8S.odd.lo  w1, w1, sw0.0     /* *= 80635 */
+      bn.shv.8S            w1, w1 >> 28      /* >>= 28 */
       LOOPI 8, 2
-        bn.rshi    w4, w1, w4 >> 1
-        bn.rshi    w1, w31, w1 >> 32 
+        bn.rshi w4, w1, w4 >> 1
+        bn.rshi w1, w31, w1 >> 32 
       NOP
     NOP 
   bn.sid x8, 0(x12)
@@ -397,6 +398,8 @@ poly_sub:
  *
  * @param[in/out]  x10: dptr_input, dmem pointer to first poly
  * @param[in]      x11: ptr to const_tomont = 2^32 % Q
+ * @param[in]      w16: sw0, where sw0.2 = Q^-1 mod 2^32, sw0.0 = Q
+ * @param[in]      w31: all-zero
  *
  * clobbered registers: x4-x30, w0-w31
  * clobbered flag groups: None
@@ -407,9 +410,11 @@ poly_tomont:
   li x4, 0
   bn.lid x4++, 0(x11)
 
-  LOOPI 16, 3
-    bn.lid       x4, 0(x10)
-    bn.mulvm.16H w1, w0, w1
-    bn.sid       x4, 0(x10++)
-  
+  LOOPI 16, 6
+    bn.lid                 x4, 0(x10)
+    bn.mulv.16H.acc.z.lo   w1, w0, w1
+    bn.mulv.l.16H.lo       w1, w1, sw0.2
+    bn.mulv.l.16H.acc.hi   w1, w1, sw0.0
+    bn.addvm.16H           w1, w1, w31
+    bn.sid                 x4, 0(x10++)
   ret
