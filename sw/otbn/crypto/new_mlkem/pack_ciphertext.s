@@ -32,18 +32,19 @@
 
 poly_compress:
 #if (KYBER_K == 2 || KYBER_K == 3)
-  bn.rshi w3, w31, w3 >> 4 /* 80635 */
-  LOOPI 4, 17
-    LOOPI 4, 15
+  bn.rshi w16, w31, w16 >> 4 /* 80635 */
+  LOOPI 4, 18
+    LOOPI 4, 16
       bn.lid       x4, 0(x11++)  /* Load input */
       bn.shv.16H   w0, w0 << 4   /* <= 4 */ 
       bn.addv.16H  w0, w0, w2    /* += 1665 */
-      LOOPI 2, 10
+      LOOPI 2, 11
         LOOPI 8, 3
           bn.rshi    w1, w0, w1 >> 16  /* write one coeff to w1 */
           bn.rshi    w1, w31, w1 >> 16 /* make the coeff 32-bit */
           bn.rshi    w0, w31, w0 >> 16 /* shift out used coeff */
-        bn.mulv.l.8S w1, w1, w3, 0     /* *= 80635 */
+        bn.mulv.l.8S.even.lo w1, w1, sw0.0
+        bn.mulv.l.8S.odd.lo w1, w1, sw0.0     /* *= 80635 */
         bn.shv.8S    w1, w1 >> 28      /* >>= 28 */
         LOOPI 8, 2
           bn.rshi    w4, w1, w4 >> 4
@@ -55,19 +56,20 @@ poly_compress:
   bn.shv.8S  w2, w2 << 16
   bn.shv.8S  w2, w2 >> 17 
   bn.shv.8S  w2, w2 << 1 /* 1664 */
-  bn.rshi     w3, w31, w3 >> 4
-  bn.addi     w3, w3, 1 /* 40318 */
+  bn.rshi     w16, w31, w16 >> 4
+  bn.addi     w16, w16, 1 /* 40318 */
   /* First WDR */
-  LOOPI 3, 15
+  LOOPI 3, 16
     bn.lid      x4, 0(x11++) 
-    LOOPI 2, 12 
+    LOOPI 2, 13
       LOOPI 8, 3
         bn.rshi w1, w0, w1 >> 16
         bn.rshi w1, w31, w1 >> 16
         bn.rshi w0, w31, w0 >> 16
       bn.shv.8S    w1, w1 << 5
       bn.addv.8S   w1, w1, w2
-      bn.mulv.l.8S w1, w1, w3, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.shv.8S    w1, w1 >> 27 
       LOOPI 8, 2 
         bn.rshi w4, w1, w4 >> 5
@@ -81,7 +83,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27 
   LOOPI 3, 2 
     bn.rshi w4, w1, w4 >> 5
@@ -101,21 +104,23 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27
   LOOPI 8, 2 
     bn.rshi w4, w1, w4 >> 5
     bn.rshi w1, w31, w1 >> 32
-  LOOPI 2, 15
+  LOOPI 2, 16
     bn.lid      x4, 0(x11++)
-    LOOPI 2, 12 
+    LOOPI 2, 13
       LOOPI 8, 3
         bn.rshi w1, w0, w1 >> 16
         bn.rshi w1, w31, w1 >> 16
         bn.rshi w0, w31, w0 >> 16
       bn.shv.8S    w1, w1 << 5
       bn.addv.8S   w1, w1, w2
-      bn.mulv.l.8S w1, w1, w3, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.shv.8S    w1, w1 >> 27 
       LOOPI 8, 2 
         bn.rshi w4, w1, w4 >> 5
@@ -129,7 +134,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27 
   LOOPI 6, 2 
     bn.rshi w4, w1, w4 >> 5
@@ -148,21 +154,23 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27
   LOOPI 8, 2 
     bn.rshi w4, w1, w4 >> 5
     bn.rshi w1, w31, w1 >> 32
-  LOOPI 2, 15
+  LOOPI 2, 16
     bn.lid      x4, 0(x11++)
-    LOOPI 2, 12 
+    LOOPI 2, 13
       LOOPI 8, 3
         bn.rshi w1, w0, w1 >> 16
         bn.rshi w1, w31, w1 >> 16
         bn.rshi w0, w31, w0 >> 16
       bn.shv.8S    w1, w1 << 5
       bn.addv.8S   w1, w1, w2
-      bn.mulv.l.8S w1, w1, w3, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.shv.8S    w1, w1 >> 27 
       LOOPI 8, 2 
         bn.rshi w4, w1, w4 >> 5
@@ -176,7 +184,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27 
   LOOPI 8, 2 
     bn.rshi w4, w1, w4 >> 5
@@ -187,7 +196,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27
   bn.rshi w4, w1, w4 >> 5
   bn.rshi w1, w31, w1 >> 32
@@ -200,16 +210,17 @@ poly_compress:
   LOOPI 6, 2 
     bn.rshi w4, w1, w4 >> 5
     bn.rshi w1, w31, w1 >> 32
-  LOOPI 2, 15
+  LOOPI 2, 16
     bn.lid      x4, 0(x11++)
-    LOOPI 2, 12
+    LOOPI 2, 13
       LOOPI 8, 3
         bn.rshi w1, w0, w1 >> 16
         bn.rshi w1, w31, w1 >> 16
         bn.rshi w0, w31, w0 >> 16
       bn.shv.8S    w1, w1 << 5
       bn.addv.8S   w1, w1, w2
-      bn.mulv.l.8S w1, w1, w3, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.shv.8S    w1, w1 >> 27 
       LOOPI 8, 2 
         bn.rshi w4, w1, w4 >> 5
@@ -223,7 +234,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27 
   LOOPI 8, 2 
     bn.rshi w4, w1, w4 >> 5
@@ -234,7 +246,8 @@ poly_compress:
     bn.rshi w0, w31, w0 >> 16
   bn.shv.8S    w1, w1 << 5
   bn.addv.8S   w1, w1, w2
-  bn.mulv.l.8S w1, w1, w3, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.shv.8S    w1, w1 >> 27
   LOOPI 4, 2 
     bn.rshi w4, w1, w4 >> 5
@@ -248,16 +261,17 @@ poly_compress:
   LOOPI 3, 2 
     bn.rshi w4, w1, w4 >> 5
     bn.rshi w1, w31, w1 >> 32
-  LOOPI 3, 15
+  LOOPI 3, 16
     bn.lid      x4, 0(x11++)
-    LOOPI 2, 12 
+    LOOPI 2, 13
       LOOPI 8, 3
         bn.rshi w1, w0, w1 >> 16
         bn.rshi w1, w31, w1 >> 16
         bn.rshi w0, w31, w0 >> 16
       bn.shv.8S    w1, w1 << 5
       bn.addv.8S   w1, w1, w2
-      bn.mulv.l.8S w1, w1, w3, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.shv.8S    w1, w1 >> 27 
       LOOPI 8, 2 
         bn.rshi w4, w1, w4 >> 5
@@ -829,6 +843,7 @@ pack_ciphertext:
   bn.xor  w31, w31, w31
   bn.xor  w1, w1, w1
   jal     x1, polyvec_compress
+  bn.mov  w16, w3
   jal     x1, poly_compress
 
   ret
@@ -862,7 +877,7 @@ poly_decompress:
         bn.rshi   w1, w0, w1 >> 16
         bn.rshi   w0, w31, w0 >> 4
       bn.and        w1, w1, w2 
-      bn.mulv.l.16H w1, w1, w6, 0
+      bn.mulv.l.16H.lo w1, w1, sw0.0
       bn.addv.16H   w1, w1, w3 
       bn.shv.16H    w1, w1 >> 4
       bn.sid        x5, 0(x12++)
@@ -874,13 +889,14 @@ poly_decompress:
   bn.shv.8S  w3, w3 >> 15 /* 16 */
   /* 1st+2nd+3rd WDRs */
   bn.lid x4, 0(x10++)
-  LOOPI 3, 13
-    LOOPI 2, 11
+  LOOPI 3, 14
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi   w1, w0, w1 >> 32
         bn.rshi   w0, w31, w0 >> 5
       bn.and        w1, w1, w2 
-      bn.mulv.l.8S  w1, w1, w6, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.addv.8S    w1, w1, w3 
       bn.shv.8S     w1, w1 >> 5
       LOOPI 8, 2
@@ -901,7 +917,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -911,7 +928,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -920,13 +938,14 @@ poly_decompress:
   bn.sid        x8, 0(x12++)
 
   /* 5th+6th WDR */
-  LOOPI 2, 13
-    LOOPI 2, 11
+  LOOPI 2, 14
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi   w1, w0, w1 >> 32
         bn.rshi   w0, w31, w0 >> 5
       bn.and        w1, w1, w2 
-      bn.mulv.l.8S  w1, w1, w6, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.addv.8S    w1, w1, w3 
       bn.shv.8S     w1, w1 >> 5
       LOOPI 8, 2
@@ -946,7 +965,8 @@ poly_decompress:
   bn.rshi   w1, w0, w1 >> 32
   bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -956,7 +976,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -965,13 +986,14 @@ poly_decompress:
   bn.sid        x8, 0(x12++)
 
   /* 8th+9th WDR */
-  LOOPI 2, 13
-    LOOPI 2, 11
+  LOOPI 2, 14
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi   w1, w0, w1 >> 32
         bn.rshi   w0, w31, w0 >> 5
       bn.and        w1, w1, w2 
-      bn.mulv.l.8S  w1, w1, w6, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.addv.8S    w1, w1, w3 
       bn.shv.8S     w1, w1 >> 5
       LOOPI 8, 2
@@ -985,7 +1007,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -1001,7 +1024,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -1010,13 +1034,14 @@ poly_decompress:
   bn.sid        x8, 0(x12++)
 
   /* 11th+12th WDR */
-  LOOPI 2, 13
-    LOOPI 2, 11
+  LOOPI 2, 14
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi   w1, w0, w1 >> 32
         bn.rshi   w0, w31, w0 >> 5
       bn.and        w1, w1, w2 
-      bn.mulv.l.8S  w1, w1, w6, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.addv.8S    w1, w1, w3 
       bn.shv.8S     w1, w1 >> 5
       LOOPI 8, 2
@@ -1030,7 +1055,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -1047,7 +1073,8 @@ poly_decompress:
     bn.rshi   w1, w0, w1 >> 32
     bn.rshi   w0, w31, w0 >> 5
   bn.and        w1, w1, w2 
-  bn.mulv.l.8S  w1, w1, w6, 0
+  bn.mulv.l.8S.even.lo w1, w1, sw0.0
+  bn.mulv.l.8S.odd.lo w1, w1, sw0.0
   bn.addv.8S    w1, w1, w3 
   bn.shv.8S     w1, w1 >> 5
   LOOPI 8, 2
@@ -1056,13 +1083,14 @@ poly_decompress:
   bn.sid        x8, 0(x12++)
 
   /* 14th+15th+16th WDR */
-  LOOPI 3, 13
-    LOOPI 2, 11
+  LOOPI 3, 14
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi   w1, w0, w1 >> 32
         bn.rshi   w0, w31, w0 >> 5
       bn.and        w1, w1, w2 
-      bn.mulv.l.8S  w1, w1, w6, 0
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0
       bn.addv.8S    w1, w1, w3 
       bn.shv.8S     w1, w1 >> 5
       LOOPI 8, 2
@@ -1097,15 +1125,16 @@ polyvec_decompress:
   bn.shv.8S  w5, w5 >> 18 /* 0x3ff */
   bn.shv.8S  w4, w3 << 16 
   bn.shv.8S  w4, w4 >> 10 /* 512 */ 
-  LOOPI KYBER_POLYVECCOMPRESSED_LOOP, 163
+  LOOPI KYBER_POLYVECCOMPRESSED_LOOP, 175
     /* First WDR: 160 bits of w0 */
     bn.lid x4, 0(x10++) 
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 10
       bn.and       w1, w1, w5   /* & 0x000003ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +512 */ 
       bn.shv.8S    w1, w1 >> 10 /* >>10 */
       LOOPI 8, 2
@@ -1119,7 +1148,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1135,7 +1165,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1144,12 +1175,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* Third WDR: 160 bits */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 10
       bn.and       w1, w1, w5   /* & 0x000003ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +512 */ 
       bn.shv.8S    w1, w1 >> 10 /* >>10 */
       LOOPI 8, 2
@@ -1170,7 +1202,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1180,7 +1213,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1193,7 +1227,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1210,7 +1245,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1219,12 +1255,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* Sixth WDR: 160 bits */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 10
       bn.and       w1, w1, w5   /* & 0x000003ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +512 */ 
       bn.shv.8S    w1, w1 >> 10 /* >>10 */
       LOOPI 8, 2
@@ -1244,7 +1281,8 @@ polyvec_decompress:
     bn.rshi      w1, w0, w1 >> 32
     bn.rshi      w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1254,7 +1292,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 10
     bn.and       w1, w1, w5   /* & 0x000003ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +512 */ 
     bn.shv.8S    w1, w1 >> 10 /* >>10 */
     LOOPI 8, 2
@@ -1263,12 +1302,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* Eigth WDR: 160 bits */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 10
       bn.and       w1, w1, w5   /* & 0x000003ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +512 */ 
       bn.shv.8S    w1, w1 >> 10 /* >>10 */
       LOOPI 8, 2
@@ -1281,15 +1321,16 @@ polyvec_decompress:
   bn.shv.8S  w5, w5 >> 17 /* 0x7ff */
   bn.shv.8S  w4, w3 << 16 
   bn.shv.8S  w4, w4 >> 9 /* 1024 */ 
-  LOOPI KYBER_K, 351
+  LOOPI KYBER_K, 377
     /* First WDR */
     bn.lid x4, 0(x10++) 
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1307,7 +1348,8 @@ polyvec_decompress:
     bn.rshi w1, w0, w1 >> 29
     bn.rshi w0, w31, w0 >> 8
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1317,7 +1359,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1330,7 +1373,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1346,7 +1390,8 @@ polyvec_decompress:
     bn.rshi w1, w0, w1 >> 32
     bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1355,12 +1400,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* 4th WDR */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1381,7 +1427,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1391,7 +1438,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1404,7 +1452,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1421,7 +1470,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1430,12 +1480,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* 7th WDR */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1456,7 +1507,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1466,7 +1518,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1479,7 +1532,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1496,7 +1550,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1505,12 +1560,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* 10th WDR */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1531,7 +1587,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1541,7 +1598,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1554,7 +1612,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1571,7 +1630,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1580,12 +1640,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* 13th WDR */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1605,7 +1666,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1615,7 +1677,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1628,7 +1691,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1642,7 +1706,8 @@ polyvec_decompress:
       bn.rshi w1, w0, w1 >> 32
       bn.rshi w0, w31, w0 >> 11
     bn.and       w1, w1, w5   /* & 0x000007ff */
-    bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+    bn.mulv.l.8S.even.lo w1, w1, sw0.0
+    bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
     bn.addv.8S   w1, w1, w4   /* +1024 */ 
     bn.shv.8S    w1, w1 >> 11 /* >>11 */
     LOOPI 8, 2
@@ -1651,12 +1716,13 @@ polyvec_decompress:
     bn.sid x20, 0(x12++)
 
     /* 16th WDR */
-    LOOPI 2, 11
+    LOOPI 2, 12
       LOOPI 8, 2
         bn.rshi w1, w0, w1 >> 32
         bn.rshi w0, w31, w0 >> 11
       bn.and       w1, w1, w5   /* & 0x000007ff */
-      bn.mulv.l.8S w1, w1, w6, 0   /* *KYBER_Q */
+      bn.mulv.l.8S.even.lo w1, w1, sw0.0
+      bn.mulv.l.8S.odd.lo w1, w1, sw0.0   /* *KYBER_Q */
       bn.addv.8S   w1, w1, w4   /* +1024 */ 
       bn.shv.8S    w1, w1 >> 11 /* >>11 */
       LOOPI 8, 2
@@ -1695,13 +1761,13 @@ unpack_ciphertext:
   li x6, 2
   li x7, 3
   li x8, 4
-  li x9, 6
+  li x9, 16
   li x20, 8
 
   /* Load const */
   bn.lid  x6, 0(x15) /* const_0x0fff (w2) */
   bn.lid  x7, 0(x13) /* const_8 (w3) */
-  bn.lid  x9, 0(x14) /* modulus (w6) */
+  bn.lid  x9, 0(x14) /* modulus (w16) */
 
   bn.xor     w31, w31, w31
   bn.xor     w1, w1, w1
