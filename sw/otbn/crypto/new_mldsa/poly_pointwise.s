@@ -27,11 +27,17 @@ poly_pointwise:
     li x5, 3
     li x6, 4
 
-    LOOPI 32, 4
+    LOOPI 32, 10
         bn.lid x4, 0(x10++)
         bn.lid x5, 0(x11++)
         
-        bn.mulvm.8S w2, w2, w3, 0
+        bn.mulv.8S.even.acc.z.lo w2, w2, w3
+        bn.mulv.l.8S.even.lo     w2, w2, sw0.1
+        bn.mulv.l.8S.even.acc.hi w2, w2, sw0.0
+        bn.mulv.8S.odd.acc.z.lo  w2, w2, w3
+        bn.mulv.l.8S.odd.lo      w2, w2, sw0.1
+        bn.mulv.l.8S.odd.acc.hi  w2, w2, sw0.0
+        bn.addvm.8S              w2, w2, w31
         
         bn.sid x4, 0(x12++)
 
@@ -50,6 +56,7 @@ poly_pointwise:
  * @param[in]  x10: dptr_input1, dmem pointer to first word of input1 polynomial
  * @param[in]  x11: dptr_input2, dmem pointer to first word of input2 polynomial
  * @param[in]  w31: all-zero
+ * @param[in]  w16: sw0, where s0.0 = Q and sw0.1 = Q^-1 mod 2^32
  * @param[in/out] x12: dmem pointer to result
  *
  * clobbered registers: x4-x6, w2-w4
@@ -61,11 +68,17 @@ poly_pointwise_acc:
     li x5, 3
     li x6, 4
 
-    LOOPI 32, 6
+    LOOPI 32, 12
         bn.lid x4, 0(x10++)
         bn.lid x5, 0(x11++)
         
-        bn.mulvm.8S w2, w2, w3
+        bn.mulv.8S.even.acc.z.lo w2, w2, w3
+        bn.mulv.l.8S.even.lo     w2, w2, sw0.1
+        bn.mulv.l.8S.even.acc.hi w2, w2, sw0.0
+        bn.mulv.8S.odd.acc.z.lo  w2, w2, w3
+        bn.mulv.l.8S.odd.lo      w2, w2, sw0.1
+        bn.mulv.l.8S.odd.acc.hi  w2, w2, sw0.0
+        bn.addvm.8S              w2, w2, w31
         
         /* Accumulate onto output polynomial */
         bn.lid x5, 0(x12)
