@@ -546,6 +546,7 @@ crypto_sign_signature_internal:
        push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal x1, ntt
         addi a1, a1, -1024 /* Reset twiddle pointer */
@@ -563,6 +564,7 @@ crypto_sign_signature_internal:
        push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
       jal  x1, ntt
       addi a1, a1, -1024 /* Reset twiddle pointer */
@@ -580,6 +582,7 @@ crypto_sign_signature_internal:
        push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal x1, ntt
         addi a1, a1, -1024 /* Reset twiddle pointer */
@@ -602,7 +605,7 @@ _rej_crypto_sign_signature_internal:
     la   a3, gamma1_vec_const
 
     LOOPI L, 2
-        jal  x1, poly_uniform_gamma1
+        jal  x1, poly_uniform_gamma_1
         addi a2, a2, 1 /* a2 should be preserved after execution */
     
     addi s11, s11, L
@@ -618,6 +621,7 @@ _rej_crypto_sign_signature_internal:
      push \reg
   .endr
 
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal x1, ntt
         addi a1, a1, -1024
@@ -641,6 +645,7 @@ _rej_crypto_sign_signature_internal:
     /* Load offset for resetting pointer */
     li s0, POLYVECL_BYTES
 
+    bn.wsrr w16, 0x0
     .rept K
         jal  x1, poly_pointwise
         addi a2, a2, -1024
@@ -662,6 +667,7 @@ _rej_crypto_sign_signature_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 3
         jal x1, intt
         /* Reset the twiddle pointer */
@@ -681,7 +687,7 @@ _rej_crypto_sign_signature_internal:
     addi a1, a2, 0    /* Output inplace */
     li   a0, STACK_W0 /* Output */
     add  a0, fp, a0
-    
+
     LOOPI K, 2
         jal x1, poly_decompose
         nop
@@ -819,6 +825,7 @@ _rej_crypto_sign_signature_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     jal x1, ntt /* Only one polynomial */
 
     .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
@@ -833,6 +840,7 @@ _rej_crypto_sign_signature_internal:
     li  a2, STACK_Z
     add a2, fp, a2
 
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal  x1, poly_pointwise
         addi a0, a0, -1024
@@ -846,6 +854,7 @@ _rej_crypto_sign_signature_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI L, 3
         jal  x1, intt
         /* Reset the twiddle pointer */
@@ -875,6 +884,7 @@ _rej_crypto_sign_signature_internal:
     li  a1, STACK_Z
     add a1, fp, a1
     
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal x1, poly_reduce32
         nop
@@ -904,6 +914,7 @@ _rej_crypto_sign_signature_internal:
     li  a2, STACK_H
     add a2, fp, a2
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal  x1, poly_pointwise
         addi a0, a0, -1024
@@ -917,6 +928,7 @@ _rej_crypto_sign_signature_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 3
         jal  x1, intt
         /* Reset the twiddle pointer */
@@ -960,6 +972,7 @@ _rej_crypto_sign_signature_internal:
     li  a1, STACK_W0
     add a1, fp, a1
     
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal x1, poly_reduce32
         nop
@@ -988,6 +1001,7 @@ _rej_crypto_sign_signature_internal:
     li  a2, STACK_H
     add a2, fp, a2
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal  x1, poly_pointwise
         addi a0, a0, -1024
@@ -1001,6 +1015,7 @@ _rej_crypto_sign_signature_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 3
         jal  x1, intt
         /* Reset the twiddle pointer */
@@ -1044,6 +1059,7 @@ _rej_crypto_sign_signature_internal:
     li  a1, STACK_H
     add a1, fp, a1
     
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal x1, poly_reduce32
         nop
