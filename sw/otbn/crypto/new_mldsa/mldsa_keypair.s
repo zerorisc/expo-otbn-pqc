@@ -321,6 +321,7 @@ crypto_sign_keypair:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal x1, ntt
         addi a1, a1, -1024
@@ -344,6 +345,7 @@ crypto_sign_keypair:
     /* Load offset for resetting pointer */
     li s1, POLYVECL_BYTES
 
+    bn.wsrr w16, 0x0
     .rept K
         jal  x1, poly_pointwise
         addi a2, a2, -1024
@@ -366,6 +368,7 @@ crypto_sign_keypair:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 3
         jal  x1, intt
         addi a1, a1, -960 /* Reset the twiddle pointer */
