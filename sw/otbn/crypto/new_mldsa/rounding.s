@@ -188,7 +188,7 @@ decompose:
 
     /* Compute "a0" */
     bn.mulv.8S.even.lo w4, w2, w9          /* "a1" * GAMMA2 */
-    bn.mulv.8S.odd.lo  w4, w2, w9          /* "a1" * GAMMA2 */
+    bn.mulv.8S.odd.lo  w4, w4, w9          /* "a1" * GAMMA2 */
     bn.shv.8S  w4, w4 << 1    /* "a1" * GAMMA2 * 2 */
     bn.subv.8S w1, w0, w4          /* a - "a1" * GAMMA2 * 2 */
     bn.subv.8S w4, w10, w1         /* (Q-1)/2 - "a0" */
