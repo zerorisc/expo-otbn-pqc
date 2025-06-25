@@ -123,7 +123,7 @@ main:
   la x14, ctx
   li x15, CTXLEN
 
-  jal x1, sign_dilithium
+  jal x1, crypto_sign_signature_internal
 
 #if DILITHIUM_MODE == 3
   li   x10, CRYPTO_BYTES
@@ -3852,8 +3852,8 @@ polyeta_unpack_mask:
     .word 0x0f
     .word 0x0f
 #endif
-.global polyt1_unpack_dilithium_mask
-polyt1_unpack_dilithium_mask:
+.global polyt1_unpack_mask
+polyt1_unpack_mask:
     .word 0x3ff
     .word 0x3ff
     .word 0x3ff
@@ -3862,8 +3862,8 @@ polyt1_unpack_dilithium_mask:
     .word 0x3ff
     .word 0x3ff
     .word 0x3ff
-.global polyt0_unpack_dilithium_mask
-polyt0_unpack_dilithium_mask:
+.global polyt0_unpack_mask
+polyt0_unpack_mask:
     .word 0x1fff
     .word 0x1fff
     .word 0x1fff
@@ -3872,8 +3872,8 @@ polyt0_unpack_dilithium_mask:
     .word 0x1fff
     .word 0x1fff
     .word 0x1fff
-.global polyz_unpack_dilithium_mask
-polyz_unpack_dilithium_mask:
+.global polyz_unpack_mask
+polyz_unpack_mask:
 #if GAMMA1 == (1 << 17)
     .word 0x3ffff
     .word 0x3ffff
