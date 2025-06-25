@@ -335,6 +335,7 @@ crypto_sign_verify_internal:
     add a0, fp, a0
     li  a1, STACK_MAT /* Use as temporary buffer */
     add a1, fp, a1
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal x1, poly_reduce32
         nop
@@ -563,6 +564,7 @@ crypto_sign_verify_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI L, 2
         jal  x1, ntt
         addi a1, a1, -1024
@@ -581,6 +583,7 @@ crypto_sign_verify_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     jal x1, ntt
 
     .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
@@ -614,6 +617,7 @@ crypto_sign_verify_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal  x1, ntt
         addi a1, a1, -1024
@@ -637,6 +641,7 @@ crypto_sign_verify_internal:
     /* Load offset for resetting pointer */
     li s1, POLYVECL_BYTES
 
+    bn.wsrr w16, 0x0
     .rept K
         jal  x1, poly_pointwise
         addi a2, a2, -1024
@@ -657,6 +662,7 @@ crypto_sign_verify_internal:
     li  a2, STACK_T1
     add a2, fp, a2
 
+    bn.wsrr w16, 0x0
     LOOPI K, 2
         jal  x1, poly_pointwise
         addi a0, a0, -1024
@@ -682,6 +688,7 @@ crypto_sign_verify_internal:
         push \reg
     .endr
 
+    bn.wsrr w16, 0x0
     LOOPI K, 3
         jal  x1, intt
         /* Reset the twiddle pointer */
