@@ -1070,9 +1070,11 @@ _end_rej_eta_sample_loop:
 
 _poly_uniform_eta_arithmetic:
 #if ETA == 2
-    bn.mulv.8S w13, w12, w20
+    bn.mulv.8S.even.lo w13, w20, w12
+    bn.mulv.8S.odd.lo  w13, w13, w12
     bn.shv.8S  w13, w13 >> 10
-    bn.mulv.8S w13, w0, w13
+    bn.mulv.8S.even.lo w13, w13, w0
+    bn.mulv.8S.odd.lo  w13, w13, w0
     bn.subv.8S w20, w20, w13
 #endif
     bn.subvm.8S w9, w1, w20
@@ -2091,7 +2093,7 @@ _inner_polyt0_unpack:
 
 
 /**
- * poly_uniform_gamma1
+ * poly_uniform_gamma_1
  *
  *  Sample polynomial with uniformly random coefficients in [-(GAMMA1 - 1),
  *  GAMMA1] by unpacking output stream of SHAKE256(seed|nonce).
@@ -2105,8 +2107,8 @@ _inner_polyt0_unpack:
  *
  * clobbered registers: a0, a4, t0-t6, w1-w2, w8
  */
-.global poly_uniform_gamma1
-poly_uniform_gamma1:
+.global poly_uniform_gamma_1
+poly_uniform_gamma_1:
 #if GAMMA1 == (1 << 17)
     /* save fp to stack */
     addi sp, sp, -32
@@ -2161,60 +2163,60 @@ poly_uniform_gamma1:
     LOOPI 2, 42
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.mov  w1, w6
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 144
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 32
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 176
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w6 >> 64
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 208
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 96
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 240
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 128
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 16
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 160
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w6 >> 48
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 192
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 80
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 224
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w6 >> 112
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
         nop /* Loop must not end on jump */
 
     /* Finish the SHAKE-256 operation. */
@@ -2227,7 +2229,7 @@ poly_uniform_gamma1:
 
     ret
 
-_inner_poly_uniform_gamma1:
+_inner_poly_uniform_gamma_1:
     /* Unpack 8 coefficients in one go */
     .rept 8
         /* Shift one coefficient into the output register, ignoring the
@@ -2297,32 +2299,32 @@ _inner_poly_uniform_gamma1:
     LOOPI 4, 22
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.mov  w1, w6
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 160
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 64
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 224
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w3, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w3, w6 >> 128
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w3 >> 32
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.wsrr w6, 0xA /* KECCAK_DIGEST */
         bn.rshi w1, w6, w3 >> 192
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
 
         bn.rshi w1, bn0, w6 >> 96
-        jal     x1, _inner_poly_uniform_gamma1
+        jal     x1, _inner_poly_uniform_gamma_1
         nop /* Must not end on branch */
 
     /* Finish the SHAKE-256 operation. */
@@ -2334,7 +2336,7 @@ _inner_poly_uniform_gamma1:
     addi sp, sp, 32
     ret
 
-_inner_poly_uniform_gamma1:
+_inner_poly_uniform_gamma_1:
     /* Unpack 8 coefficients in one go */
     .rept 8
         /* Shift one coefficient into the output register, ignoring the
@@ -2827,7 +2829,7 @@ poly_reduce32:
     /* Set up constants for input/state */
     li t3, 2    
 
-    LOOPI 32, 6
+    LOOPI 32, 7
         bn.lid t3, 0(a0++)
         
         /* t = a + (1 << 22) */
@@ -2836,7 +2838,8 @@ poly_reduce32:
         /* Shift can be logical because inputs are positive anyways */
         bn.shv.8S  w5, w5 >> 23
         /* t = t * q */
-        bn.mulv.8S  w5, w5, w6
+        bn.mulv.8S.even.lo  w5, w5, w6
+        bn.mulv.8S.odd.lo   w5, w5, w6
         /* a - t */
         bn.subv.8S w2, w2, w5
 
