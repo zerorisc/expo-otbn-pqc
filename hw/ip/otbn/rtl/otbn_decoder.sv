@@ -90,7 +90,8 @@ module otbn_decoder
   logic       mac_data_type;
   logic       mac_sel;
   logic       mac_lane_mode;
-  logic [3:0] mac_lane_index;
+  logic       mac_lane_word_32;
+  logic       mac_lane_word_16;
   logic [1:0] mac_exec_mode;
 
   logic rf_ren_a_base;
@@ -159,13 +160,11 @@ module otbn_decoder
   assign loop_immediate_base = insn[12];
 
   assign mac_op_a_qw_sel_bignum     = insn[26:25];
-  assign mac_op_b_qw_sel_bignum     = insn[28:27];
   assign mac_wr_hw_sel_upper_bignum = insn[29];
   assign mac_pre_acc_shift_bignum   = insn[14:13];
 
   assign mac_sel        = insn[27];
   assign mac_lane_mode  = insn[25];
-  assign mac_lane_index = insn[23:20];
   assign mac_exec_mode  = insn[31:30];
 
   logic d_inc_bignum;
@@ -261,7 +260,8 @@ module otbn_decoder
     mac_data_type:       mac_data_type,
     mac_sel:             mac_sel,
     mac_lane_mode:       mac_lane_mode,
-    mac_lane_index:      mac_lane_index,
+    mac_lane_word_32:    mac_lane_word_32,
+    mac_lane_word_16:    mac_lane_word_16,
     mac_exec_mode:       mac_exec_mode,
     mac_en:              mac_en_bignum,
     rf_we:               rf_we_bignum,
@@ -303,10 +303,13 @@ module otbn_decoder
     rf_ren_a_bignum        = 1'b0;
     rf_ren_b_bignum        = 1'b0;
     mac_en_bignum          = 1'b0;
+    mac_op_b_qw_sel_bignum = 2'b00;
     mac_zero_acc_bignum    = 1'b0;
     mac_mulv               = 1'b0;
     mac_data_type          = 1'b0;
     mac_shift_out_bignum   = insn[30];
+    mac_lane_word_32       = 1'b0;
+    mac_lane_word_16       = 1'b0;
     mac_insn_rs2           = insn[24:20];
 
     rf_a_indirect_bignum   = 1'b0;
@@ -687,6 +690,8 @@ module otbn_decoder
         rf_wdata_sel_bignum = RfWdSelMac;
         mac_en_bignum       = 1'b1;
 
+        mac_op_b_qw_sel_bignum = insn[28:27];
+
         mac_zero_acc_bignum = insn[12];
 
         if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
@@ -718,6 +723,16 @@ module otbn_decoder
 
             if (insn[25] == 1'b1) begin  // lane mode
               mac_insn_rs2 = {{4'b1000}, insn[24]};
+
+              if (mac_data_type == 1'b0) begin
+                mac_op_b_qw_sel_bignum = insn[23:22];
+                mac_lane_word_32 = insn[21];
+                mac_lane_word_16 = insn[20];
+              end
+              else begin
+                mac_op_b_qw_sel_bignum = insn[22:21];
+                mac_lane_word_32 = insn[20];
+              end
             end
           end
           default: ;
