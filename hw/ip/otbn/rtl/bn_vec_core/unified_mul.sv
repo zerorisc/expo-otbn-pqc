@@ -10,10 +10,13 @@ module unified_mul #(
     input  logic [1:0]             exec_mode,
     input  logic                   half_sel,
     input  logic                   lane_mode,
-    input  logic [3:0]             lane_index,
+    input  logic                   lane_word_32,
+    input  logic                   lane_word_16,
     input  logic [WLEN-1:0]        A,
     input  logic [WLEN-1:0]        B,
     input  logic [1:0]             data_type_64_shift,
+    output logic [31:0]            scalar32,
+    output logic [15:0]            scalar16,
     output logic [2*WLEN-1:0]      result
 );
 
@@ -37,9 +40,6 @@ module unified_mul #(
     localparam MODE_32 = 2'b11;
     localparam MODE_16 = 2'b10;
 
-    logic [15:0] scalar16;
-    logic [31:0] scalar32;
-
     logic [63:0] scalar64_A;
     logic [63:0] scalar64_B;
 
@@ -47,11 +47,12 @@ module unified_mul #(
     // Index Scalar Operands
     // -------------------------------------------------------------------
 
-    assign scalar16 = B[HLEN*lane_index +: HLEN];
-    assign scalar32 = B[SLEN*lane_index +: SLEN];
-
     assign scalar64_A = A[DLEN*word_sel_A +: DLEN];
     assign scalar64_B = B[DLEN*word_sel_B +: DLEN];
+
+    assign scalar32 = scalar64_B[SLEN*lane_word_32 +: SLEN];
+
+    assign scalar16 = scalar32[HLEN*lane_word_16 +: HLEN];
 
     // -------------------------------------------------------------------
     // Input Decomposition
