@@ -108,6 +108,9 @@ module otbn_mac_bignum
 
   logic [2*WLEN-1:0] unified_result;
 
+  logic [31:0] scalar32;
+  logic [15:0] scalar16;
+
   unified_mul mul (
     .word_mode({operation_i.mulv, operation_i.data_type}),            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
     .word_sel_A(operation_i.operand_a_qw_sel),
@@ -115,10 +118,13 @@ module otbn_mac_bignum
     .exec_mode(operation_i.exec_mode),
     .half_sel(operation_i.sel),
     .lane_mode(operation_i.lane_mode),
-    .lane_index(operation_i.lane_index),
+    .lane_word_32(operation_i.lane_word_32),
+    .lane_word_16(operation_i.lane_word_16),
     .A(operand_a_blanked),
     .B(operand_b_blanked),
     .data_type_64_shift(operation_i.pre_acc_shift_imm),
+    .scalar32(scalar32),
+    .scalar16(scalar16),
     .result(unified_result)
   );
 
@@ -377,8 +383,8 @@ module otbn_mac_bignum
                          end
                          1'b1: begin
                            for (int i = 0; i < 4; i++) begin
-                             cond_sub_B[i*64 +: 64] = {32'b0,
-                                                       operand_b_blanked[32*operation_i.lane_index +: 32]};
+                             cond_sub_B[i*64 +: 64] = {32'b0, scalar32};
+                                                       //operand_b_blanked[32*operation_i.lane_index +: 32]};
                            end
                          end
                        endcase
@@ -399,7 +405,7 @@ module otbn_mac_bignum
                          end
                          1'b1: begin
                            for (int i = 0; i < 4; i++) begin
-                             cond_sub_B[i*64 +: 64] = {operand_b_blanked[32*operation_i.lane_index +: 32],
+                             cond_sub_B[i*64 +: 64] = {scalar32, //operand_b_blanked[32*operation_i.lane_index +: 32],
                                                        32'b0};
                            end
                          end
@@ -426,7 +432,7 @@ module otbn_mac_bignum
                      end
                      1'b1: begin
                        for (int i = 0; i < 16; i++) begin
-                         cond_sub_B[i*16 +: 16] = operand_b_blanked[16*operation_i.lane_index +: 16];
+                         cond_sub_B[i*16 +: 16] = scalar16; //operand_b_blanked[16*operation_i.lane_index +: 16];
                        end
                      end
                    endcase

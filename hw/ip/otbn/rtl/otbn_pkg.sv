@@ -459,7 +459,8 @@ package otbn_pkg;
     logic                    mac_data_type;
     logic                    mac_sel;
     logic                    mac_lane_mode;
-    logic [3:0]              mac_lane_index;
+    logic                    mac_lane_word_32;
+    logic                    mac_lane_word_16;
     logic [1:0]              mac_exec_mode;
 
     logic                    mac_en;
@@ -556,7 +557,8 @@ package otbn_pkg;
     logic            data_type;
     logic            sel;
     logic            lane_mode;
-    logic [3:0]      lane_index;
+    logic            lane_word_32;
+    logic            lane_word_16;
     logic [1:0]      exec_mode;
   } mac_bignum_operation_t;
 
