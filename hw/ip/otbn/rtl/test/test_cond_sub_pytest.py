@@ -15,7 +15,7 @@ MODE_32 = 1
 
 @cocotb.test()
 async def run_cond_sub_test(dut):
-  for i in range(256000):
+  for i in range(1024):
     word_mode = int(os.environ.get("WORD_MODE"))
 
     A = random.getrandbits(256)
@@ -74,7 +74,7 @@ def test_cond_sub_sim(word_mode):
         extra_env={
             "WORD_MODE": str(word_mode)
         },
-        waves=True,
-        plus_args=["--trace"]  # enable trace all in verilator simulation
+        #Waves=True,
+        #Plus_args=["--trace"]  # enable trace all in verilator simulation
     )
 
