@@ -26,6 +26,10 @@ module unified_mul #(
     // -------------------------------------------------------------------
     logic [HLEN-1:0] A16 [0:NHALF-1];
     logic [HLEN-1:0] B16 [0:NHALF-1];
+
+    logic [WLEN-1:0] A_composed;
+    logic [WLEN-1:0] B_composed;
+
     logic [2*HLEN-1:0] products [0:NHALF-1];
     logic [2*SLEN-1:0] partial32 [0:NDOUB-1];
 
@@ -33,88 +37,143 @@ module unified_mul #(
     localparam MODE_32 = 2'b11;
     localparam MODE_16 = 2'b10;
 
+    logic [15:0] scalar16;
+    logic [31:0] scalar32;
+
+    logic [63:0] scalar64_A;
+    logic [63:0] scalar64_B;
+
+    // -------------------------------------------------------------------
+    // Index Scalar Operands
+    // -------------------------------------------------------------------
+
+    assign scalar16 = B[HLEN*lane_index +: HLEN];
+    assign scalar32 = B[SLEN*lane_index +: SLEN];
+
+    assign scalar64_A = A[DLEN*word_sel_A +: DLEN];
+    assign scalar64_B = B[DLEN*word_sel_B +: DLEN];
+
     // -------------------------------------------------------------------
     // Input Decomposition
     // -------------------------------------------------------------------
     always_comb begin
-        case (word_mode)
-            MODE_16: begin
-               case (exec_mode)
-                 2'b00: begin
-                     for (int i = {31'b0,half_sel}; i < NHALF; i+=2) begin
-                         A16[i] = A[HLEN*i +: HLEN];
-                         B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
-                     end
-                     for (int i = {31'b0, (1'b1 - half_sel)}; i < NHALF; i+=2) begin
-                         A16[i] = 16'b0;
-                         B16[i] = 16'b0;
-                     end
-                   end
-                 default: begin
-                   for (int i = 0; i < NHALF; i++) begin
-                       A16[i] = A[HLEN*i +: HLEN];
-                       B16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : B[HLEN*lane_index +: HLEN];
-                   end
-                 end
-               endcase
+      A_composed = 256'b0;
+      B_composed = 256'b0;
+
+      unique case (word_mode)
+        MODE_16: begin
+          if (exec_mode == 2'b00) begin
+            for (int i = 0; i < NHALF; i+=2) begin
+              if (half_sel == 1'b0) begin
+                A_composed[i*HLEN +: HLEN] = A[HLEN*i +: HLEN];
+                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
+              end
+              else begin
+                A_composed[(i+1)*HLEN +: HLEN] = A[(i+1)*HLEN +: HLEN];
+                B_composed[(i+1)*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[(i+1)*HLEN +: HLEN] : scalar16;
+              end
             end
-
-            MODE_32: begin
-                for (int i = 0; i < NDOUB; i++) begin
-                    logic [SLEN-1:0] A32 = A[SLEN*(2*i + (half_sel ? 1 : 0)) +: SLEN];
-                    logic [SLEN-1:0] B32 = (lane_mode == 1'b0) ? B[SLEN*(2*i + (half_sel ? 1 : 0)) +: SLEN] : B[SLEN*lane_index +: SLEN];
-                    A16[4*i + 0] = A32[HLEN-1:0];
-                    A16[4*i + 1] = A32[HLEN-1:0];
-                    A16[4*i + 2] = A32[SLEN-1:HLEN];
-                    A16[4*i + 3] = A32[SLEN-1:HLEN];
-
-                    B16[4*i + 0] = B32[HLEN-1:0];
-                    B16[4*i + 1] = B32[SLEN-1:HLEN];
-                    B16[4*i + 2] = B32[HLEN-1:0];
-                    B16[4*i + 3] = B32[SLEN-1:HLEN];
-                end
+          end
+          else begin
+            for (int i = 0; i < NHALF; i++) begin
+                A_composed[i*HLEN +: HLEN] = A[HLEN*i +: HLEN];
+                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
             end
+          end
+        end
 
-            MODE_64: begin
-                logic [DLEN-1:0] A64 = A[DLEN*word_sel_A +: DLEN];
-                logic [DLEN-1:0] B64 = B[DLEN*word_sel_B +: DLEN];
-
-                logic [SLEN-1:0] A32 [4] = '{A64[SLEN*(0) +: SLEN], A64[SLEN*(0) +: SLEN], A64[SLEN*(1) +: SLEN], A64[SLEN*(1) +: SLEN]};
-                logic [SLEN-1:0] B32 [4] = '{B64[SLEN*(0) +: SLEN], B64[SLEN*(1) +: SLEN], B64[SLEN*(0) +: SLEN], B64[SLEN*(1) +: SLEN]};
-    
-                for (int i = 0; i < NDOUB; i++) begin
-                    A16[4*i + 0] = A32[i][HLEN-1:0];
-                    A16[4*i + 1] = A32[i][HLEN-1:0];
-                    A16[4*i + 2] = A32[i][SLEN-1:HLEN];
-                    A16[4*i + 3] = A32[i][SLEN-1:HLEN];
-                                                       
-                    B16[4*i + 0] = B32[i][HLEN-1:0];
-                    B16[4*i + 1] = B32[i][SLEN-1:HLEN];
-                    B16[4*i + 2] = B32[i][HLEN-1:0];
-                    B16[4*i + 3] = B32[i][SLEN-1:HLEN];
-                end
+        MODE_32: begin
+          for (int i = 0; i < NDOUB; i++) begin
+            if (half_sel == 1'b0) begin
+              A_composed[i*32 +: 32] = A[SLEN*(2*i + 0) +: SLEN];
+              B_composed[i*32 +: 32] = (lane_mode == 1'b0) ? B[SLEN*(2*i + 0) +: SLEN] : scalar32;
             end
-
-            default: begin
-                for (int i = 0; i < NHALF; i++) begin
-                    A16[i] = '0;
-                    B16[i] = '0;
-                end
+            else begin
+              A_composed[i*32 +: 32] = A[SLEN*(2*i + 1) +: SLEN];
+              B_composed[i*32 +: 32] = (lane_mode == 1'b0) ? B[SLEN*(2*i + 1) +: SLEN] : scalar32;
             end
-        endcase
+          end
+        end
+
+        MODE_64: begin
+          A_composed[DLEN-1:0] = scalar64_A;
+          B_composed[DLEN-1:0] = scalar64_B;
+        end
+
+        default: begin
+          A_composed = 256'b0;
+          B_composed = 256'b0;
+        end
+      endcase
     end
+
+    always_comb begin
+      unique case (word_mode)
+        MODE_16: begin
+          for (int i = 0; i < NHALF; i++) begin
+            A16[i] = A_composed[HLEN*i +: HLEN];
+            B16[i] = B_composed[HLEN*i +: HLEN];
+          end
+        end
+
+        MODE_32: begin
+          for (int i = 0; i < NDOUB; i++) begin
+            A16[4*i + 0] = A_composed[i*32 + 0    +: HLEN];
+            A16[4*i + 1] = A_composed[i*32 + 0    +: HLEN];
+            A16[4*i + 2] = A_composed[i*32 + HLEN +: HLEN];
+            A16[4*i + 3] = A_composed[i*32 + HLEN +: HLEN];
+
+            B16[4*i + 0] = B_composed[i*32 + 0    +: HLEN];
+            B16[4*i + 1] = B_composed[i*32 + HLEN +: HLEN];
+            B16[4*i + 2] = B_composed[i*32 + 0    +: HLEN];
+            B16[4*i + 3] = B_composed[i*32 + HLEN +: HLEN];
+          end
+        end
+
+        MODE_64: begin
+          logic [4*SLEN-1:0] A32 = {A_composed[SLEN +: SLEN],
+                                    A_composed[SLEN +: SLEN],
+                                    A_composed[0    +: SLEN],
+                                    A_composed[0    +: SLEN]};
+          logic [4*SLEN-1:0] B32 = {B_composed[SLEN +: SLEN],
+                                    B_composed[0    +: SLEN],
+                                    B_composed[SLEN +: SLEN],
+                                    B_composed[0    +: SLEN]};
+    
+          for (int i = 0; i < NDOUB; i++) begin
+            A16[4*i + 0] = A32[i*32 + 0    +: HLEN];
+            A16[4*i + 1] = A32[i*32 + 0    +: HLEN];
+            A16[4*i + 2] = A32[i*32 + HLEN +: HLEN];
+            A16[4*i + 3] = A32[i*32 + HLEN +: HLEN];
+
+            B16[4*i + 0] = B32[i*32 + 0    +: HLEN];
+            B16[4*i + 1] = B32[i*32 + HLEN +: HLEN];
+            B16[4*i + 2] = B32[i*32 + 0    +: HLEN];
+            B16[4*i + 3] = B32[i*32 + HLEN +: HLEN];
+          end
+        end
+
+        default: begin
+          for (int i = 0; i < NHALF; i++) begin
+            A16[i] = '0;
+            B16[i] = '0;
+          end
+        end
+      endcase
+    end
+
 
     // -------------------------------------------------------------------
     // Shared 16x16 Multipliers
     // -------------------------------------------------------------------
     generate
-        for (genvar i = 0; i < NHALF; i++) begin : gen_mults
-            /* verilator lint_off UNUSEDSIGNAL */
-            logic [2*HLEN:0] product_full;  // "2*HLEN:0" to circumvent Verilator bug
-            /* verilator lint_on UNUSEDSIGNAL */
-            assign product_full = A16[i] * B16[i];
-            assign products[i] = product_full[2*HLEN-1:0];
-        end
+      for (genvar i = 0; i < NHALF; i++) begin : gen_mults
+        /* verilator lint_off UNUSEDSIGNAL */
+        logic [2*HLEN:0] product_full;  // "2*HLEN:0" to circumvent Verilator bug
+        /* verilator lint_on UNUSEDSIGNAL */
+        assign product_full = A16[i] * B16[i];
+        assign products[i] = product_full[2*HLEN-1:0];
+      end
     endgenerate
 
     // -------------------------------------------------------------------
@@ -125,87 +184,79 @@ module unified_mul #(
     logic [2*DLEN-1:0]       result_64;
 
     // -- 16x16 results --
-    generate
-        for (genvar i = 0; i < NHALF; i++) begin : gen_output_16
-            assign result_16[2*HLEN*i +: 2*HLEN] = (word_mode == MODE_16) ? products[i] : '0;
-        end
-    endgenerate
+    always_comb begin
+      result_16 = '0;
+      for (int i = 0; i < NHALF; i++) begin : gen_output_16
+        if (word_mode == MODE_16)
+          result_16[2*HLEN*i +: 2*HLEN] = products[i];
+      end
+    end
 
     // -- 32x32 grouped reconstruction --
     always_comb begin
-        result_32 = '0;
-        for (int i = 0; i < NDOUB; i++) begin
-            logic [2*HLEN-1:0] p0 = products[4*i + 0];
-            logic [2*HLEN-1:0] p1 = products[4*i + 1];
-            logic [2*HLEN-1:0] p2 = products[4*i + 2];
-            logic [2*HLEN-1:0] p3 = products[4*i + 3];
+      result_32 = '0;
+      for (int i = 0; i < NDOUB; i++) begin
+        logic [2*HLEN-1:0] p0 = products[4*i + 0];
+        logic [2*HLEN-1:0] p1 = products[4*i + 1];
+        logic [2*HLEN-1:0] p2 = products[4*i + 2];
+        logic [2*HLEN-1:0] p3 = products[4*i + 3];
 
 
-            partial32[i] = {{(SLEN){1'b0}}, p0} +
-                           {{(HLEN){1'd0}}, p1, {(HLEN){1'd0}}} + 
-                           {{(HLEN){1'd0}}, p2, {(HLEN){1'd0}}} +
-                           {p3, {(SLEN){1'd0}}};
+        partial32[i] = {{(SLEN){1'b0}}, p0} +
+                       {{(HLEN){1'd0}}, p1, {(HLEN){1'd0}}} + 
+                       {{(HLEN){1'd0}}, p2, {(HLEN){1'd0}}} +
+                       {p3, {(SLEN){1'd0}}};
 
-            if (word_mode == MODE_32)
-                result_32[2*SLEN*i +: 2*SLEN] = partial32[i];
-        end
+        if (word_mode == MODE_32)
+          result_32[2*SLEN*i +: 2*SLEN] = partial32[i];
+      end
     end
 
     // -- 64x64 reconstruction using the 32x32 results --
     always_comb begin
-        result_64 = '0;
-        if (word_mode == MODE_64) begin
-            result_64 = {{DLEN{1'b0}}, partial32[0]} +
-                        {{SLEN{1'b0}}, partial32[1], {SLEN{1'b0}}} +
-                        {{SLEN{1'b0}}, partial32[2], {SLEN{1'b0}}} +
-                        {partial32[3], {DLEN{1'b0}}};
-        end
+      result_64 = '0;
+      if (word_mode == MODE_64) begin
+        result_64 = {{DLEN{1'b0}}, partial32[0]} +
+                    {{SLEN{1'b0}}, partial32[1], {SLEN{1'b0}}} +
+                    {{SLEN{1'b0}}, partial32[2], {SLEN{1'b0}}} +
+                    {partial32[3], {DLEN{1'b0}}};
+      end
     end
 
     // -------------------------------------------------------------------
     // Unified Output Selection
     // -------------------------------------------------------------------
     always_comb begin
-        unique case (word_mode)
-            MODE_64: //result = {{(2*WLEN-2*DLEN){1'b0}}, result_64};
-                begin
-                  unique case (data_type_64_shift)
-                    2'd0: result = {{WLEN {1'b0}}, {DLEN * 2{1'b0}}, result_64};
-                    2'd1: result = {{WLEN {1'b0}}, {DLEN{1'b0}}, result_64, {DLEN{1'b0}}};
-                    2'd2: result = {{WLEN {1'b0}}, result_64, {DLEN * 2{1'b0}}};
-                    2'd3: result = {{WLEN {1'b0}}, result_64[63:0], {DLEN * 3{1'b0}}};
-                  endcase
-                end
-            MODE_32: //result = {{(2*WLEN-2*SLEN*NDOUB){1'b0}}, result_32};
-                begin
-                  unique case (half_sel)
-                    1'd0:
-                      begin
-			 result[  0 +: 64] = result_32[  0 +: 64];
-                         result[ 64 +: 64] = 64'b0;
-			 result[128 +: 64] = result_32[ 64 +: 64];
-                         result[192 +: 64] = 64'b0;
-			 result[256 +: 64] = result_32[128 +: 64];
-                         result[320 +: 64] = 64'b0;
-			 result[384 +: 64] = result_32[192 +: 64];
-                         result[448 +: 64] = 64'b0;
-                      end
-                    1'd1:
-                      begin
-			 result[  0 +: 64] = 64'b0;
-                         result[ 64 +: 64] = result_32[  0 +: 64];
-			 result[128 +: 64] = 64'b0;
-                         result[192 +: 64] = result_32[ 64 +: 64];
-			 result[256 +: 64] = 64'b0;
-                         result[320 +: 64] = result_32[128 +: 64];
-			 result[384 +: 64] = 64'b0;
-                         result[448 +: 64] = result_32[192 +: 64];
-                      end
-                  endcase
-                end
-            MODE_16: result = result_16;
-            default: result = '0;
-        endcase
+      result = '0;
+
+      unique case (word_mode)
+        MODE_64: begin
+          unique case (data_type_64_shift)
+            2'd0: result[  0 +: 128] = result_64;
+            2'd1: result[ 64 +: 128] = result_64;
+            2'd2: result[128 +: 128] = result_64;
+            2'd3: result[192 +: 128] = result_64;
+          endcase
+        end
+        MODE_32: begin
+          if (half_sel == 1'b0) begin
+            for (int i = 0; i < NDOUB; i++) begin
+              result[(128*i) +  0 +: 64] = result_32[64*i +: 64];
+            end
+          end
+          else begin
+            for (int i = 0; i < NDOUB; i++) begin
+              result[(128*i) + 64 +: 64] = result_32[64*i +: 64];
+            end
+          end
+        end
+        MODE_16: begin
+          result = result_16;
+        end
+        default: begin
+          result = '0;
+        end
+      endcase
     end
 
 endmodule
