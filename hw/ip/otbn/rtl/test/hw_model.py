@@ -90,9 +90,12 @@ def reference_prod(A, B, data_type, word_sel_A, word_sel_B, half_sel, lane_mode=
         for i in range(16):
             a = (A >> (i * HLEN)) & ((1 << HLEN) - 1)
             b = (B >> (i * HLEN)) & ((1 << HLEN) - 1) if lane_mode == 0 else (B >> (lane_index * HLEN)) & ((1 << HLEN) - 1)
-            expected |= (a * b * (1 if i & 1 == half_sel else 0)) << (i*32)
+            if half_sel != None:
+              expected |= (a * b * (1 if i & 1 == half_sel else 0)) << (i*32)
+            else:
+              expected |= (a * b) << (i*32)
 
-            print(expected)
+#            print(expected)
 
         return expected
 
