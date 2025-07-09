@@ -7737,3 +7737,527 @@ opentitan_test(
         "//sw/device/lib/testing/test_framework:status",
     ],
 )
+
+# ML-KEM on-device tests
+opentitan_test(
+    name = "otbn_mlkem512_keypair_test",
+    srcs = ["otbn_mlkem512_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem512_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem512_encap_test",
+    srcs = ["otbn_mlkem512_encap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem512_encap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem512_decap_test",
+    srcs = ["otbn_mlkem512_decap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem512_decap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem768_keypair_test",
+    srcs = ["otbn_mlkem768_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem768_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem768_encap_test",
+    srcs = ["otbn_mlkem768_encap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem768_encap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem768_decap_test",
+    srcs = ["otbn_mlkem768_decap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem768_decap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem1024_keypair_test",
+    srcs = ["otbn_mlkem1024_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem1024_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem1024_encap_test",
+    srcs = ["otbn_mlkem1024_encap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem1024_encap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mlkem1024_decap_test",
+    srcs = ["otbn_mlkem1024_decap_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mlkem:otbn_mlkem1024_decap_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:kem",
+        "//sw/device/tests/pq-crystals/kyber_opentitan/ref:fips202",
+    ],
+)
+
+# ML-DSA on-device tests
+opentitan_test(
+    name = "otbn_mldsa44_keypair_test",
+    srcs = ["otbn_mldsa44_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa44_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa44_sign_test",
+    srcs = ["otbn_mldsa44_sign_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa44_sign_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa44_verify_test",
+    srcs = ["otbn_mldsa44_verify_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa44_verify_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa65_keypair_test",
+    srcs = ["otbn_mldsa65_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa65_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa65_sign_test",
+    srcs = ["otbn_mldsa65_sign_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa65_sign_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa65_verify_test",
+    srcs = ["otbn_mldsa65_verify_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa65_verify_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa87_keypair_test",
+    srcs = ["otbn_mldsa87_keypair_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa87_keypair_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/ref:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa87_sign_test",
+    srcs = ["otbn_mldsa87_sign_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa87_sign_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
+
+opentitan_test(
+    name = "otbn_mldsa87_verify_test",
+    srcs = ["otbn_mldsa87_verify_test.c"],
+    exec_env = dicts.add(
+        EARLGREY_TEST_ENVS,
+        EARLGREY_SILICON_OWNER_ROM_EXT_ENVS,
+        {
+            "//hw/top_earlgrey:fpga_cw310_sival": None,
+            "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": None,
+            "//hw/top_earlgrey:silicon_creator": None,
+        },
+    ),
+    verilator = verilator_params(timeout = "long"),
+    deps = [
+         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/dif:otbn",
+        "//sw/device/lib/runtime:ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing:otbn_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/otbn/crypto/tests/mldsa:otbn_mldsa87_verify_test",
+        # C libraries
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:params",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:sign",
+        "//sw/device/tests/pq-crystals/dilithium_opentitan/lowram:fips202",
+    ],
+)
