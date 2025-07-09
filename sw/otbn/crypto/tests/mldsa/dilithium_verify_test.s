@@ -122,7 +122,7 @@ main:
   la x15, ctx
   li x16, CTXLEN
 
-  jal x1, crypto_sign_verify_internal
+  jal x1, verify_dilithium
 
   ecall
 
@@ -5011,8 +5011,8 @@ polyeta_unpack_mask:
     .word 0x07
     .word 0x07
     .word 0x07
-.global polyt1_unpack_mask
-polyt1_unpack_mask:
+.global polyt1_unpack_dilithium_mask
+polyt1_unpack_dilithium_mask:
     .word 0x3ff
     .word 0x3ff
     .word 0x3ff
@@ -5021,8 +5021,8 @@ polyt1_unpack_mask:
     .word 0x3ff
     .word 0x3ff
     .word 0x3ff
-.global polyt0_unpack_mask
-polyt0_unpack_mask:
+.global polyt0_unpack_dilithium_mask
+polyt0_unpack_dilithium_mask:
     .word 0x1fff
     .word 0x1fff
     .word 0x1fff
@@ -5031,8 +5031,8 @@ polyt0_unpack_mask:
     .word 0x1fff
     .word 0x1fff
     .word 0x1fff
-.global polyz_unpack_mask
-polyz_unpack_mask:
+.global polyz_unpack_dilithium_mask
+polyz_unpack_dilithium_mask:
 #if GAMMA1 == (1 << 17)
     .word 0x3ffff
     .word 0x3ffff
