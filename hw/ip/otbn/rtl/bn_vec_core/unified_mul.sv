@@ -169,9 +169,9 @@ module unified_mul #(
     // -------------------------------------------------------------------
     generate
       for (genvar i = 0; i < NHALF; i++) begin : gen_mults
-        /* verilator lint_off UNUSEDSIGNAL */
+        /* verilator lint_off UNUSED */
         logic [2*HLEN:0] product_full;  // "2*HLEN:0" to circumvent Verilator bug
-        /* verilator lint_on UNUSEDSIGNAL */
+        /* verilator lint_on UNUSED */
         assign product_full = A16[i] * B16[i];
         assign products[i] = product_full[2*HLEN-1:0];
       end
