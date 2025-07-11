@@ -12,20 +12,20 @@ main:
   bn.mulv.16H.odd           w3, w0, w1
   bn.mulv.16H.lo            w4, w0, w1
   bn.mulv.16H.hi            w5, w0, w1
-  bn.mulv.16H.hi.cond       w6, w0, w1
   bn.mulv.16H.even.acc      w7, w0, w1
   bn.mulv.16H.odd.acc       w8, w0, w1
   bn.mulv.16H.acc.lo        w9, w0, w1
   bn.mulv.16H.acc.hi        w10, w0, w1
-  bn.mulv.16H.acc.hi.cond   w11, w0, w1
   bn.mulv.16H.even.acc.z    w12, w0, w1
   bn.mulv.16H.odd.acc.z     w13, w0, w1
   bn.mulv.16H.acc.z.lo      w14, w0, w1
   bn.mulv.16H.acc.z.hi      w15, w0, w1
-  bn.mulv.16H.acc.z.hi.cond w16, w0, w1
 
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */
+  bn.xor w6, w6, w6
+  bn.xor w11, w11, w11
+  bn.xor w16, w16, w16
   bn.xor w17, w17, w17
   bn.xor w18, w18, w18
   bn.xor w19, w19, w19
