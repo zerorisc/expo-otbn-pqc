@@ -1,7 +1,7 @@
 from random import randint, seed
 from pathlib import Path
 
-path = Path('../Documents/git/private/expo-otbn-pqc/sw/otbn/crypto/tests/bnmulv_test.exp2')
+path = Path('sw/otbn/crypto/tests/bnmulv_test.exp2')
 
 N2 = 16
 N = 8
@@ -187,26 +187,6 @@ def test_bnmulv_8S(data, addr):
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
 
-    # bn.mulv.8S.even.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_even_hi)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-
-    # bn.mulv.8S.odd.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_odd_hi)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-
     # bn.mulv.8S.even.acc
     acc, acc_res = assign_acc(tmp_even, acc, 0)
 
@@ -261,34 +241,6 @@ def test_bnmulv_8S(data, addr):
     acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.even.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.odd.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
@@ -357,36 +309,6 @@ def test_bnmulv_8S(data, addr):
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
-    # bn.mulv.8S.even.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-             res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.odd.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-             res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
     return data, addr
 
 
@@ -435,26 +357,6 @@ def test_bnmulvl_8S(data, addr):
     # bn.mulv.l.8S.odd.hi
     res = a.copy()
     res_tmp = split_hilo_32(tmp_odd_hi)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-
-    # bn.mulv.l.8S.even.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_even_hi)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-
-    # bn.mulv.l.8S.odd.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_odd_hi)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
 
@@ -512,34 +414,6 @@ def test_bnmulvl_8S(data, addr):
     acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.even.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.odd.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
@@ -608,36 +482,6 @@ def test_bnmulvl_8S(data, addr):
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
-    # bn.mulv.l.8S.even.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-             res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.odd.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-             res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
     return data, addr
 
 
@@ -668,13 +512,6 @@ def test_bnmulv_16H(data, addr):
     res = tmp_hi
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.16H.hi.cond
-    res = tmp_hi
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
-    data, addr = write_16(res, data, addr)
-
     # bn.mulv.16H.even.acc
     acc, acc_res = assign_acc_16(tmp_even, acc, 0)
     res = split_hilo_16(acc_res)
@@ -696,15 +533,6 @@ def test_bnmulv_16H(data, addr):
     # bn.mulv.16H.acc.hi
     acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
     res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    data, addr = write_16(res, data, addr)
-    data, addr = write_32(acc, data, addr)
-
-    # bn.mulv.16H.acc.hi.cond
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
@@ -733,16 +561,6 @@ def test_bnmulv_16H(data, addr):
     acc = empty_acc(acc)
     acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
     res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    data, addr = write_16(res, data, addr)
-    data, addr = write_32(acc, data, addr)
-
-    # bn.mulv.16H.acc.z.hi.cond
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
@@ -776,13 +594,6 @@ def test_bnmulvl_16H(data, addr):
     res = tmp_hi
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.l.16H.hi.cond
-    res = tmp_hi
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
-    data, addr = write_16(res, data, addr)
-
     # bn.mulv.l.16H.even.acc
     acc, acc_res = assign_acc_16(tmp_even, acc, 0)
     res = split_hilo_16(acc_res)
@@ -804,15 +615,6 @@ def test_bnmulvl_16H(data, addr):
     # bn.mulv.l.16H.acc.hi
     acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
     res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    data, addr = write_16(res, data, addr)
-    data, addr = write_32(acc, data, addr)
-
-    # bn.mulv.l.16H.acc.hi.cond
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
@@ -841,16 +643,6 @@ def test_bnmulvl_16H(data, addr):
     acc = empty_acc(acc)
     acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
     res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    data, addr = write_16(res, data, addr)
-    data, addr = write_32(acc, data, addr)
-
-    # bn.mulv.l.16H.acc.z.hi.cond
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 

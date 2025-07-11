@@ -23,13 +23,6 @@ test_bnmulv_8S:
   bn.mulv.8S.odd.hi w2, w0, w1
   bn.sid x6, 0(x7++)
 
-  /* 0 -- 3: no acc -- .hi.cond */
-  bn.mulv.8S.even.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-
-  bn.mulv.8S.odd.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-
   /* 1 -- 0: acc -- standard */
   bn.mulv.8S.even.acc w2, w0, w1
   bn.sid x6, 0(x7++)
@@ -69,21 +62,6 @@ test_bnmulv_8S:
   bn.sid x8, 0(x7++)
 
   bn.mulv.8S.odd.acc.hi w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  /* 1 -- 3: acc -- .hi.cond */
-  bn.mulv.8S.even.acc.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  bn.mulv.8S.odd.acc.hi.cond w2, w0, w1
   bn.sid x6, 0(x7++)
   bn.wsrr w3, 0x3
   bn.sid x8, 0(x7++)
@@ -135,21 +113,6 @@ test_bnmulv_8S:
   bn.wsrr w3, 0xb
   bn.sid x8, 0(x7++)
 
-  /* 2 -- 3: acc.z -- .hi.cond */
-  bn.mulv.8S.even.acc.z.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  bn.mulv.8S.odd.acc.z.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
   ret
 
 .globl test_bnmulv_16H
@@ -167,10 +130,6 @@ test_bnmulv_16H:
 
   /* 0 -- 2: no acc -- .hi */
   bn.mulv.16H.hi w2, w0, w1
-  bn.sid x6, 0(x7++)
-
-  /* 0 -- 3: no acc -- .hi.cond */
-  bn.mulv.16H.hi.cond w2, w0, w1
   bn.sid x6, 0(x7++)
 
   /* 1 -- 0: acc -- standard */
@@ -198,14 +157,6 @@ test_bnmulv_16H:
 
   /* 1 -- 2: acc -- .hi */
   bn.mulv.16H.acc.hi w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  /* 1 -- 3: acc -- .hi.cond */
-  bn.mulv.16H.acc.hi.cond w2, w0, w1
   bn.sid x6, 0(x7++)
   bn.wsrr w3, 0x3
   bn.sid x8, 0(x7++)
@@ -243,14 +194,6 @@ test_bnmulv_16H:
   bn.wsrr w3, 0xb
   bn.sid x8, 0(x7++)
 
-  /* 2 -- 3: acc.z -- .hi.cond */
-  bn.mulv.16H.acc.z.hi.cond w2, w0, w1
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
   ret
 
 .globl test_bnmulvl_8S
@@ -274,13 +217,6 @@ test_bnmulvl_8S:
   bn.sid x6, 0(x7++)
 
   bn.mulv.l.8S.odd.hi w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-
-  /* 0 -- 3: no acc -- .hi.cond */
-  bn.mulv.l.8S.even.hi.cond w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-
-  bn.mulv.l.8S.odd.hi.cond w2, w0, sw0.5
   bn.sid x6, 0(x7++)
 
   /* 1 -- 0: acc -- standard */
@@ -322,21 +258,6 @@ test_bnmulvl_8S:
   bn.sid x8, 0(x7++)
 
   bn.mulv.l.8S.odd.acc.hi w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  /* 1 -- 3: acc -- .hi.cond */
-  bn.mulv.l.8S.even.acc.hi.cond w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  bn.mulv.l.8S.odd.acc.hi.cond w2, w0, sw0.5
   bn.sid x6, 0(x7++)
   bn.wsrr w3, 0x3
   bn.sid x8, 0(x7++)
@@ -388,21 +309,6 @@ test_bnmulvl_8S:
   bn.wsrr w3, 0xb
   bn.sid x8, 0(x7++)
 
-  /* 2 -- 3: acc.z -- .hi.cond */
-  bn.mulv.l.8S.even.acc.z.hi.cond w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  bn.mulv.l.8S.odd.acc.z.hi.cond w2, w0, sw0.5
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
   ret
 
 .globl test_bnmulvl_16H
@@ -420,10 +326,6 @@ test_bnmulvl_16H:
 
   /* 0 -- 2: no acc -- .hi */
   bn.mulv.l.16H.hi w2, w0, sw1.3
-  bn.sid x6, 0(x7++)
-
-  /* 0 -- 3: no acc -- .hi.cond */
-  bn.mulv.l.16H.hi.cond w2, w0, sw1.3
   bn.sid x6, 0(x7++)
 
   /* 1 -- 0: acc -- standard */
@@ -457,14 +359,6 @@ test_bnmulvl_16H:
   bn.wsrr w3, 0xb
   bn.sid x8, 0(x7++)
 
-  /* 1 -- 3: acc -- .hi.cond */
-  bn.mulv.l.16H.acc.hi.cond w2, w0, sw1.3
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
   /* 2 -- 0: acc.z -- standard */
   bn.mulv.l.16H.even.acc.z w2, w0, sw1.3
   bn.sid x6, 0(x7++)
@@ -490,14 +384,6 @@ test_bnmulvl_16H:
 
   /* 2 -- 2: acc.z -- .hi */
   bn.mulv.l.16H.acc.z.hi w2, w0, sw1.3
-  bn.sid x6, 0(x7++)
-  bn.wsrr w3, 0x3
-  bn.sid x8, 0(x7++)
-  bn.wsrr w3, 0xb
-  bn.sid x8, 0(x7++)
-
-  /* 2 -- 3: acc.z -- .hi.cond */
-  bn.mulv.l.16H.acc.z.hi.cond w2, w0, sw1.3
   bn.sid x6, 0(x7++)
   bn.wsrr w3, 0x3
   bn.sid x8, 0(x7++)
