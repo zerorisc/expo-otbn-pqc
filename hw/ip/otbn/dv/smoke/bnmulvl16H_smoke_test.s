@@ -10,29 +10,29 @@ main:
 
   bn.mulv.l.16H.even          w2, w0, sw1.3
   bn.mulv.l.16H.odd           w3, w0, sw1.3
-  bn.mulv.l.16H.lo            w4, w0, sw1.3
-  bn.mulv.l.16H.hi            w5, w0, sw1.3
-  bn.mulv.l.16H.hi.cond       w6, w0, sw1.3
-  bn.mulv.l.16H.even.acc      w7, w0, sw1.3
-  bn.mulv.l.16H.odd.acc       w8, w0, sw1.3
-  bn.mulv.l.16H.acc.lo        w9, w0, sw1.3
-  bn.mulv.l.16H.acc.hi        w10, w0, sw1.3
-  bn.mulv.l.16H.acc.hi.cond   w11, w0, sw1.3
-  bn.mulv.l.16H.even.acc.z    w12, w0, sw1.3
-  bn.mulv.l.16H.odd.acc.z     w13, w0, sw1.3
-  bn.mulv.l.16H.acc.z.lo      w14, w0, sw1.3
-  bn.mulv.l.16H.acc.z.hi      w15, w0, sw1.3
-  bn.mulv.l.16H.acc.z.hi.cond w16, w0, sw1.3
+  bn.mulv.l.16H.even.lo       w4, w0, sw1.3
+  bn.mulv.l.16H.odd.lo        w5, w0, sw1.3
+  bn.mulv.l.16H.even.hi       w6, w0, sw1.3
+  bn.mulv.l.16H.odd.hi        w7, w0, sw1.3
+  bn.mulv.l.16H.even.acc      w10, w0, sw1.3
+  bn.mulv.l.16H.odd.acc       w11, w0, sw1.3
+  bn.mulv.l.16H.even.acc.lo   w12, w0, sw1.3
+  bn.mulv.l.16H.odd.acc.lo    w13, w0, sw1.3
+  bn.mulv.l.16H.even.acc.hi   w14, w0, sw1.3
+  bn.mulv.l.16H.odd.acc.hi    w15, w0, sw1.3
+  bn.mulv.l.16H.even.acc.z    w18, w0, sw1.3
+  bn.mulv.l.16H.odd.acc.z     w19, w0, sw1.3
+  bn.mulv.l.16H.even.acc.z.lo w20, w0, sw1.3
+  bn.mulv.l.16H.odd.acc.z.lo  w21, w0, sw1.3
+  bn.mulv.l.16H.even.acc.z.hi w22, w0, sw1.3
+  bn.mulv.l.16H.odd.acc.z.hi  w23, w0, sw1.3
 
   /* Zeroize the unused WDRs to test with expected results.
    * Otherwise, they will have random values. */
+  bn.xor w8, w8, w8
+  bn.xor w9, w9, w9
   bn.xor w1, w1, w1
-  bn.xor w18, w18, w18
-  bn.xor w19, w19, w19
-  bn.xor w20, w20, w20
-  bn.xor w21, w21, w21
-  bn.xor w22, w22, w22
-  bn.xor w23, w23, w23
+  bn.xor w17, w17, w17
   bn.xor w24, w24, w24
   bn.xor w25, w25, w25
   bn.xor w26, w26, w26
