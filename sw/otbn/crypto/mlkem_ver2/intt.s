@@ -133,8 +133,7 @@ intt:
   bn.addvm.16H         w24, w24, w25
   bn.mulv.16H.acc.z.lo w25, wtmp, w17
   bn.mulv.l.16H.lo     w25, w25, sw0.2
-  bn.mulv.l.16H.acc.hi w25, w25, sw0.0
-  bn.addvm.16H         w25, w25, w18
+  bn.mulv.l.16H.acc.hi.cond w25, w25, sw0.0
 
   bn.lid x23, 32(x11) /* Load twiddle factors */
   
@@ -142,8 +141,7 @@ intt:
   bn.addvm.16H         w26, w26, w27
   bn.mulv.16H.acc.z.lo w27, wtmp, w17
   bn.mulv.l.16H.lo     w27, w27, sw0.2
-  bn.mulv.l.16H.acc.hi w27, w27, sw0.0
-  bn.addvm.16H         w27, w27, w18
+  bn.mulv.l.16H.acc.hi.cond w27, w27, sw0.0
   
   bn.lid x23, 64(x11) /* Load twiddle factors */
   
@@ -151,8 +149,7 @@ intt:
   bn.addvm.16H         w28, w28, w29
   bn.mulv.16H.acc.z.lo w29, wtmp, w17
   bn.mulv.l.16H.lo     w29, w29, sw0.2
-  bn.mulv.l.16H.acc.hi w29, w29, sw0.0
-  bn.addvm.16H         w29, w29, w18
+  bn.mulv.l.16H.acc.hi.cond w29, w29, sw0.0
 
   bn.lid x23, 96(x11) /* Load twiddle factors */
   
@@ -160,8 +157,7 @@ intt:
   bn.addvm.16H         w30, w30, w31
   bn.mulv.16H.acc.z.lo w31, wtmp, w17
   bn.mulv.l.16H.lo     w31, w31, sw0.2
-  bn.mulv.l.16H.acc.hi w31, w31, sw0.0
-  bn.addvm.16H         w31, w31, w18
+  bn.mulv.l.16H.acc.hi.cond w31, w31, sw0.0
 
   bn.lid x23, 128(x11) /* Load twiddle factors */
   
@@ -169,8 +165,7 @@ intt:
   bn.addvm.16H         w0, w0, w1
   bn.mulv.16H.acc.z.lo w1, wtmp, w17
   bn.mulv.l.16H.lo     w1, w1, sw0.2
-  bn.mulv.l.16H.acc.hi w1, w1, sw0.0
-  bn.addvm.16H         w1, w1, w18
+  bn.mulv.l.16H.acc.hi.cond w1, w1, sw0.0
 
   bn.lid x23, 160(x11) /* Load twiddle factors */
   
@@ -178,8 +173,7 @@ intt:
   bn.addvm.16H         w2, w2, w3
   bn.mulv.16H.acc.z.lo w3, wtmp, w17
   bn.mulv.l.16H.lo     w3, w3, sw0.2
-  bn.mulv.l.16H.acc.hi w3, w3, sw0.0
-  bn.addvm.16H         w3, w3, w18
+  bn.mulv.l.16H.acc.hi.cond w3, w3, sw0.0
 
   bn.lid x23, 192(x11) /* Load twiddle factors */
 
@@ -187,8 +181,7 @@ intt:
   bn.addvm.16H         w4, w4, w5
   bn.mulv.16H.acc.z.lo w5, wtmp, w17
   bn.mulv.l.16H.lo     w5, w5, sw0.2
-  bn.mulv.l.16H.acc.hi w5, w5, sw0.0
-  bn.addvm.16H         w5, w5, w18
+  bn.mulv.l.16H.acc.hi.cond w5, w5, sw0.0
 
   bn.lid x23, 224(x11) /* Load twiddle factors */
 
@@ -196,8 +189,7 @@ intt:
   bn.addvm.16H         w6, w6, w7
   bn.mulv.16H.acc.z.lo w7, wtmp, w17
   bn.mulv.l.16H.lo     w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi w7, w7, sw0.0
-  bn.addvm.16H         w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond w7, w7, sw0.0
 
   /* Layer 6, stride 4 */
 
@@ -208,16 +200,13 @@ intt:
   bn.addvm.16H         w24, w24, w26
   bn.mulv.16H.acc.z.lo w26, wtmp, w17
   bn.mulv.l.16H.lo     w26, w26, sw0.2
-  bn.mulv.l.16H.acc.hi w26, w26, sw0.0
-  bn.addvm.16H         w26, w26, w18
-
+  bn.mulv.l.16H.acc.hi.cond w26, w26, sw0.0
 
   bn.subvm.16H         wtmp, w25, w27
   bn.addvm.16H         w25, w25, w27
   bn.mulv.16H.acc.z.lo w27, wtmp, w17
   bn.mulv.l.16H.lo     w27, w27, sw0.2
-  bn.mulv.l.16H.acc.hi w27, w27, sw0.0
-  bn.addvm.16H         w27, w27, w18
+  bn.mulv.l.16H.acc.hi.cond w27, w27, sw0.0
 
   bn.lid x23, 288(x11) /* Load twiddle factors */
 
@@ -225,16 +214,13 @@ intt:
   bn.addvm.16H         w28, w28, w30
   bn.mulv.16H.acc.z.lo w30, wtmp, w17
   bn.mulv.l.16H.lo     w30, w30, sw0.2
-  bn.mulv.l.16H.acc.hi w30, w30, sw0.0
-  bn.addvm.16H         w30, w30, w18
-
+  bn.mulv.l.16H.acc.hi.cond w30, w30, sw0.0
 
   bn.subvm.16H         wtmp, w29, w31
   bn.addvm.16H         w29, w29, w31
   bn.mulv.16H.acc.z.lo w31, wtmp, w17
   bn.mulv.l.16H.lo     w31, w31, sw0.2
-  bn.mulv.l.16H.acc.hi w31, w31, sw0.0
-  bn.addvm.16H         w31, w31, w18
+  bn.mulv.l.16H.acc.hi.cond w31, w31, sw0.0
 
   bn.lid x23, 320(x11) /* Load twiddle factors */
 
@@ -242,16 +228,13 @@ intt:
   bn.addvm.16H         w0, w0, w2
   bn.mulv.16H.acc.z.lo w2, wtmp, w17
   bn.mulv.l.16H.lo     w2, w2, sw0.2
-  bn.mulv.l.16H.acc.hi w2, w2, sw0.0
-  bn.addvm.16H         w2, w2, w18
-
+  bn.mulv.l.16H.acc.hi.cond w2, w2, sw0.0
 
   bn.subvm.16H         wtmp, w1, w3
   bn.addvm.16H         w1, w1, w3
   bn.mulv.16H.acc.z.lo w3, wtmp, w17
   bn.mulv.l.16H.lo     w3, w3, sw0.2
-  bn.mulv.l.16H.acc.hi w3, w3, sw0.0
-  bn.addvm.16H         w3, w3, w18
+  bn.mulv.l.16H.acc.hi.cond w3, w3, sw0.0
 
   bn.lid x23, 352(x11) /* Load twiddle factors */
 
@@ -259,15 +242,13 @@ intt:
   bn.addvm.16H         w4, w4, w6
   bn.mulv.16H.acc.z.lo w6, wtmp, w17
   bn.mulv.l.16H.lo     w6, w6, sw0.2
-  bn.mulv.l.16H.acc.hi w6, w6, sw0.0
-  bn.addvm.16H         w6, w6, w18
+  bn.mulv.l.16H.acc.hi.cond w6, w6, sw0.0
 
   bn.subvm.16H         wtmp, w5, w7
   bn.addvm.16H         w5, w5, w7
   bn.mulv.16H.acc.z.lo w7, wtmp, w17
   bn.mulv.l.16H.lo     w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi w7, w7, sw0.0
-  bn.addvm.16H         w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond w7, w7, sw0.0
 
   /* Layer 5, stride 8 */
 
@@ -278,32 +259,25 @@ intt:
   bn.addvm.16H         w24, w24, w28
   bn.mulv.16H.acc.z.lo w28, wtmp, w17
   bn.mulv.l.16H.lo     w28, w28, sw0.2
-  bn.mulv.l.16H.acc.hi w28, w28, sw0.0
-  bn.addvm.16H         w28, w28, w18
-
+  bn.mulv.l.16H.acc.hi.cond w28, w28, sw0.0
 
   bn.subvm.16H         wtmp, w25, w29
   bn.addvm.16H         w25, w25, w29
   bn.mulv.16H.acc.z.lo w29, wtmp, w17
   bn.mulv.l.16H.lo     w29, w29, sw0.2
-  bn.mulv.l.16H.acc.hi w29, w29, sw0.0
-  bn.addvm.16H         w29, w29, w18
-
+  bn.mulv.l.16H.acc.hi.cond w29, w29, sw0.0
 
   bn.subvm.16H         wtmp, w26, w30
   bn.addvm.16H         w26, w26, w30
   bn.mulv.16H.acc.z.lo w30, wtmp, w17
   bn.mulv.l.16H.lo     w30, w30, sw0.2
-  bn.mulv.l.16H.acc.hi w30, w30, sw0.0
-  bn.addvm.16H         w30, w30, w18
-
+  bn.mulv.l.16H.acc.hi.cond w30, w30, sw0.0
 
   bn.subvm.16H         wtmp, w27, w31
   bn.addvm.16H         w27, w27, w31
   bn.mulv.16H.acc.z.lo w31, wtmp, w17
   bn.mulv.l.16H.lo     w31, w31, sw0.2
-  bn.mulv.l.16H.acc.hi w31, w31, sw0.0
-  bn.addvm.16H         w31, w31, w18
+  bn.mulv.l.16H.acc.hi.cond w31, w31, sw0.0
 
   bn.lid x23, 416(x11) /* Load twiddle factors */
 
@@ -311,32 +285,26 @@ intt:
   bn.addvm.16H         w0, w0, w4
   bn.mulv.16H.acc.z.lo w4, wtmp, w17
   bn.mulv.l.16H.lo     w4, w4, sw0.2
-  bn.mulv.l.16H.acc.hi w4, w4, sw0.0
-  bn.addvm.16H         w4, w4, w18
-
+  bn.mulv.l.16H.acc.hi.cond w4, w4, sw0.0
 
   bn.subvm.16H         wtmp, w1, w5
   bn.addvm.16H         w1, w1, w5
   bn.mulv.16H.acc.z.lo w5, wtmp, w17
   bn.mulv.l.16H.lo     w5, w5, sw0.2
-  bn.mulv.l.16H.acc.hi w5, w5, sw0.0
-  bn.addvm.16H         w5, w5, w18
-
+  bn.mulv.l.16H.acc.hi.cond w5, w5, sw0.0
 
   bn.subvm.16H         wtmp, w2, w6
   bn.addvm.16H         w2, w2, w6
   bn.mulv.16H.acc.z.lo w6, wtmp, w17
   bn.mulv.l.16H.lo     w6, w6, sw0.2
-  bn.mulv.l.16H.acc.hi w6, w6, sw0.0
-  bn.addvm.16H         w6, w6, w18
+  bn.mulv.l.16H.acc.hi.cond w6, w6, sw0.0
 
 
   bn.subvm.16H         wtmp, w3, w7
   bn.addvm.16H         w3, w3, w7
   bn.mulv.16H.acc.z.lo w7, wtmp, w17
   bn.mulv.l.16H.lo     w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi w7, w7, sw0.0
-  bn.addvm.16H         w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond w7, w7, sw0.0
 
   /* Transpose back */
   /* First trans w8-w15 */
@@ -404,281 +372,229 @@ intt:
   bn.addvm.16H           w0, w0, w1
   bn.mulv.l.16H.acc.z.lo w1, w30, sw1.0
   bn.mulv.l.16H.lo       w1, w1, sw0.2
-  bn.mulv.l.16H.acc.hi   w1, w1, sw0.0
-  bn.addvm.16H           w1, w1, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w1, w1, sw0.0
 
   bn.subvm.16H           w30, w2, w3
   bn.addvm.16H           w2, w2, w3
   bn.mulv.l.16H.acc.z.lo w3, w30, sw1.1
   bn.mulv.l.16H.lo       w3, w3, sw0.2
-  bn.mulv.l.16H.acc.hi   w3, w3, sw0.0
-  bn.addvm.16H           w3, w3, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w3, w3, sw0.0
 
   bn.subvm.16H           w30, w4, w5
   bn.addvm.16H           w4, w4, w5
   bn.mulv.l.16H.acc.z.lo w5, w30, sw1.2
   bn.mulv.l.16H.lo       w5, w5, sw0.2
-  bn.mulv.l.16H.acc.hi   w5, w5, sw0.0
-  bn.addvm.16H           w5, w5, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w5, w5, sw0.0
 
   bn.subvm.16H           w30, w6, w7
   bn.addvm.16H           w6, w6, w7
   bn.mulv.l.16H.acc.z.lo w7, w30, sw1.3
   bn.mulv.l.16H.lo       w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi   w7, w7, sw0.0
-  bn.addvm.16H           w7, w7, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w7, w7, sw0.0
 
   bn.subvm.16H           w30, w8, w9
   bn.addvm.16H           w8, w8, w9
   bn.mulv.l.16H.acc.z.lo w9, w30, sw1.4
   bn.mulv.l.16H.lo       w9, w9, sw0.2
-  bn.mulv.l.16H.acc.hi   w9, w9, sw0.0
-  bn.addvm.16H           w9, w9, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w9, w9, sw0.0
 
   bn.subvm.16H           w30, w10, w11
   bn.addvm.16H           w10, w10, w11
   bn.mulv.l.16H.acc.z.lo w11, w30, sw1.5
   bn.mulv.l.16H.lo       w11, w11, sw0.2
-  bn.mulv.l.16H.acc.hi   w11, w11, sw0.0
-  bn.addvm.16H           w11, w11, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w11, w11, sw0.0
 
   bn.subvm.16H           w30, w12, w13
   bn.addvm.16H           w12, w12, w13
   bn.mulv.l.16H.acc.z.lo w13, w30, sw1.6
   bn.mulv.l.16H.lo       w13, w13, sw0.2
-  bn.mulv.l.16H.acc.hi   w13, w13, sw0.0
-  bn.addvm.16H           w13, w13, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w13, w13, sw0.0
 
   bn.subvm.16H           w30, w14, w15
   bn.addvm.16H           w14, w14, w15
   bn.mulv.l.16H.acc.z.lo w15, w30, sw1.7
   bn.mulv.l.16H.lo       w15, w15, sw0.2
-  bn.mulv.l.16H.acc.hi   w15, w15, sw0.0
-  bn.addvm.16H           w15, w15, w18
+  bn.mulv.l.16H.acc.hi.cond   w15, w15, sw0.0
 
   /* Layer 3, stride 32 */
   bn.subvm.16H           w30, w0, w2
   bn.addvm.16H           w0, w0, w2
   bn.mulv.l.16H.acc.z.lo w2, w30, sw1.8
   bn.mulv.l.16H.lo       w2, w2, sw0.2
-  bn.mulv.l.16H.acc.hi   w2, w2, sw0.0
-  bn.addvm.16H           w2, w2, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w2, w2, sw0.0
 
   bn.subvm.16H           w30, w1, w3
   bn.addvm.16H           w1, w1, w3
   bn.mulv.l.16H.acc.z.lo w3, w30, sw1.8
   bn.mulv.l.16H.lo       w3, w3, sw0.2
-  bn.mulv.l.16H.acc.hi   w3, w3, sw0.0
-  bn.addvm.16H           w3, w3, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w3, w3, sw0.0
 
   bn.subvm.16H           w30, w4, w6
   bn.addvm.16H           w4, w4, w6
   bn.mulv.l.16H.acc.z.lo w6, w30, sw1.9
   bn.mulv.l.16H.lo       w6, w6, sw0.2
-  bn.mulv.l.16H.acc.hi   w6, w6, sw0.0
-  bn.addvm.16H           w6, w6, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w6, w6, sw0.0
 
   bn.subvm.16H           w30, w5, w7
   bn.addvm.16H           w5, w5, w7
   bn.mulv.l.16H.acc.z.lo w7, w30, sw1.9
   bn.mulv.l.16H.lo       w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi   w7, w7, sw0.0
-  bn.addvm.16H           w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond   w7, w7, sw0.0
 
   bn.subvm.16H           w30, w8, w10
   bn.addvm.16H           w8, w8, w10
   bn.mulv.l.16H.acc.z.lo w10, w30, sw1.10
   bn.mulv.l.16H.lo       w10, w10, sw0.2
-  bn.mulv.l.16H.acc.hi   w10, w10, sw0.0
-  bn.addvm.16H           w10, w10, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w10, w10, sw0.0
 
   bn.subvm.16H           w30, w9, w11
   bn.addvm.16H           w9, w9, w11
   bn.mulv.l.16H.acc.z.lo w11, w30, sw1.10
   bn.mulv.l.16H.lo       w11, w11, sw0.2
-  bn.mulv.l.16H.acc.hi   w11, w11, sw0.0
-  bn.addvm.16H           w11, w11, w18
+  bn.mulv.l.16H.acc.hi.cond   w11, w11, sw0.0
 
   bn.subvm.16H           w30, w12, w14
   bn.addvm.16H           w12, w12, w14
   bn.mulv.l.16H.acc.z.lo w14, w30, sw1.11
   bn.mulv.l.16H.lo       w14, w14, sw0.2
-  bn.mulv.l.16H.acc.hi   w14, w14, sw0.0
-  bn.addvm.16H           w14, w14, w18
+  bn.mulv.l.16H.acc.hi.cond   w14, w14, sw0.0
 
   bn.subvm.16H           w30, w13, w15
   bn.addvm.16H           w13, w13, w15
   bn.mulv.l.16H.acc.z.lo w15, w30, sw1.11
   bn.mulv.l.16H.lo       w15, w15, sw0.2
-  bn.mulv.l.16H.acc.hi   w15, w15, sw0.0
-  bn.addvm.16H           w15, w15, w18
+  bn.mulv.l.16H.acc.hi.cond   w15, w15, sw0.0
 
   /* Layer 2, stride 64 */
   bn.subvm.16H           w30, w0, w4
   bn.addvm.16H           w0, w0, w4
   bn.mulv.l.16H.acc.z.lo w4, w30, sw1.12
   bn.mulv.l.16H.lo       w4, w4, sw0.2
-  bn.mulv.l.16H.acc.hi   w4, w4, sw0.0
-  bn.addvm.16H           w4, w4, w18
-
+  bn.mulv.l.16H.acc.hi.cond   w4, w4, sw0.0  
 
   bn.subvm.16H           w30, w1, w5
   bn.addvm.16H           w1, w1, w5
   bn.mulv.l.16H.acc.z.lo w5, w30, sw1.12
   bn.mulv.l.16H.lo       w5, w5, sw0.2
-  bn.mulv.l.16H.acc.hi   w5, w5, sw0.0
-  bn.addvm.16H           w5, w5, w18
+  bn.mulv.l.16H.acc.hi.cond   w5, w5, sw0.0
 
   bn.subvm.16H           w30, w2, w6
   bn.addvm.16H           w2, w2, w6
   bn.mulv.l.16H.acc.z.lo w6, w30, sw1.12
   bn.mulv.l.16H.lo       w6, w6, sw0.2
-  bn.mulv.l.16H.acc.hi   w6, w6, sw0.0
-  bn.addvm.16H           w6, w6, w18
+  bn.mulv.l.16H.acc.hi.cond   w6, w6, sw0.0
 
   bn.subvm.16H           w30, w3, w7
   bn.addvm.16H           w3, w3, w7
   bn.mulv.l.16H.acc.z.lo w7, w30, sw1.12
   bn.mulv.l.16H.lo       w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi   w7, w7, sw0.0
-  bn.addvm.16H           w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond   w7, w7, sw0.0
 
   bn.subvm.16H           w30, w8, w12
   bn.addvm.16H           w8, w8, w12
   bn.mulv.l.16H.acc.z.lo w12, w30, sw1.13
   bn.mulv.l.16H.lo       w12, w12, sw0.2
-  bn.mulv.l.16H.acc.hi   w12, w12, sw0.0
-  bn.addvm.16H           w12, w12, w18
+  bn.mulv.l.16H.acc.hi.cond   w12, w12, sw0.0
 
   bn.subvm.16H           w30, w9, w13
   bn.addvm.16H           w9, w9, w13
   bn.mulv.l.16H.acc.z.lo w13, w30, sw1.13
   bn.mulv.l.16H.lo       w13, w13, sw0.2
-  bn.mulv.l.16H.acc.hi   w13, w13, sw0.0
-  bn.addvm.16H           w13, w13, w18
+  bn.mulv.l.16H.acc.hi.cond   w13, w13, sw0.0
 
   bn.subvm.16H           w30, w10, w14
   bn.addvm.16H           w10, w10, w14
   bn.mulv.l.16H.acc.z.lo w14, w30, sw1.13
   bn.mulv.l.16H.lo       w14, w14, sw0.2
-  bn.mulv.l.16H.acc.hi   w14, w14, sw0.0
-  bn.addvm.16H           w14, w14, w18
+  bn.mulv.l.16H.acc.hi.cond   w14, w14, sw0.0
 
   bn.subvm.16H           w30, w11, w15
   bn.addvm.16H           w11, w11, w15
   bn.mulv.l.16H.acc.z.lo w15, w30, sw1.13
   bn.mulv.l.16H.lo       w15, w15, sw0.2
-  bn.mulv.l.16H.acc.hi   w15, w15, sw0.0
-  bn.addvm.16H           w15, w15, w18
+  bn.mulv.l.16H.acc.hi.cond   w15, w15, sw0.0
 
   /* Layer 1, stride 128 */
   bn.subvm.16H           w30, w0, w8
   bn.addvm.16H           w0, w0, w8
   bn.mulv.l.16H.acc.z.lo w8, w30, sw1.14
   bn.mulv.l.16H.lo       w8, w8, sw0.2
-  bn.mulv.l.16H.acc.hi   w8, w8, sw0.0
-  bn.addvm.16H           w8, w8, w18
+  bn.mulv.l.16H.acc.hi.cond   w8, w8, sw0.0
 
   bn.subvm.16H           w30, w1, w9
   bn.addvm.16H           w1, w1, w9
   bn.mulv.l.16H.acc.z.lo w9, w30, sw1.14
   bn.mulv.l.16H.lo       w9, w9, sw0.2
-  bn.mulv.l.16H.acc.hi   w9, w9, sw0.0
-  bn.addvm.16H           w9, w9, w18
+  bn.mulv.l.16H.acc.hi.cond   w9, w9, sw0.0
 
   bn.subvm.16H           w30, w2, w10
   bn.addvm.16H           w2, w2, w10
   bn.mulv.l.16H.acc.z.lo w10, w30, sw1.14
   bn.mulv.l.16H.lo       w10, w10, sw0.2
-  bn.mulv.l.16H.acc.hi   w10, w10, sw0.0
-  bn.addvm.16H           w10, w10, w18
+  bn.mulv.l.16H.acc.hi.cond   w10, w10, sw0.0
 
   bn.subvm.16H           w30, w3, w11
   bn.addvm.16H           w3, w3, w11
   bn.mulv.l.16H.acc.z.lo w11, w30, sw1.14
   bn.mulv.l.16H.lo       w11, w11, sw0.2
-  bn.mulv.l.16H.acc.hi   w11, w11, sw0.0
-  bn.addvm.16H           w11, w11, w18
+  bn.mulv.l.16H.acc.hi.cond   w11, w11, sw0.0
 
   bn.subvm.16H           w30, w4, w12
   bn.addvm.16H           w4, w4, w12
   bn.mulv.l.16H.acc.z.lo w12, w30, sw1.14
   bn.mulv.l.16H.lo       w12, w12, sw0.2
-  bn.mulv.l.16H.acc.hi   w12, w12, sw0.0
-  bn.addvm.16H           w12, w12, w18
+  bn.mulv.l.16H.acc.hi.cond   w12, w12, sw0.0
 
   bn.subvm.16H           w30, w5, w13
   bn.addvm.16H           w5, w5, w13
   bn.mulv.l.16H.acc.z.lo w13, w30, sw1.14
   bn.mulv.l.16H.lo       w13, w13, sw0.2
-  bn.mulv.l.16H.acc.hi   w13, w13, sw0.0
-  bn.addvm.16H           w13, w13, w18
+  bn.mulv.l.16H.acc.hi.cond   w13, w13, sw0.0
 
   bn.subvm.16H           w30, w6, w14
   bn.addvm.16H           w6, w6, w14
   bn.mulv.l.16H.acc.z.lo w14, w30, sw1.14
   bn.mulv.l.16H.lo       w14, w14, sw0.2
-  bn.mulv.l.16H.acc.hi   w14, w14, sw0.0
-  bn.addvm.16H           w14, w14, w18
+  bn.mulv.l.16H.acc.hi.cond   w14, w14, sw0.0
 
   bn.subvm.16H           w30, w7, w15
   bn.addvm.16H           w7, w7, w15
   bn.mulv.l.16H.acc.z.lo w15, w30, sw1.14
   bn.mulv.l.16H.lo       w15, w15, sw0.2
-  bn.mulv.l.16H.acc.hi   w15, w15, sw0.0
-  bn.addvm.16H           w15, w15, w18
+  bn.mulv.l.16H.acc.hi.cond   w15, w15, sw0.0
 
   /* Multiply n^{-1} */
   bn.mulv.l.16H.acc.z.lo w0, w0, sw1.15
   bn.mulv.l.16H.lo       w0, w0, sw0.2
-  bn.mulv.l.16H.acc.hi   w0, w0, sw0.0
-  bn.addvm.16H           w0, w0, w18
+  bn.mulv.l.16H.acc.hi.cond   w0, w0, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w1, w1, sw1.15
   bn.mulv.l.16H.lo       w1, w1, sw0.2
-  bn.mulv.l.16H.acc.hi   w1, w1, sw0.0
-  bn.addvm.16H           w1, w1, w18
+  bn.mulv.l.16H.acc.hi.cond   w1, w1, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w2, w2, sw1.15
   bn.mulv.l.16H.lo       w2, w2, sw0.2
-  bn.mulv.l.16H.acc.hi   w2, w2, sw0.0
-  bn.addvm.16H           w2, w2, w18
+  bn.mulv.l.16H.acc.hi.cond   w2, w2, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w3, w3, sw1.15
   bn.mulv.l.16H.lo       w3, w3, sw0.2
-  bn.mulv.l.16H.acc.hi   w3, w3, sw0.0
-  bn.addvm.16H           w3, w3, w18
+  bn.mulv.l.16H.acc.hi.cond   w3, w3, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w4, w4, sw1.15
   bn.mulv.l.16H.lo       w4, w4, sw0.2
-  bn.mulv.l.16H.acc.hi   w4, w4, sw0.0
-  bn.addvm.16H           w4, w4, w18
+  bn.mulv.l.16H.acc.hi.cond   w4, w4, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w5, w5, sw1.15
   bn.mulv.l.16H.lo       w5, w5, sw0.2
-  bn.mulv.l.16H.acc.hi   w5, w5, sw0.0
-  bn.addvm.16H           w5, w5, w18
+  bn.mulv.l.16H.acc.hi.cond   w5, w5, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w6, w6, sw1.15
   bn.mulv.l.16H.lo       w6, w6, sw0.2
-  bn.mulv.l.16H.acc.hi   w6, w6, sw0.0
-  bn.addvm.16H           w6, w6, w18
+  bn.mulv.l.16H.acc.hi.cond   w6, w6, sw0.0
 
   bn.mulv.l.16H.acc.z.lo w7, w7, sw1.15
   bn.mulv.l.16H.lo       w7, w7, sw0.2
-  bn.mulv.l.16H.acc.hi   w7, w7, sw0.0
-  bn.addvm.16H           w7, w7, w18
+  bn.mulv.l.16H.acc.hi.cond   w7, w7, sw0.0
 
   /* Store output */
   bn.sid x4, 0(x12++)
