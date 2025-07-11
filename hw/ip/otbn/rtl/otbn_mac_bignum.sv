@@ -10,9 +10,7 @@ module otbn_mac_bignum
   input logic clk_i,
   input logic rst_ni,
 
-/* verilator lint_off UNUSEDSIGNAL */
   input mac_bignum_operation_t operation_i,
-/* verilator lint_on UNUSEDSIGNAL */
   input logic                  mac_en_i,
   input logic                  mac_commit_i,
 
@@ -149,9 +147,7 @@ module otbn_mac_bignum
   logic [WLEN-1:0]                acc_no_intg_d;
   logic [WLEN-1:0]                acc_no_intg_q;
   logic [ExtWLEN-1:0]             acc_intg_calc;
-/* verilator lint_off UNUSEDSIGNAL */
   logic [2*BaseWordsPerWLEN-1:0]  acc_intg_err;
-/* verilator lint_on UNUSEDSIGNAL */
   for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : g_acc_words
     prim_secded_inv_39_32_enc i_secded_enc (
       .data_i (acc_no_intg_d[i_word*32+:32]),
@@ -171,7 +167,7 @@ module otbn_mac_bignum
   // current operation does not zero the accumulation register.
   logic acc_used;
   assign acc_used = mac_en_i & ~operation_i.zero_acc;
-  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[BaseWordsPerWLEN-1:0]);
+  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[2*BaseWordsPerWLEN-1:0]);
 
   // Accumulator logic
 

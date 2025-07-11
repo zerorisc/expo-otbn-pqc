@@ -187,7 +187,7 @@ module unified_mul #(
     // -- 16x16 results --
     always_comb begin
       result_16 = '0;
-      for (int i = 0; i < NHALF; i++) begin : gen_output_16
+      for (int i = 0; i < NSING; i++) begin : gen_output_16
         if (word_mode == MODE_16)
           result_16[2*HLEN*i +: 2*HLEN] = products[i];
       end
