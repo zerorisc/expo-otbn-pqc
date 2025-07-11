@@ -1245,10 +1245,8 @@
                  .8S.even.acc.hi, "", .8S.odd.acc.hi,
                  .16H.acc.z.hi,
                  .8S.even.acc.z.hi, "", .8S.odd.acc.z.hi,
-                 "", "", "", "",
-                 .16H.hi.cond, .8S.even.hi.cond, "", .8S.odd.hi.cond,
-                 .16H.acc.hi.cond, .8S.even.acc.hi.cond, "", .8S.odd.acc.hi.cond,
-                 .16H.acc.z.hi.cond, .8S.even.acc.z.hi.cond, "", .8S.odd.acc.z.hi.cond,
+                 "", "", "", "", "", "", "", "",
+                 "", "", "", "", "", "", "", "",
                  "", "", "", ""
                  )
   glued-ops: true
@@ -1352,10 +1350,8 @@
                  .8S.even.acc.hi, "", .8S.odd.acc.hi,
                  .16H.acc.z.hi,
                  .8S.even.acc.z.hi, "", .8S.odd.acc.z.hi,
-                 "", "", "", "",
-                 .16H.hi.cond, .8S.even.hi.cond, "", .8S.odd.hi.cond,
-                 .16H.acc.hi.cond, .8S.even.acc.hi.cond, "", .8S.odd.acc.hi.cond,
-                 .16H.acc.z.hi.cond, .8S.even.acc.z.hi.cond, "", .8S.odd.acc.z.hi.cond,
+                 "", "", "", "", "", "", "", "",
+                 "", "", "", "", "", "", "", "",
                  "", "", "", ""
                  )
   glued-ops: true

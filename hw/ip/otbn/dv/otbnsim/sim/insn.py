@@ -1687,11 +1687,6 @@ class BNMULV(OTBNInsn):
                 wrd_v[i] = prodi & mask
             elif exec_mode == 2:
                 wrd_v[i] = (prodi >> size) & mask
-            elif exec_mode == 3:
-                hi = (prodi >> size) & mask
-                if hi >= wrs2_v[i]:
-                    hi -= wrs2_v[i]
-                wrd_v[i] = hi
 
             eprint(f"wrd_v[{i}] = {hex(wrd_v[i])}")
 
@@ -1795,11 +1790,6 @@ class BNMULVL(OTBNInsn):
                 wrd_v[i] = prodi & mask
             elif exec_mode == 2:
                 wrd_v[i] = (prodi >> size) & mask
-            elif exec_mode == 3:
-                hi = (prodi >> size) & mask
-                if hi >= wrs2_v[i]:
-                    hi -= wrs2_v[i]
-                wrd_v[i] = hi
 
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
