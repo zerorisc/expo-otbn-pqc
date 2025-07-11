@@ -1,7 +1,7 @@
 from random import randint, seed
 from pathlib import Path
 
-path = Path('../Documents/git/private/expo-otbn-pqc/sw/otbn/crypto/tests/bnmulv_test.exp2')
+path = Path('/home/phamhnh/Downloads/expo-otbn-pqc/sw/otbn/crypto/tests/bnmulv_test.exp2')
 
 N2 = 16
 N = 8
@@ -148,7 +148,7 @@ def test_bnmulv_8S(data, addr):
     tmp_odd_lo = [(tmp_odd[i] & MASK32) << WSIZE for i in range(N // 2)]
     tmp_odd_hi = [((tmp_odd[i] >> WSIZE) & MASK32) << WSIZE for i in range(N // 2)]
 
-    acc = [0] * N
+    acc = [0] * (N // 2)
     res = [0] * N
 
     # bn.mulv.8S.even
@@ -187,39 +187,21 @@ def test_bnmulv_8S(data, addr):
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
 
-    # bn.mulv.8S.even.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_even_hi)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-
-    # bn.mulv.8S.odd.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_odd_hi)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-
     # bn.mulv.8S.even.acc
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
+    # acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
     # bn.mulv.8S.odd.acc
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    # acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -227,8 +209,8 @@ def test_bnmulv_8S(data, addr):
 
     # bn.mulv.8S.even.acc.lo
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [xi & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [xi & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -237,8 +219,8 @@ def test_bnmulv_8S(data, addr):
 
     # bn.mulv.8S.odd.acc.lo
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [(xi & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [(xi & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 1)
@@ -247,8 +229,8 @@ def test_bnmulv_8S(data, addr):
 
     # bn.mulv.8S.even.acc.hi
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -257,47 +239,19 @@ def test_bnmulv_8S(data, addr):
 
     # bn.mulv.8S.odd.acc.hi
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.even.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.odd.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-            res_tmp[i] -= b[i]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
     # bn.mulv.8S.even.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -305,9 +259,9 @@ def test_bnmulv_8S(data, addr):
 
     # bn.mulv.8S.odd.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -316,8 +270,8 @@ def test_bnmulv_8S(data, addr):
     # bn.mulv.8S.even.acc.z.lo
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [xi & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [xi & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -327,8 +281,8 @@ def test_bnmulv_8S(data, addr):
     # bn.mulv.8S.odd.acc.z.lo
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [(xi & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [(xi & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 1)
@@ -338,8 +292,8 @@ def test_bnmulv_8S(data, addr):
     # bn.mulv.8S.even.acc.z.hi
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -349,40 +303,10 @@ def test_bnmulv_8S(data, addr):
     # bn.mulv.8S.odd.acc.z.hi
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.even.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[i]:
-             res_tmp[i] -= b[i]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.8S.odd.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[i]:
-             res_tmp[i] -= b[i]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
@@ -399,7 +323,7 @@ def test_bnmulvl_8S(data, addr):
     tmp_odd_lo = [(tmp_odd[i] & MASK32) << WSIZE for i in range(N // 2)]
     tmp_odd_hi = [((tmp_odd[i] >> WSIZE) & MASK32) << WSIZE for i in range(N // 2)]
 
-    acc = [0] * N
+    acc = [0] * (N // 2)
     res = [0] * N
 
     # bn.mulv.l.8S.even
@@ -438,39 +362,19 @@ def test_bnmulvl_8S(data, addr):
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
 
-    # bn.mulv.l.8S.even.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_even_hi)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-
-    # bn.mulv.l.8S.odd.hi.cond
-    res = a.copy()
-    res_tmp = split_hilo_32(tmp_odd_hi)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-
     # bn.mulv.l.8S.even.acc
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
     # bn.mulv.l.8S.odd.acc
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -478,8 +382,8 @@ def test_bnmulvl_8S(data, addr):
 
     # bn.mulv.l.8S.even.acc.lo
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [xi & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [xi & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -488,8 +392,8 @@ def test_bnmulvl_8S(data, addr):
 
     # bn.mulv.l.8S.odd.acc.lo
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [(xi & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [(xi & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 1)
@@ -498,8 +402,8 @@ def test_bnmulvl_8S(data, addr):
 
     # bn.mulv.l.8S.even.acc.hi
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -508,47 +412,19 @@ def test_bnmulvl_8S(data, addr):
 
     # bn.mulv.l.8S.odd.acc.hi
     res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.even.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.odd.acc.hi.cond
-    res = a.copy()
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-            res_tmp[i] -= b[5]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
 
     # bn.mulv.l.8S.even.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -556,9 +432,9 @@ def test_bnmulvl_8S(data, addr):
 
     # bn.mulv.l.8S.odd.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
 
-    res_tmp = split_hilo_32(acc_res)
+    res_tmp = split_hilo_32(acc)
     res = assign_res(res_tmp, res, 0)
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
@@ -567,8 +443,8 @@ def test_bnmulvl_8S(data, addr):
     # bn.mulv.l.8S.even.acc.z.lo
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [xi & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [xi & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -578,8 +454,8 @@ def test_bnmulvl_8S(data, addr):
     # bn.mulv.l.8S.odd.acc.z.lo
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [(xi & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [(xi & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 1)
@@ -589,8 +465,8 @@ def test_bnmulvl_8S(data, addr):
     # bn.mulv.l.8S.even.acc.z.hi
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N // 2)]
+    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
     res = assign_res(res_tmp, res, 0)
@@ -600,40 +476,10 @@ def test_bnmulvl_8S(data, addr):
     # bn.mulv.l.8S.odd.acc.z.hi
     res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N // 2)]
+    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc]
 
     res_tmp = split_hilo_32(acc_res)
-    res = assign_res(res_tmp, res, 1)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.even.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_even, acc, 0)
-    acc_res = [(xi >> WSIZE) & MASK32 for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(0, N, 2):
-        if res_tmp[i] >= b[5]:
-             res_tmp[i] -= b[5]
-
-    res = assign_res(res_tmp, res, 0)
-    data, addr = write_32(res, data, addr)
-    data, addr = write_64(acc, data, addr)
-
-    # bn.mulv.l.8S.odd.acc.z.hi.cond
-    res = a.copy()
-    acc = empty_acc(acc)
-    acc, acc_res = assign_acc(tmp_odd, acc, 1)
-    acc_res = [((xi >> WSIZE) & MASK32) << WSIZE for xi in acc_res]
-
-    res_tmp = split_hilo_32(acc_res)
-    for i in range(1, N, 2):
-        if res_tmp[i] >= b[5]:
-             res_tmp[i] -= b[5]
-
     res = assign_res(res_tmp, res, 1)
     data, addr = write_32(res, data, addr)
     data, addr = write_64(acc, data, addr)
@@ -642,107 +488,174 @@ def test_bnmulvl_8S(data, addr):
 
 
 def test_bnmulv_16H(data, addr):
-    tmp = [a[i] * b[i] for i in range(N2)]
-    tmp_lo = [tmp[i] & MASK16 for i in range(N2)]
-    tmp_hi = [(tmp[i] >> HSIZE) & MASK16 for i in range(N2)]
+    tmp_even = [a[i] * b[i] for i in range(0, N2, 2)]
+    tmp_even_lo = [tmp_even[i] & MASK16 for i in range(N2 // 2)]
+    tmp_even_hi = [(tmp_even[i] >> HSIZE) & MASK16 for i in range(N2 // 2)]
 
-    tmp_even = [tmp[i] for i in range(0, N2, 2)]
-    tmp_odd = [tmp[i] for i in range(1, N2, 2)]
+    tmp_odd = [a[i] * b[i] for i in range(1, N2, 2)]
+    tmp_odd_lo = [(tmp_odd[i] & MASK16) << HSIZE for i in range(N2 // 2)]
+    tmp_odd_hi = [((tmp_odd[i] >> HSIZE) & MASK16) << HSIZE for i in range(N2 // 2)]
 
-    acc = [0] * N2
+    acc = [0] * (N2 // 2)
     res = [0] * N2
 
     # bn.mulv.16H.even
-    res = split_hilo_16(tmp_even)
+    res_tmp = split_hilo_16(tmp_even)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
     # bn.mulv.16H.odd
-    res = split_hilo_16(tmp_odd)
+    res_tmp = split_hilo_16(tmp_odd)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.16H.lo
-    res = tmp_lo
+    # bn.mulv.16H.even.lo
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_even_lo)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.16H.hi
-    res = tmp_hi
+    # bn.mulv.16H.odd.lo
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_odd_lo)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.16H.hi.cond
-    res = tmp_hi
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
+    # bn.mulv.16H.even.hi
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_even_hi)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+
+    # bn.mulv.16H.odd.hi
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_odd_hi)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
     # bn.mulv.16H.even.acc
-    acc, acc_res = assign_acc_16(tmp_even, acc, 0)
-    res = split_hilo_16(acc_res)
+    # acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.16H.odd.acc
-    acc, acc_res = assign_acc_16(tmp_odd, acc, 1)
-    res = split_hilo_16(acc_res)
+    # acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.lo
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [xi & MASK16 for xi in acc_res]
+    # bn.mulv.16H.even.acc.lo
+    res = a.copy()
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [xi & MASK32 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.hi
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
+    # bn.mulv.16H.odd.acc.lo
+    res = a.copy()
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [(xi & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.hi.cond
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
+    # bn.mulv.16H.even.acc.hi
+    res = a.copy()
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [(xi >> HSIZE) & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+    data, addr = write_32(acc, data, addr)
+
+    # bn.mulv.16H.odd.acc.hi
+    res = a.copy()
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [((xi >> HSIZE) & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.16H.even.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp_even, acc, 0)
-    res = split_hilo_16(acc_res)
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.16H.odd.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp_odd, acc, 1)
-    res = split_hilo_16(acc_res)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.z.lo
+    # bn.mulv.16H.even.acc.z.lo
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [xi & MASK16 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [xi & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.z.hi
+    # bn.mulv.16H.odd.acc.z.lo
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [(xi & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.16H.acc.z.hi.cond
+    # bn.mulv.16H.even.acc.z.hi
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[i]:
-            res[i] -= b[i]
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [(xi >> HSIZE) & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+    data, addr = write_32(acc, data, addr)
+
+    # bn.mulv.16H.odd.acc.z.hi
+    res = a.copy()
+    acc = empty_acc(acc)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [((xi >> HSIZE) & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
@@ -750,107 +663,174 @@ def test_bnmulv_16H(data, addr):
 
 
 def test_bnmulvl_16H(data, addr):
-    tmp = [a[i] * b[3] for i in range(N2)]
-    tmp_lo = [tmp[i] & MASK16 for i in range(N2)]
-    tmp_hi = [(tmp[i] >> HSIZE) & MASK16 for i in range(N2)]
+    tmp_even = [a[i] * b[3] for i in range(0, N2, 2)]
+    tmp_even_lo = [tmp_even[i] & MASK16 for i in range(N2 // 2)]
+    tmp_even_hi = [(tmp_even[i] >> HSIZE) & MASK16 for i in range(N2 // 2)]
 
-    tmp_even = [tmp[i] for i in range(0, N2, 2)]
-    tmp_odd = [tmp[i] for i in range(1, N2, 2)]
+    tmp_odd = [a[i] * b[3] for i in range(1, N2, 2)]
+    tmp_odd_lo = [(tmp_odd[i] & MASK16) << HSIZE for i in range(N2 // 2)]
+    tmp_odd_hi = [((tmp_odd[i] >> HSIZE) & MASK16) << HSIZE for i in range(N2 // 2)]
 
-    acc = [0] * N2
+    acc = [0] * (N2 // 2)
     res = [0] * N2
 
     # bn.mulv.l.16H.even
-    res = split_hilo_16(tmp_even)
+    res_tmp = split_hilo_16(tmp_even)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
     # bn.mulv.l.16H.odd
-    res = split_hilo_16(tmp_odd)
+    res_tmp = split_hilo_16(tmp_odd)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.l.16H.lo
-    res = tmp_lo
+    # bn.mulv.l.16H.even.lo
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_even_lo)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.l.16H.hi
-    res = tmp_hi
+    # bn.mulv.l.16H.odd.lo
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_odd_lo)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
-    # bn.mulv.l.16H.hi.cond
-    res = tmp_hi
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
+    # bn.mulv.l.16H.even.hi
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_even_hi)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+
+    # bn.mulv.l.16H.odd.hi
+    res = a.copy()
+    res_tmp = split_hilo_16(tmp_odd_hi)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
 
     # bn.mulv.l.16H.even.acc
-    acc, acc_res = assign_acc_16(tmp_even, acc, 0)
-    res = split_hilo_16(acc_res)
+    # acc, acc_res = assign_acc(tmp_even, acc, 0)
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.l.16H.odd.acc
-    acc, acc_res = assign_acc_16(tmp_odd, acc, 1)
-    res = split_hilo_16(acc_res)
+    # acc, acc_res = assign_acc(tmp_odd, acc, 1)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.lo
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [xi & MASK16 for xi in acc_res]
+    # bn.mulv.l.16H.even.acc.lo
+    res = a.copy()
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [xi & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.hi
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
+    # bn.mulv.l.16H.odd.acc.lo
+    res = a.copy()
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [(xi & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.hi.cond
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
+    # bn.mulv.l.16H.even.acc.hi
+    res = a.copy()
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [(xi >> HSIZE) & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+    data, addr = write_32(acc, data, addr)
+
+    # bn.mulv.l.16H.odd.acc.hi
+    res = a.copy()
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [((xi >> HSIZE) & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.l.16H.even.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp_even, acc, 0)
-    res = split_hilo_16(acc_res)
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
     # bn.mulv.l.16H.odd.acc.z
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp_odd, acc, 1)
-    res = split_hilo_16(acc_res)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+
+    res_tmp = split_hilo_16(acc)
+    res = assign_res(res_tmp, res, 0)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.z.lo
+    # bn.mulv.l.16H.even.acc.z.lo
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [xi & MASK16 for xi in acc_res]
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [xi & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.z.hi
+    # bn.mulv.l.16H.odd.acc.z.lo
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [(xi & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
-    # bn.mulv.l.16H.acc.z.hi.cond
+    # bn.mulv.l.16H.even.acc.z.hi
+    res = a.copy()
     acc = empty_acc(acc)
-    acc, acc_res = assign_acc_16(tmp, acc, 0, 1)
-    res = [(xi >> HSIZE) & MASK16 for xi in acc_res]
-    for i in range(N2):
-        if res[i] >= b[3]:
-            res[i] -= b[3]
+    acc = [acc[i] + tmp_even[i] for i in range(N2 // 2)]
+    acc_res = [(xi >> HSIZE) & MASK16 for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 0)
+    data, addr = write_16(res, data, addr)
+    data, addr = write_32(acc, data, addr)
+
+    # bn.mulv.l.16H.odd.acc.z.hi
+    res = a.copy()
+    acc = empty_acc(acc)
+    acc = [acc[i] + tmp_odd[i] for i in range(N2 // 2)]
+    acc_res = [((xi >> HSIZE) & MASK16) << HSIZE for xi in acc]
+
+    res_tmp = split_hilo_16(acc_res)
+    res = assign_res(res_tmp, res, 1)
     data, addr = write_16(res, data, addr)
     data, addr = write_32(acc, data, addr)
 
