@@ -17,11 +17,11 @@ module unified_mul #(
     input  logic [1:0]             data_type_64_shift,
     output logic [31:0]            scalar32,
     output logic [15:0]            scalar16,
-    output logic [2*WLEN-1:0]      result
+    output logic [WLEN-1:0]      result
 );
 
     localparam int NHALF = WLEN / HLEN;  // 16
-//    localparam int NSING = WLEN / SLEN;  // 8
+    localparam int NSING = WLEN / SLEN;  // 8
     localparam int NDOUB = WLEN / DLEN;  // 4
 
     // -------------------------------------------------------------------
@@ -64,14 +64,14 @@ module unified_mul #(
       unique case (word_mode)
         MODE_16: begin
           if (exec_mode == 2'b00) begin
-            for (int i = 0; i < NHALF; i+=2) begin
+            for (int i = 0; i < NSING; i++) begin
               if (half_sel == 1'b0) begin
-                A_composed[i*HLEN +: HLEN] = A[HLEN*i +: HLEN];
-                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
+                A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 0) +: HLEN];
+                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 0) +: HLEN] : scalar16;
               end
               else begin
-                A_composed[(i+1)*HLEN +: HLEN] = A[(i+1)*HLEN +: HLEN];
-                B_composed[(i+1)*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[(i+1)*HLEN +: HLEN] : scalar16;
+                A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 1) +: HLEN];
+                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 1) +: HLEN] : scalar16;
               end
             end
           end
@@ -180,9 +180,9 @@ module unified_mul #(
     // -------------------------------------------------------------------
     // Output Reconstruction
     // -------------------------------------------------------------------
-    logic [2*HLEN*NHALF-1:0] result_16;
-    logic [2*SLEN*NDOUB-1:0] result_32;
-    logic [2*DLEN-1:0]       result_64;
+    logic [255:0] result_16;
+    logic [255:0] result_32;
+    logic [127:0] result_64;
 
     // -- 16x16 results --
     always_comb begin
@@ -236,7 +236,7 @@ module unified_mul #(
             2'd0: result[  0 +: 128] = result_64;
             2'd1: result[ 64 +: 128] = result_64;
             2'd2: result[128 +: 128] = result_64;
-            2'd3: result[192 +: 128] = result_64;
+            2'd3: result[192 +:  64] = result_64[63:0];
           endcase
         end
         MODE_32: begin
