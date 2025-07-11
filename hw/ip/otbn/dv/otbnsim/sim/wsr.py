@@ -1082,7 +1082,6 @@ class WSRFile:
         self.RND = RandWSR('RND', ext_regs)
         self.URND = URNDWSR('URND')
         self.ACC = DumbWSR('ACC')
-        self.ACCH = DumbWSR('ACCH')
         self.KeyS0L = KeyWSR('KeyS0L', 0, self.KeyS0)
         self.KeyS0H = KeyWSR('KeyS0H', 256, self.KeyS0)
         self.KeyS1L = KeyWSR('KeyS1L', 0, self.KeyS1)
@@ -1103,9 +1102,8 @@ class WSRFile:
             7: self.KeyS1H,
             8: self.KMAC_CFG,
             9: self.KMAC_MSG,
-            10: self.KMAC_DIGEST,
-            11: self.ACCH,
-            }
+            10: self.KMAC_DIGEST
+        }
 
     def on_start(self) -> None:
         '''Called at the start of an operation
@@ -1149,7 +1147,6 @@ class WSRFile:
         self.RND.commit()
         self.URND.commit()
         self.ACC.commit()
-        self.ACCH.commit()
         self.KeyS0.commit()
         self.KeyS1.commit()
         self.KMAC_MSG.commit()
@@ -1161,7 +1158,6 @@ class WSRFile:
         self.RND.abort()
         self.URND.abort()
         self.ACC.abort()
-        self.ACCH.abort()
         # We commit changes to the sideloaded keys from outside, even if the
         # instruction itself gets aborted.
         self.KeyS0.commit()
@@ -1175,7 +1171,6 @@ class WSRFile:
         ret += self.MOD.changes()
         ret += self.RND.changes()
         ret += self.ACC.changes()
-        ret += self.ACCH.changes()
         ret += self.KeyS0.changes()
         ret += self.KeyS1.changes()
         # Commented out until we implement the KMAC interface.
@@ -1193,6 +1188,5 @@ class WSRFile:
     def wipe(self) -> None:
         self.MOD.write_invalid()
         self.ACC.write_invalid()
-        self.ACCH.write_invalid()
         self.KMAC_MSG.write_invalid()
         self.KMAC_DIGEST.write_invalid()
