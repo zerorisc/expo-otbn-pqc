@@ -118,12 +118,8 @@ module otbn_mac_bignum
 
   logic [2*WLEN-1:0] unified_result;
 
-//`define COND_SUB
-
-`ifdef COND_SUB
   logic [31:0] scalar32;
   logic [15:0] scalar16;
-`endif
 
   unified_mul mul (
     .word_mode({operation_i.mulv, operation_i.data_type}),            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
@@ -137,13 +133,8 @@ module otbn_mac_bignum
     .A(operand_a_blanked),
     .B(operand_b_blanked),
     .data_type_64_shift(operation_i.pre_acc_shift_imm),
-`ifdef COND_SUB
     .scalar32(scalar32),
     .scalar16(scalar16),
-`else
-    .scalar32(),
-    .scalar16(),
-`endif
     .result(unified_result)
   );
 
@@ -367,14 +358,11 @@ module otbn_mac_bignum
 
   logic [WLEN-1:0] pre_cond;
 
-`ifdef COND_SUB
   logic [WLEN-1:0] cond_sub_B;
-`endif
 
   always_comb begin
-`ifdef COND_SUB
     cond_sub_B = 256'b0;
-`endif
+
     case (operation_i.mulv)
        1'b0 : begin
          pre_cond = adder_result[WLEN-1:0];
@@ -447,7 +435,6 @@ module otbn_mac_bignum
                                            operand_a_blanked[ 96+:32], adder_result[160+:32],
                                            operand_a_blanked[ 32+:32], adder_result[ 32+:32]};
 
-`ifdef COND_SUB
                      if (operation_i.exec_mode == 2'b11) begin
                        case (operation_i.lane_mode)
                          1'b0: begin
@@ -464,14 +451,12 @@ module otbn_mac_bignum
                          end
                        endcase
                      end
-`endif
                    end
                    1'b1: begin
                      pre_cond = {adder_result[416+64+:32], operand_a_blanked[192+:32],
                                            adder_result[288+64+:32], operand_a_blanked[128+:32],
                                            adder_result[160+64+:32], operand_a_blanked[ 64+:32],
                                            adder_result[ 32+64+:32], operand_a_blanked[  0+:32]};
-`ifdef COND_SUB
                      if (operation_i.exec_mode == 2'b11) begin
                        case (operation_i.lane_mode)
                          1'b0: begin
@@ -488,7 +473,6 @@ module otbn_mac_bignum
                          end
                        endcase
                      end
-`endif
                    end
                  endcase
                end                                                             
@@ -501,7 +485,6 @@ module otbn_mac_bignum
                                        adder_result[176+:16], adder_result[144+:16],
                                        adder_result[112+:16], adder_result[ 80+:16],
                                        adder_result[ 48+:16], adder_result[ 16+:16]};
-`ifdef COND_SUB
                  if (operation_i.exec_mode == 2'b11) begin
                    case (operation_i.lane_mode)
                      1'b0: begin
@@ -516,7 +499,6 @@ module otbn_mac_bignum
                      end
                    endcase
                  end
-`endif
                end
                default: begin
                  pre_cond = {WLEN{1'b0}};   // ERROR!
@@ -531,7 +513,6 @@ module otbn_mac_bignum
      endcase
   end
 
-`ifdef COND_SUB
   cond_sub cond (
     .A(pre_cond),
     .B(cond_sub_B),
@@ -541,9 +522,6 @@ module otbn_mac_bignum
     .sum(operation_result_o),
     .cout()
   ); 
-`else
-  assign operation_result_o = pre_cond;
-`endif
 
 //  assign operation_result_o = operation_i.exec_mode == 2'b11 ? cond_sub_result : pre_cond;
   //assign operation_result_o = pre_cond;
