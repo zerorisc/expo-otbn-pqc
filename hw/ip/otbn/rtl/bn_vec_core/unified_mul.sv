@@ -7,7 +7,6 @@ module unified_mul #(
     input  logic [1:0]             word_mode,            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_A,
     input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_B,
-    input  logic [1:0]             exec_mode,
     input  logic                   half_sel,
     input  logic                   lane_mode,
     input  logic                   lane_word_32,
@@ -17,7 +16,7 @@ module unified_mul #(
     input  logic [1:0]             data_type_64_shift,
     output logic [31:0]            scalar32,
     output logic [15:0]            scalar16,
-    output logic [WLEN-1:0]      result
+    output logic [WLEN-1:0]        result
 );
 
     localparam int NHALF = WLEN / HLEN;  // 16
@@ -63,22 +62,14 @@ module unified_mul #(
 
       unique case (word_mode)
         MODE_16: begin
-          if (exec_mode == 2'b00) begin
-            for (int i = 0; i < NSING; i++) begin
-              if (half_sel == 1'b0) begin
-                A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 0) +: HLEN];
-                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 0) +: HLEN] : scalar16;
-              end
-              else begin
-                A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 1) +: HLEN];
-                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 1) +: HLEN] : scalar16;
-              end
+          for (int i = 0; i < NSING; i++) begin
+            if (half_sel == 1'b0) begin
+              A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 0) +: HLEN];
+              B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 0) +: HLEN] : scalar16;
             end
-          end
-          else begin
-            for (int i = 0; i < NHALF; i++) begin
-                A_composed[i*HLEN +: HLEN] = A[HLEN*i +: HLEN];
-                B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
+            else begin
+              A_composed[i*HLEN +: HLEN] = A[HLEN*(2*i + 1) +: HLEN];
+              B_composed[i*HLEN +: HLEN] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 1) +: HLEN] : scalar16;
             end
           end
         end
@@ -240,16 +231,7 @@ module unified_mul #(
           endcase
         end
         MODE_32: begin
-          if (half_sel == 1'b0) begin
-            for (int i = 0; i < NDOUB; i++) begin
-              result[(128*i) +  0 +: 64] = result_32[64*i +: 64];
-            end
-          end
-          else begin
-            for (int i = 0; i < NDOUB; i++) begin
-              result[(128*i) + 64 +: 64] = result_32[64*i +: 64];
-            end
-          end
+          result = result_32;
         end
         MODE_16: begin
           result = result_16;

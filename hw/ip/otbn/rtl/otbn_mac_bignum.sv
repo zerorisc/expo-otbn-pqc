@@ -37,7 +37,6 @@ module otbn_mac_bignum
   logic [WLEN-1:0] adder_op_a;
   logic [WLEN-1:0] adder_op_b;
   logic [WLEN-1:0] adder_result;
-//  logic [  WLEN-1:0] cond_sub_result;
   logic [1:0]      adder_result_hw_is_zero;
 
 //  logic [QWLEN-1:0]  mul_op_a;
@@ -110,7 +109,6 @@ module otbn_mac_bignum
     .word_mode({operation_i.mulv, operation_i.data_type}),            // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
     .word_sel_A(operation_i.operand_a_qw_sel),
     .word_sel_B(operation_i.operand_b_qw_sel),
-    .exec_mode(operation_i.exec_mode),
     .half_sel(operation_i.sel),
     .lane_mode(operation_i.lane_mode),
     .lane_word_32(operation_i.lane_word_32),
@@ -193,16 +191,6 @@ module otbn_mac_bignum
     .sum(adder_result),
     .cout()
   );
-
-//  brent_kung_adder_256_double adder16 (
-//    .A(operation_i.mulv ? adder_op_a[WLEN+:WLEN] : 256'b0),
-//    .B(operation_i.mulv ? adder_op_b[WLEN+:WLEN] : 256'b0),
-//    .word_mode({1'b1, operation_i.data_type}),   // 00: scalar, 11: vec64, 10: vec32
-//    .cin(1'b0),
-//    .sum(adder_result[WLEN+:WLEN]),
-//    .cout()
-//  );
- 
 
   // Split zero check between the two halves of the result. This is used for flag setting (see
   // below).
@@ -292,32 +280,12 @@ module otbn_mac_bignum
   always_comb begin
     case (operation_i.mulv)
        1'b0 : begin
-         operation_result_o = adder_result[WLEN-1:0];
+         operation_result_o = adder_result;
        end
        default: begin
          case (operation_i.exec_mode)
            2'b00 : begin
-             case (operation_i.data_type)
-               1'b1 : begin
-                 operation_result_o = {adder_result[384 + 64*operation_i.sel +: 64],
-                                       adder_result[256 + 64*operation_i.sel +: 64],
-                                       adder_result[128 + 64*operation_i.sel +: 64],
-                                       adder_result[      64*operation_i.sel +: 64]};
-               end
-               1'b0 : begin
-                 operation_result_o = {adder_result[448 + 32*operation_i.sel +: 32],
-                                       adder_result[384 + 32*operation_i.sel +: 32],
-                                       adder_result[320 + 32*operation_i.sel +: 32],
-                                       adder_result[256 + 32*operation_i.sel +: 32],
-                                       adder_result[192 + 32*operation_i.sel +: 32],
-                                       adder_result[128 + 32*operation_i.sel +: 32],
-                                       adder_result[ 64 + 32*operation_i.sel +: 32],
-                                       adder_result[      32*operation_i.sel +: 32]};
-               end
-               default: begin
-                 operation_result_o = {WLEN{1'b0}};   // ERROR!
-               end
-             endcase
+             operation_result_o = adder_result;
            end
            2'b01 : begin
              case (operation_i.data_type)
