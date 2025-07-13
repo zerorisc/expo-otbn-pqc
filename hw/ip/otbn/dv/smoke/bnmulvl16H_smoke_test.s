@@ -32,7 +32,7 @@ main:
   bn.xor w8, w8, w8
   bn.xor w9, w9, w9
   bn.xor w1, w1, w1
-  bn.xor w17, w17, w17
+  bn.xor w16, w16, w16
   bn.xor w24, w24, w24
   bn.xor w25, w25, w25
   bn.xor w26, w26, w26
