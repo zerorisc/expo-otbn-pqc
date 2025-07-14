@@ -1624,7 +1624,7 @@ class BNMULV(OTBNInsn):
         #    format:    0 = .16H, 1 = .8S
         #    sel:       0 = .even, 1 = .odd
         #    acc_mode:  0 = disabled, 1 = .acc, 2 = .acc.z
-        #    exec_mode: 0 = standard, 1 = .lo, 2 = .hi
+        #    exec_mode: 0 = standard, 1 = .lo, 2 = .hi, 3 = .hi.cond
         format = self.type & 0b01
         sel = (self.type & 0b10) >> 1
         acc_mode = (self.type & 0b1100) >> 2
