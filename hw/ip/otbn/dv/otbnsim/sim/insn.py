@@ -1621,17 +1621,17 @@ class BNMULV(OTBNInsn):
         wrs2 = state.wdrs.get_reg(self.wrs2).read_unsigned()
 
         # Extract fields in the encoding:
-        #    format:    0 = .16H, 1 = .8S
+        #    data_type:    0 = .16H, 1 = .8S
         #    sel:       0 = .even, 1 = .odd
         #    acc_mode:  0 = disabled, 1 = .acc, 2 = .acc.z
         #    exec_mode: 0 = standard, 1 = .lo, 2 = .hi
-        format = self.type & 0b01
+        data_type = self.type & 0b01
         sel = (self.type & 0b10) >> 1
         acc_mode = (self.type & 0b1100) >> 2
         exec_mode = (self.type & 0b110000) >> 4
-        eprint(f"mode | exec_mode | acc_mode | sel | format = 0 | {exec_mode} | {acc_mode} | {sel} | {format}")
+        eprint(f"lane_mode | exec_mode | acc_mode | sel | data_type = 0 | {exec_mode} | {acc_mode} | {sel} | {data_type}")
 
-        if format:
+        if data_type:
             size = 32
         else:
             size = 16
@@ -1641,7 +1641,7 @@ class BNMULV(OTBNInsn):
         wrs2_v = [extract_sub_word(wrs2, size, i) for i in range(num_lanes)]
         wrd_v = wrs1_v.copy()
 
-        if (format == 0) and (exec_mode != 0):
+        if (data_type == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
         else:
             if sel:
@@ -1718,15 +1718,15 @@ class BNMULVL(OTBNInsn):
 
     def execute(self, state: OTBNState) -> None:
         # Extract fields in the encoding:
-        #    format:    0 = .16H, 1 = .8S
+        #    data_type:    0 = .16H, 1 = .8S
         #    sel:       0 = .even, 1 = .odd
         #    acc_mode:  0 = disabled, 1 = .acc, 2 = .acc.z
         #    exec_mode: 0 = standard, 1 = .lo, 2 = .hi
-        format = self.type & 0b01
+        data_type = self.type & 0b01
         sel = (self.type & 0b10) >> 1
         acc_mode = (self.type & 0b1100) >> 2
         exec_mode = (self.type & 0b110000) >> 4
-        eprint(f"mode | exec_mode | acc_mode | sel | format = 1 | {exec_mode} | {acc_mode} | {sel} | {format}")
+        eprint(f"lane_mode | exec_mode | acc_mode | sel | data_type = 1 | {exec_mode} | {acc_mode} | {sel} | {data_type}")
 
         wrs1 = state.wdrs.get_reg(self.wrs1).read_unsigned()
         if self.lane_reg:
@@ -1734,7 +1734,7 @@ class BNMULVL(OTBNInsn):
         else:
             wrs2 = state.wdrs.get_reg(16).read_unsigned()
 
-        if format:
+        if data_type:
             size = 32
         else:
             size = 16
@@ -1744,7 +1744,7 @@ class BNMULVL(OTBNInsn):
         wrs2_v = [extract_sub_word(wrs2, size, self.lane_index) for i in range(num_lanes)]
         wrd_v = wrs1_v.copy()
 
-        if (format == 0) and (exec_mode != 0):
+        if (data_type == 0) and (exec_mode != 0):
             lane_indices = range(num_lanes)
         else:
             if sel:
