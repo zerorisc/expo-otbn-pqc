@@ -243,7 +243,7 @@ async def run_full_broadcast_modes(dut):
 
 
 
-def test_unified_mult_build():
+def test_simd_mult_build():
     run(
         toplevel="simd_multiplier_unit",
         module="test_simd_multiplier_unit_pytest",

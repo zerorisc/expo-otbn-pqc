@@ -22,12 +22,13 @@ async def run_unified_test(dut):
             A = random.getrandbits(WLEN)
             B = random.getrandbits(WLEN)
 
-            dut.data_type.value = data_type
+            dut.word_mode.value = data_type
             dut.word_sel_A.value = random.randint(0, 3)
             dut.word_sel_B.value = random.randint(0, 3)
             dut.half_sel.value = random.randint(0, 1)
-            dut.lane_mode = random.randint(0, 1) if data_type != 0b00 else 0
-            dut.lane_index = random.randint(0, 15) if data_type == 0b10 else random.randint(0, 3) if data_type == 0b01 else 0
+            dut.lane_mode.value = random.randint(0, 1) if data_type != 0b00 else 0
+            dut.lane_word_32.value = random.randint(0, 1)
+            dut.lane_word_16.value = random.randint(0, 1)
             dut.A.value = A
             dut.B.value = B
 
@@ -35,8 +36,11 @@ async def run_unified_test(dut):
 
             result = int(dut.result.value)
 
+            print(data_type, dut.word_sel_A.value, dut.word_sel_B.value, dut.half_sel.value, dut.lane_mode.value, dut.lane_word_32.value, dut.lane_word_16.value)
+
+
             expected = reference_prod(A, B, data_type, 
-                          dut.word_sel_A.value, dut.word_sel_B.value, dut.half_sel.value, dut.lane_mode.value, dut.lane_index.value)
+                          dut.word_sel_A.value, dut.word_sel_B.value, dut.half_sel.value, dut.lane_mode.value, dut.lane_word_32.value, dut.lane_word_16.value)
 
             print("data_type:", data_type)
 
@@ -48,13 +52,13 @@ async def run_unified_test(dut):
 
             elif data_type == MODE_32:
                 # 4x 32x32 data_type
-                out = result & ((1 << (2 * WLEN)) - 1)
+                out = result & ((1 << (WLEN)) - 1)
 
                 assert out == expected, f"32x32 FAIL: A={A}, B={B}, got={out}, expected={expected}"
 
             elif data_type == MODE_16:
                 # 16x 16x16 data_type
-                out = result & ((1 << (2 * WLEN)) - 1)
+                out = result & ((1 << (WLEN)) - 1)
 
                 assert out == expected, f"16x16 FAIL: A={A}, B={B}, got={hex(out)}, expected={hex(expected)}"
 
