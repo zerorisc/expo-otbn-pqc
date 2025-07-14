@@ -870,14 +870,15 @@ pack_ciphertext:
 poly_decompress:
 #if (KYBER_K == 2 || KYBER_K == 3)
   bn.shv.16H w2, w2 >> 8 /* 0xf */
-  LOOPI 4, 11
+  LOOPI 4, 12
     bn.lid x4, 0(x10++)
-    LOOPI 4, 8
+    LOOPI 4, 9
       LOOPI 16, 2
         bn.rshi   w1, w0, w1 >> 16
         bn.rshi   w0, w31, w0 >> 4
       bn.and        w1, w1, w2 
-      bn.mulv.l.16H.lo w1, w1, sw0.0
+      bn.mulv.l.16H.even.lo w1, w1, sw0.0
+      bn.mulv.l.16H.odd.lo  w1, w1, sw0.0
       bn.addv.16H   w1, w1, w3 
       bn.shv.16H    w1, w1 >> 4
       bn.sid        x5, 0(x12++)

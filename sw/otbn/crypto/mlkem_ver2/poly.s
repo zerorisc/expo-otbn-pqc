@@ -410,11 +410,14 @@ poly_tomont:
   li x4, 0
   bn.lid x4++, 0(x11)
 
-  LOOPI 16, 6
+  LOOPI 16, 9
     bn.lid                 x4, 0(x10)
-    bn.mulv.16H.acc.z.lo   w1, w0, w1
-    bn.mulv.l.16H.lo       w1, w1, sw0.2
-    bn.mulv.l.16H.acc.hi   w1, w1, sw0.0
+    bn.mulv.16H.even.acc.z.lo  w1, w1, w0
+    bn.mulv.l.16H.even.lo      w1, w1, sw0.2
+    bn.mulv.l.16H.even.acc.hi  w1, w1, sw0.0
+    bn.mulv.16H.odd.acc.z.lo   w1, w1, w0
+    bn.mulv.l.16H.odd.lo       w1, w1, sw0.2
+    bn.mulv.l.16H.odd.acc.hi   w1, w1, sw0.0
     bn.addvm.16H           w1, w1, w31
     bn.sid                 x4, 0(x10++)
   ret
