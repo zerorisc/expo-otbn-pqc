@@ -133,6 +133,11 @@ module otbn_core
   logic [NWdr-1:0] rf_bignum_wr_indirect_onehot;
   logic            rf_bignum_indirect_en;
 
+  logic [NWdr-1:0] rf_bignum_rd_a_mulv_onehot;
+  logic [NWdr-1:0] rf_bignum_rd_b_mulv_onehot;
+  logic [NWdr-1:0] rf_bignum_wr_mulv_onehot;
+  logic            rf_bignum_mulv_en;
+
   // The currently executed instruction.
   logic                     insn_valid;
   logic                     insn_illegal;
@@ -219,6 +224,9 @@ module otbn_core
   logic                  mac_bignum_reg_intg_violation_err;
   logic                  mac_bignum_sec_wipe_err;
 
+  logic [63:0]           mac_bignum_mulv_mod;
+  logic                  mac_bignum_mulv_done;
+
   ispr_e                       ispr_addr;
   logic [31:0]                 ispr_base_wdata;
   logic [BaseWordsPerWLEN-1:0] ispr_base_wr_en;
@@ -267,6 +275,7 @@ module otbn_core
 
   logic sec_wipe_acc_urnd;
   logic sec_wipe_mod_urnd;
+  logic sec_wipe_tmp_urnd;
   logic sec_wipe_kmac_regs_urnd;
   logic sec_wipe_zero;
   logic sec_wipe_err;
@@ -328,6 +337,7 @@ module otbn_core
 
     .sec_wipe_acc_urnd_o(sec_wipe_acc_urnd),
     .sec_wipe_mod_urnd_o(sec_wipe_mod_urnd),
+    .sec_wipe_tmp_urnd_o(sec_wipe_tmp_urnd),
     .sec_wipe_kmac_regs_urnd_o  (sec_wipe_kmac_regs_urnd),
     .sec_wipe_zero_o    (sec_wipe_zero),
 
@@ -385,6 +395,11 @@ module otbn_core
     .rf_bignum_rd_b_indirect_onehot_i(rf_bignum_rd_b_indirect_onehot),
     .rf_bignum_wr_indirect_onehot_i  (rf_bignum_wr_indirect_onehot),
     .rf_bignum_indirect_en_i         (rf_bignum_indirect_en),
+
+    .rf_bignum_rd_a_mulv_onehot_i(rf_bignum_rd_a_mulv_onehot),
+    .rf_bignum_rd_b_mulv_onehot_i(rf_bignum_rd_b_mulv_onehot),
+    .rf_bignum_wr_mulv_onehot_i  (rf_bignum_wr_mulv_onehot),
+    .rf_bignum_mulv_en_i         (rf_bignum_mulv_en),
 
     .prefetch_en_i             (prefetch_en),
     .prefetch_loop_active_i    (prefetch_loop_active),
@@ -511,6 +526,11 @@ module otbn_core
     .rf_bignum_wr_indirect_onehot_o  (rf_bignum_wr_indirect_onehot),
     .rf_bignum_indirect_en_o         (rf_bignum_indirect_en),
 
+    .rf_bignum_rd_a_mulv_onehot_o(rf_bignum_rd_a_mulv_onehot),
+    .rf_bignum_rd_b_mulv_onehot_o(rf_bignum_rd_b_mulv_onehot),
+    .rf_bignum_wr_mulv_onehot_o  (rf_bignum_wr_mulv_onehot),
+    .rf_bignum_mulv_en_o         (rf_bignum_mulv_en),
+
     // To/from base ALU
     .alu_base_operation_o        (alu_base_operation),
     .alu_base_comparison_o       (alu_base_comparison),
@@ -529,6 +549,8 @@ module otbn_core
     .mac_bignum_operation_result_i(mac_bignum_operation_result),
     .mac_bignum_en_o              (mac_bignum_en),
     .mac_bignum_commit_o          (mac_bignum_commit),
+    .mac_mulv_mod_i               (mac_bignum_mulv_mod),
+    .mac_mulv_done_i              (mac_bignum_mulv_done),
 
     // To/from LSU (base and bignum)
     .lsu_load_req_o          (lsu_load_req),
@@ -843,6 +865,7 @@ module otbn_core
     .operation_commit_i(alu_bignum_operation_commit),
     .operation_result_o(alu_bignum_operation_result),
     .selection_flag_o  (alu_bignum_selection_flag),
+    .mod_o             (mac_bignum_mulv_mod),
 
     .alu_predec_bignum_i (alu_predec_bignum),
     .ispr_predec_bignum_i(ispr_predec_bignum),
@@ -896,12 +919,14 @@ module otbn_core
     .operation_flags_o              (mac_bignum_operation_flags),
     .operation_flags_en_o           (mac_bignum_operation_flags_en),
     .operation_intg_violation_err_o (mac_bignum_reg_intg_violation_err),
+    .operation_mulv_done_o          (mac_bignum_mulv_done),
 
     .mac_predec_bignum_i(mac_predec_bignum),
     .predec_error_o     (mac_bignum_predec_error),
 
     .urnd_data_i        (urnd_data),
     .sec_wipe_acc_urnd_i(sec_wipe_acc_urnd),
+    .sec_wipe_tmp_urnd_i(sec_wipe_tmp_urnd),
     .sec_wipe_running_i (secure_wipe_running_o),
     .sec_wipe_err_o     (mac_bignum_sec_wipe_err),
 

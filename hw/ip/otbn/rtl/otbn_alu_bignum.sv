@@ -82,6 +82,8 @@ module otbn_alu_bignum
   output logic [WLEN-1:0]       operation_result_o,
   output logic                  selection_flag_o,
 
+  output logic [63:0]           mod_o,
+
   input  alu_predec_bignum_t  alu_predec_bignum_i,
   input  ispr_predec_bignum_t ispr_predec_bignum_i,
 
@@ -418,6 +420,9 @@ module otbn_alu_bignum
                                mod_ispr_wr_en[i_word] |
                                sec_wipe_mod_urnd_i;
   end
+
+// Output MOD register for use in BN-MAC by BN.MULVM
+  assign mod_o = mod_no_intg_q[63:0];
 
   //////////
   // KMAC //

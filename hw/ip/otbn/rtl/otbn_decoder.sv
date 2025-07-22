@@ -86,6 +86,12 @@ module otbn_decoder
   logic       mac_shift_out_bignum;
   logic       mac_en_bignum;
 
+  logic       mac_mulv_en_bignum;
+  logic [3:0] mac_mulv_lane_idx_bignum;
+  mulv_type_t mac_mulv_type_bignum;
+
+  assign mac_mulv_lane_idx_bignum = insn[31:28];
+
   logic rf_ren_a_base;
   logic rf_ren_b_base;
 
@@ -260,6 +266,9 @@ module otbn_decoder
     mac_zero_acc:        mac_zero_acc_bignum,
     mac_shift_out:       mac_shift_out_bignum,
     mac_en:              mac_en_bignum,
+    mac_mulv_en:         mac_mulv_en_bignum,
+    mac_mulv_lane_idx:   mac_mulv_lane_idx_bignum,
+    mac_mulv_type:       mac_mulv_type_bignum,
     rf_we:               rf_we_bignum,
     rf_wdata_sel:        rf_wdata_sel_bignum,
     rf_ren_a:            rf_ren_a_bignum,
@@ -299,6 +308,8 @@ module otbn_decoder
     rf_ren_a_bignum        = 1'b0;
     rf_ren_b_bignum        = 1'b0;
     mac_en_bignum          = 1'b0;
+    mac_mulv_en_bignum     = 1'b0;
+    mac_mulv_type_bignum   = mulv_type_t'('b0);
 
     rf_a_indirect_bignum   = 1'b0;
     rf_b_indirect_bignum   = 1'b0;
@@ -707,6 +718,20 @@ module otbn_decoder
         rf_ren_b_bignum     = 1'b1;
         rf_wdata_sel_bignum = RfWdSelEx;
         rf_we_bignum        = 1'b1;
+      end
+
+      ////////////////////////////////////////////
+      //                 BN.MULV                //
+      ////////////////////////////////////////////
+
+      InsnOpcodeBignumMulv: begin
+        insn_subset          = InsnSubsetBignum;
+        rf_ren_a_bignum      = 1'b1;
+        rf_ren_b_bignum      = 1'b1;
+        rf_wdata_sel_bignum  = RfWdSelMac;
+        mac_mulv_en_bignum   = 1'b1;
+        mac_mulv_type_bignum = mulv_type_t'(insn[27:25]);
+        rf_we_bignum         = 1'b1;
       end
 
       default: illegal_insn = 1'b1;

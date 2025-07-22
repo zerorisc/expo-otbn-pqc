@@ -218,6 +218,7 @@ package otbn_pkg;
     InsnOpcodeBignumMisc     = 7'h0B,
     InsnOpcodeBignumArith    = 7'h2B,
     InsnOpcodeBignumMulqacc  = 7'h3B,
+    InsnOpcodeBignumMulv     = 7'h4B,
     InsnOpcodeBignumTrn      = 7'h5F,
     InsnOpcodeBignumBaseMisc = 7'h7B,
     InsnOpcodeBignumShiftv   = 7'h7F
@@ -469,6 +470,17 @@ package otbn_pkg;
     trn2_2q
   } alu_trn_type_t;
 
+  typedef enum logic[2:0] {
+    mulv_8s,   // b000
+    mulv_16h,  // b001
+    mulv_l8s,  // b010
+    mulv_l16h, // b011
+    mulv_m8s,  // b100
+    mulv_m16h, // b101
+    mulv_ml8s, // b110
+    mulv_ml16h // b111
+  } mulv_type_t;
+
   typedef struct packed {
     logic [WdrAw-1:0]        d;           // Destination register
     logic [WdrAw-1:0]        a;           // First source register
@@ -514,6 +526,10 @@ package otbn_pkg;
     logic                    mac_zero_acc;
     logic                    mac_shift_out;
     logic                    mac_en;
+
+    logic                    mac_mulv_en;
+    logic [3:0]              mac_mulv_lane_idx;
+    mulv_type_t              mac_mulv_type;
 
     logic                    rf_we;
     rf_wd_sel_e              rf_wdata_sel;
@@ -562,6 +578,8 @@ package otbn_pkg;
   typedef struct packed {
     logic op_en;
     logic acc_rd_en;
+    logic mac_mulv_en;
+    mulv_type_t mulv_type;
   } mac_predec_bignum_t;
 
   typedef struct packed {
@@ -609,6 +627,10 @@ package otbn_pkg;
     logic [1:0]      pre_acc_shift_imm;
     logic            zero_acc;
     logic            shift_acc;
+    logic [63:0]     mod;
+    mulv_type_t      vector_type;
+    logic [3:0]      lane_idx;
+    logic            mac_mulv_en;
   } mac_bignum_operation_t;
 
   // Encoding generated with:

@@ -1,6 +1,8 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+// Modified by Authors of "Towards ML-KEM & ML-DSA on OpenTitan" (https://eprint.iacr.org/2024/1192)
+// Copyright "Towards ML-KEM & ML-DSA on OpenTitan" Authors
 
 `include "prim_assert.sv"
 
@@ -49,6 +51,11 @@ module otbn_instruction_fetch
   input logic [NWdr-1:0] rf_bignum_wr_indirect_onehot_i,
   input logic            rf_bignum_indirect_en_i,
 
+  input logic [NWdr-1:0] rf_bignum_rd_a_mulv_onehot_i,
+  input logic [NWdr-1:0] rf_bignum_rd_b_mulv_onehot_i,
+  input logic [NWdr-1:0] rf_bignum_wr_mulv_onehot_i,
+  input logic            rf_bignum_mulv_en_i,
+
   output logic insn_fetch_err_o,  // ECC error seen in instruction fetch
   output logic insn_addr_err_o,
 
@@ -86,7 +93,7 @@ module otbn_instruction_fetch
   logic                     imem_rvalid_final;
   logic                     imem_rvalid_kill_q, imem_rvalid_kill_d;
 
-  rf_predec_bignum_t   rf_predec_bignum_indirect, rf_predec_bignum_sec_wipe;
+  rf_predec_bignum_t   rf_predec_bignum_indirect, rf_predec_bignum_mulv, rf_predec_bignum_sec_wipe;
   rf_predec_bignum_t   rf_predec_bignum_q, rf_predec_bignum_d, rf_predec_bignum_insn;
   alu_predec_bignum_t  alu_predec_bignum_zero_flags;
   alu_predec_bignum_t  alu_predec_bignum_q, alu_predec_bignum_d, alu_predec_bignum_insn;
@@ -163,6 +170,10 @@ module otbn_instruction_fetch
   assign rf_predec_bignum_indirect = '{rf_ren_a : rf_bignum_rd_a_indirect_onehot_i,
                                        rf_ren_b : rf_bignum_rd_b_indirect_onehot_i,
                                        rf_we    : rf_bignum_wr_indirect_onehot_i};
+
+  assign rf_predec_bignum_mulv     =  '{rf_ren_a : rf_bignum_rd_a_mulv_onehot_i,
+                                       rf_ren_b : rf_bignum_rd_b_mulv_onehot_i,
+                                       rf_we    : rf_bignum_wr_mulv_onehot_i};
 
   assign rf_predec_bignum_sec_wipe = '{rf_ren_a : '0,
                                        rf_ren_b : '0,
@@ -407,7 +418,7 @@ module otbn_instruction_fetch
     .out_o(insn_addr_err_o)
   );
 
-  assign rf_predec_bignum_o        = rf_predec_bignum_q;
+  assign rf_predec_bignum_o        = rf_bignum_mulv_en_i ? rf_predec_bignum_mulv : rf_predec_bignum_q;
   assign alu_predec_bignum_o       = alu_predec_bignum_q;
   assign ctrl_flow_predec_o        = ctrl_flow_predec_q;
   assign ctrl_flow_target_predec_o = ctrl_flow_target_predec_q;

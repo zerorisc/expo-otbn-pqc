@@ -3065,6 +3065,10 @@ opentitan_test(
     deps = [
         "//sw/otbn/crypto/tests/isa_ext:bnaddsubv_test",
         "//sw/otbn/crypto/tests/isa_ext:bnaddsubvm_test",
+        "//sw/otbn/crypto/tests/isa_ext:bnmulv_test",
+        "//sw/otbn/crypto/tests/isa_ext:bnmulvl_test",
+        "//sw/otbn/crypto/tests/isa_ext:bnmulvm_test",
+        "//sw/otbn/crypto/tests/isa_ext:bnmulvml_test",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/dif:otbn",
         "//sw/device/lib/testing:entropy_testutils",
