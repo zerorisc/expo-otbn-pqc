@@ -183,7 +183,8 @@ module otbn_mac_bignum
 
 //  assign adder_result = adder_op_a + adder_op_b;
 
-  brent_kung_adder_256_double adder (
+  //brent_kung_adder_256_double adder (
+  buffer_bit_double adder (
     .A(adder_op_a),
     .B(adder_op_b),
     .word_mode({operation_i.mulv, operation_i.data_type}),   // 00: scalar, 11: vec64, 10: vec32
