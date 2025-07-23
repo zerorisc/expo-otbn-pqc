@@ -343,6 +343,8 @@ module keymgr_kmac_if
   assign kmac_data_o.valid = valid;
   assign kmac_data_o.last  = last;
   assign kmac_data_o.strb  = strb;
+  assign kmac_data_o.next  = 1'b0; // Tied to 1'b0 outside of OTBN mode
+  assign kmac_data_o.hold  = 1'b0; // Not used in KeyMgr mode
 
   // kmac done is asserted outside of expected window
   // SEC_CM: KMAC_IF_DONE.CTRL.CONSISTENCY

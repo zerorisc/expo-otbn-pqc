@@ -54,7 +54,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
   // CFG fields
   bit kmac_en;
   bit sideload_en;
-  sha3_pkg::sha3_mode_e hash_mode;
+  sha3_pkg::sha3_mode_e hash_mode, dynamic_hash_mode;
   sha3_pkg::keccak_strength_e strength;
   entropy_mode_e entropy_mode = EntropyModeNone;
   bit entropy_fast_process;
@@ -80,6 +80,12 @@ class kmac_scoreboard extends cip_base_scoreboard #(
   bit sha3_idle;
   bit sha3_absorb;
   bit sha3_squeeze;
+  bit sha3_manual;
+
+  // OTBN AppIntf status
+  bit [2:0] digest_word_idx, max_digest_words;
+  bit [2:0] permutation_ctr_idx;
+  bit [3:0] digest_word_ctr;
 
   // FIFO status bits
   bit cmd_process_triggered;
@@ -320,9 +326,10 @@ class kmac_scoreboard extends cip_base_scoreboard #(
             // Assume that application interface requests do not collide.
             `uvm_info(`gfn, "waiting for new kmac_app request", UVM_HIGH)
             wait(!in_kmac_app && app_fsm_active &&
-                 (`KMAC_APP_VALID_TRANS(AppKeymgr) ||
+                (`KMAC_APP_VALID_TRANS(AppKeymgr) ||
                   `KMAC_APP_VALID_TRANS(AppLc) ||
-                  `KMAC_APP_VALID_TRANS(AppRom)));
+                  `KMAC_APP_VALID_TRANS(AppRom) ||
+                  `KMAC_APP_VALID_TRANS(AppOtbn)));
             in_kmac_app = 1;
             sha3_idle = 0;
             sha3_absorb = 1;
@@ -340,8 +347,12 @@ class kmac_scoreboard extends cip_base_scoreboard #(
             end else if (`KMAC_APP_VALID_TRANS(AppRom)) begin
               app_mode = AppRom;
               strength = sha3_pkg::L256;
+            end else if (`KMAC_APP_VALID_TRANS(AppOtbn)) begin
+              app_mode = AppOtbn;
+              strength = cfg.m_kmac_app_agent_cfg[AppOtbn].vif.req_data_if.h_data[13:11];
+              dynamic_hash_mode = cfg.m_kmac_app_agent_cfg[AppOtbn].vif.req_data_if.h_data[10:9];
+              compute_max_digest(strength, max_digest_words);
             end
-
             // sample sideload-related coverage
             if (cfg.en_cov) begin
               // Note that all arguments to the covergroup sample() function are the same,
@@ -356,8 +367,8 @@ class kmac_scoreboard extends cip_base_scoreboard #(
               // sufficient information for all three of these arguments due to the nature of this
               // particular interface.
               cov.sideload_cg.sample(app_mode == AppKeymgr,
-                                     app_mode == AppKeymgr,
-                                     app_mode == AppKeymgr);
+                                    app_mode == AppKeymgr,
+                                    app_mode == AppKeymgr);
             end
 
             @(posedge sha3_idle);
@@ -366,7 +377,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
           end
           ,
           wait(cfg.under_reset || kmac_err.code == ErrKeyNotValid ||
-               cfg.kmac_vif.lc_escalate_en_i != lc_ctrl_pkg::Off)
+              cfg.kmac_vif.lc_escalate_en_i != lc_ctrl_pkg::Off)
       )
       if (cfg.under_reset || cfg.kmac_vif.lc_escalate_en_i != lc_ctrl_pkg::Off) begin
         @(negedge cfg.under_reset);
@@ -381,6 +392,23 @@ class kmac_scoreboard extends cip_base_scoreboard #(
     end
   endtask
 
+  // This task computes the number of digest words for an OTBN AppReq
+  virtual task compute_max_digest(
+    input sha3_pkg::keccak_strength_e keccak_strength_i,
+    output logic [2:0] max_digest_words
+  );
+
+  case (keccak_strength_i)
+    sha3_pkg::L128: max_digest_words = 3'h5;
+    sha3_pkg::L224: max_digest_words = 3'h1;
+    sha3_pkg::L256: max_digest_words = 3'h4;
+    sha3_pkg::L384: max_digest_words = 3'h2;
+    sha3_pkg::L512: max_digest_words = 3'h2;
+    default:        max_digest_words = 3'h0;
+  endcase
+
+  endtask
+
   // This task models the internal FSM of kmac_app module,
   // required for error handling SW output.
   virtual task process_kmac_app_fsm();
@@ -393,10 +421,13 @@ class kmac_scoreboard extends cip_base_scoreboard #(
             case (app_st)
               StIdle: begin
                 app_fsm_active = 0;
+                digest_word_idx = 0;
+                permutation_ctr_idx = 0;
                 if (!in_kmac_app &&
                     (cfg.m_kmac_app_agent_cfg[AppKeymgr].vif.req_data_if.valid ||
                      cfg.m_kmac_app_agent_cfg[AppLc].vif.req_data_if.valid ||
-                     cfg.m_kmac_app_agent_cfg[AppRom].vif.req_data_if.valid)) begin
+                     cfg.m_kmac_app_agent_cfg[AppRom].vif.req_data_if.valid ||
+                     cfg.m_kmac_app_agent_cfg[AppOtbn].vif.req_data_if.valid)) begin
                   app_st = StAppCfg;
                   app_fsm_active = 1;
                 end else if (checked_kmac_cmd == CmdStart) begin
@@ -407,9 +438,15 @@ class kmac_scoreboard extends cip_base_scoreboard #(
                 if (app_mode == AppKeymgr &&
                     !cfg.keymgr_sideload_agent_cfg.vif.sideload_key.valid) begin
                   app_st = StKeyMgrErrKeyNotValid;
+                end else if (app_mode == AppOtbn) begin
+                  app_st = StAppDynamicCfg;
                 end else begin
                   app_st = StAppMsg;
                 end
+              end
+              StAppDynamicCfg: begin
+                app_st = StAppMsg;
+                app_mux_sel = SelDynamicAppCfg;
               end
               StAppMsg: begin
                 app_mux_sel = SelApp;
@@ -428,10 +465,40 @@ class kmac_scoreboard extends cip_base_scoreboard #(
               StAppProcess: begin
                 app_st = StAppWait;
               end
+              StAppShiftDigest: begin
+                if (digest_word_idx == max_digest_words && permutation_ctr_idx == 2'h3) begin
+                  app_st = StAppWait;
+                end else if (digest_word_idx == max_digest_words) begin
+                  app_st = StAppManualRun;
+                  permutation_ctr_idx = permutation_ctr_idx + 1;
+                end else begin
+                  app_st = StAppWait;
+                end
+              end
+              StAppManualRun: begin
+                digest_word_idx = 0;
+                sha3_idle = 0;
+                sha3_absorb = 0;
+                sha3_squeeze = 0;
+                app_st = StAppWait;
+              end
               StAppWait: begin
-                if (keccak_complete_cycle) begin
-                  app_st = StIdle;
+                if (cfg.m_kmac_app_agent_cfg[app_mode].vif.hold == 1'b0) begin
                   app_fsm_active = 0;
+                  app_st = StIdle;
+                end else begin
+                  if (cfg.m_kmac_app_agent_cfg[app_mode].vif.next == 1'b1) begin
+                    if (digest_word_idx < max_digest_words || permutation_ctr_idx < 2'h3) begin
+                      digest_word_idx = digest_word_idx + 1;
+                      sha3_idle = 0;
+                      sha3_absorb = 0;
+                      sha3_squeeze = 1;
+                      app_st = StAppShiftDigest;
+                    end else if (digest_word_idx == max_digest_words && permutation_ctr_idx == 2'h3) begin
+                      permutation_ctr_idx = 2'h0;
+                      app_st = StAppManualRun;
+                    end
+                  end
                 end
               end
               StSw: begin
@@ -491,10 +558,14 @@ class kmac_scoreboard extends cip_base_scoreboard #(
   virtual task process_kmac_app_req_fifo();
     push_pull_agent_pkg::push_pull_item#(
       .HostDataWidth(kmac_app_agent_pkg::KMAC_REQ_DATA_WIDTH)) kmac_app_block_item;
+
+    bit otbn_mode_skip = 0;
+
     forever begin
         wait(!cfg.under_reset);
         @(posedge in_kmac_app);
         `uvm_info(`gfn, $sformatf("req app_mode: %0s", app_mode.name()), UVM_HIGH)
+        otbn_mode_skip = (app_mode == AppOtbn);
         `DV_SPINWAIT_EXIT(
             forever begin
               kmac_app_req_fifo[app_mode].get(kmac_app_block_item);
@@ -515,13 +586,19 @@ class kmac_scoreboard extends cip_base_scoreboard #(
                     in_keccak_rounds);
               end
 
-              while (kmac_app_block_strb > 0) begin
-                if (kmac_app_block_strb[0]) begin
-                  kmac_app_msg.push_back(kmac_app_block_data[7:0]);
+              // first word in AppOtbn is configuration not msg
+              if (!otbn_mode_skip) begin
+                while (kmac_app_block_strb > 0) begin
+                  if (kmac_app_block_strb[0]) begin
+                    kmac_app_msg.push_back(kmac_app_block_data[7:0]);
+                  end
+                  kmac_app_block_data = kmac_app_block_data >> 8;
+                  kmac_app_block_strb = kmac_app_block_strb >> 1;
                 end
-                kmac_app_block_data = kmac_app_block_data >> 8;
-                kmac_app_block_strb = kmac_app_block_strb >> 1;
+              end else begin
+                otbn_mode_skip = 0;
               end
+
               `uvm_info(`gfn, $sformatf("kmac_app_msg: %0p", kmac_app_msg), UVM_HIGH)
             end
             ,
@@ -542,6 +619,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
   // the KMAC_APP digest and clearing internal state for the next hash operation.
   virtual task process_kmac_app_rsp_fifo();
     kmac_app_item kmac_app_rsp;
+    digest_word_ctr = 0;
     @(negedge cfg.under_reset);
     forever begin
       wait(!cfg.under_reset);
@@ -551,59 +629,77 @@ class kmac_scoreboard extends cip_base_scoreboard #(
             @(posedge in_kmac_app);
             `uvm_info(`gfn, $sformatf("rsp app_mode: %0s", app_mode.name()), UVM_HIGH)
             `DV_SPINWAIT_EXIT(
-                bit app_intf_err = 0;
-                kmac_app_rsp_fifo[app_mode].get(kmac_app_rsp);
-                `uvm_info(`gfn,
-                          $sformatf("Detected a KMAC_APP response:\n%0s",
-                                    kmac_app_rsp.sprint()),
-                          UVM_HIGH)
+                do begin
+                  bit app_intf_err = 0;
+                  kmac_app_rsp_fifo[app_mode].get(kmac_app_rsp);
+                  `uvm_info(`gfn,
+                            $sformatf("Detected a KMAC_APP response:\n%0s",
+                                      kmac_app_rsp.sprint()),
+                            UVM_HIGH)
 
-                // sample coverage
-                if (cfg.en_cov) begin
-                  cov.app_cg_wrappers[app_mode].app_sample(
-                    kmac_app_rsp.byte_data_q.size() <= keymgr_pkg::KmacDataIfWidth/8,
-                    '0,
-                    kmac_app_rsp.rsp_error,
-                    1,
-                    0
-                  );
-                  cov.app_cg_wrappers[app_mode].app_cfg_reg_sample(hash_mode);
-                end
+                  digest_word_ctr = digest_word_ctr + 1;
+                  //`uvm_info(`gfn, $sformatf("Digest Word Counter: %0d", digest_word_ctr), UVM_LOW)
 
-                // safety check that things are working properly and
-                // no random KMAC_APP operations are seen
-                `DV_CHECK_FATAL(in_kmac_app == 1,
-                    "in_kmac_app is not set, scoreboard has not picked up KMAC_APP request")
+                  // sample coverage
+                  if (cfg.en_cov) begin
+                    cov.app_cg_wrappers[app_mode].app_sample(
+                      kmac_app_rsp.byte_data_q.size() <= keymgr_pkg::KmacDataIfWidth/8,
+                      '0,
+                      kmac_app_rsp.rsp_error,
+                      1,
+                      0
+                    );
+                    cov.app_cg_wrappers[app_mode].app_cfg_reg_sample(hash_mode);
+                  end
 
-                // We expect an app interface error if app_mode is AppKeymgr (meaning that we are
-                // in the mode where we are talking to the keymgr) and either there is no entropy
-                // to perform the masking that is enabled or the key has been invalidated.
-                app_intf_err = (app_mode == AppKeymgr &&
-                                ((cfg.enable_masking && !entropy_ready) || cfg.key_invalidated));
+                  // safety check that things are working properly and
+                  // no random KMAC_APP operations are seen
+                  `DV_CHECK_FATAL(in_kmac_app == 1,
+                      "in_kmac_app is not set, scoreboard has not picked up KMAC_APP request")
 
-                // Check app interface errors have been reported as expected.
-                `DV_CHECK_FATAL(kmac_app_rsp.rsp_error == app_intf_err)
+                  // We expect an app interface error if app_mode is AppKeymgr (meaning that we are
+                  // in the mode where we are talking to the keymgr) and either there is no entropy
+                  // to perform the masking that is enabled or the key has been invalidated.
+                  app_intf_err = (app_mode == AppKeymgr &&
+                                  ((cfg.enable_masking && !entropy_ready) || cfg.key_invalidated));
+
+                  // Check app interface errors have been reported as expected.
+                  `DV_CHECK_FATAL(kmac_app_rsp.rsp_error == app_intf_err)
 
 
-                // Check that digests have been zeroed if there was an interface error. If not,
-                // extract the digests and (if configured) check they are correct.
-                if (app_intf_err) begin
-                  `DV_CHECK_FATAL(kmac_app_rsp.rsp_digest_share0 == 0,
-                    "APP interface error, expect output to be all 0s")
-                  `DV_CHECK_FATAL(kmac_app_rsp.rsp_digest_share1 == 0,
-                    "APP interface error, expect output to be all 0s")
-                end else begin
-                  // assign digest values
-                  kmac_app_digest_share0 = kmac_app_rsp.rsp_digest_share0;
-                  kmac_app_digest_share1 = kmac_app_rsp.rsp_digest_share1;
+                  // Check that digests have been zeroed if there was an interface error. If not,
+                  // extract the digests and (if configured) check they are correct.
+                  if (app_intf_err) begin
+                    `DV_CHECK_FATAL(kmac_app_rsp.rsp_digest_share0 == 0,
+                      "APP interface error, expect output to be all 0s")
+                    `DV_CHECK_FATAL(kmac_app_rsp.rsp_digest_share1 == 0,
+                      "APP interface error, expect output to be all 0s")
+                  end else begin
+                    // assign digest values
+                    kmac_app_digest_share0 = kmac_app_rsp.rsp_digest_share0;
+                    kmac_app_digest_share1 = kmac_app_rsp.rsp_digest_share1;
 
-                  if (do_check_digest) check_digest();
-                end
+                    if (do_check_digest) check_digest();
+                  end
+
+                  if (app_mode == AppOtbn) begin
+                    fork
+                      begin
+                        @(posedge cfg.m_kmac_app_agent_cfg[AppOtbn].vif.rsp_done);
+                      end
+                      begin
+                        wait (cfg.m_kmac_app_agent_cfg[AppOtbn].vif.hold == 0);
+                      end
+                    join_any
+                    disable fork;
+                  end
+                end while (cfg.m_kmac_app_agent_cfg[AppOtbn].vif.hold == 1);
 
                 in_kmac_app = 0;
                 sha3_squeeze = 0;
                 sha3_absorb = 0;
                 sha3_idle = 1;
+                digest_word_ctr = 0;
                 `uvm_info(`gfn, "dropped in_kmac_app and raised sha3_idle", UVM_HIGH)
 
                 clear_state();
@@ -1441,7 +1537,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
     int key_word_len, key_byte_len;
 
     // Actual hash_mode based on interface or SW register
-    sha3_pkg::sha3_mode_e actual_hash_mode = in_kmac_app ? sha3_pkg::CShake : hash_mode;
+    sha3_pkg::sha3_mode_e actual_hash_mode = in_kmac_app ? ((app_mode == AppOtbn) ? dynamic_hash_mode : sha3_pkg::CShake ) : hash_mode;
 
     bit use_keymgr_keys = sideload_en || (in_kmac_app && app_mode == AppKeymgr);
 
@@ -1458,8 +1554,12 @@ class kmac_scoreboard extends cip_base_scoreboard #(
     // - the expected output length in bytes
     // - if we are using the xof version of kmac
     if (in_kmac_app) begin
-      // KMAC_APP output will always be 384 bits (48 bytes)
-      output_len_bytes = AppDigestW / 8;
+      // KMAC_APP output will always be 384 bits (48 bytes) unless AppOtbn
+      if (app_mode == AppOtbn) begin
+        output_len_bytes = 32 * digest_word_ctr;
+      end else begin
+        output_len_bytes = AppDigestW / 8;
+      end
 
       // xof_en is 1 when the padded output length is 0,
       // but this will never happen in KMAC_APP
@@ -1648,9 +1748,16 @@ class kmac_scoreboard extends cip_base_scoreboard #(
     /////////////////////////////////////////
     // Compare actual and expected digests //
     /////////////////////////////////////////
-    for (int i = 0; i < output_len_bytes; i++) begin
-      `DV_CHECK_EQ_FATAL(unmasked_digest[i], dpi_digest[i],
-          $sformatf("Mismatch between unmasked_digest[%0d] and dpi_digest[%0d]", i, i))
+    if (app_mode == AppOtbn && in_kmac_app) begin
+      for (int i = 0; i < 32; i++) begin
+        `DV_CHECK_EQ_FATAL(unmasked_digest[i], dpi_digest[i + (32 * (digest_word_ctr-1))],
+            $sformatf("Mismatch between unmasked_digest[%0d] and dpi_digest[%0d], in app mode[%0d]", i, i, app_mode))
+      end
+    end else begin
+      for (int i = 0; i < output_len_bytes; i++) begin
+        `DV_CHECK_EQ_FATAL(unmasked_digest[i], dpi_digest[i],
+            $sformatf("Mismatch between unmasked_digest[%0d] and dpi_digest[%0d], in app mode[%0d]", i, i, app_mode))
+      end
     end
 
   endfunction

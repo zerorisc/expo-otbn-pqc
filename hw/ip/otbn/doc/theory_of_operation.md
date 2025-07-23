@@ -100,7 +100,7 @@ OTBN is *busy* for as long it is performing an operation.
 OTBN is *locked* if a fatal error was observed or after handling an RMA request.
 
 The current operational state is reflected in the [`STATUS`](registers.md#status) register.
-- After reset, OTBN is busy with the internal secure wipe and the [`STATUS`](registers.md#status) register is set to `BUSY_SEC_WIPE_INT`.
+- After reset, OTBN is busy with the internal secure wipe and the [`STATUS`](registers.md#status) register is set to `BUSY_SEC_WIPE_INT`. <a id="RS-VREQ01"></a>
 - If OTBN is idle, the [`STATUS`](registers.md#status) register is set to `IDLE`.
 - If OTBN is busy, the [`STATUS`](registers.md#status) register is set to one of the values starting with `BUSY_`.
 - If OTBN is locked, the [`STATUS`](registers.md#status) register is set to `LOCKED`.
@@ -530,3 +530,68 @@ In order to prevent mismatches between ISS and RTL, software needs to initialise
 Loop and call stack pointers are reset.
 
 Host software cannot explicitly trigger an internal secure wipe; it is performed automatically after reset and at the end of an `EXECUTE` operation.
+
+### KMAC Application Interface
+
+The OTBN has an application interface connection to the KMAC block allowing for function calls directly to SHA3 and SHAKE algorithms. <!-- AI-VREQ01 --><a id="AI-VREQ01"></a>
+For KMAC specific implementation details of the AppIntf view the [`KMAC Theory of Operation`](../../kmac/doc/theory_of_operation.md#application-interface). <!-- AI-VREQ02 --> <!-- AI-VREQ04 --> <!-- AI-VREQ05 --><a id="AI-VREQ02"></a><a id="AI-VREQ04"></a><a id="AI-VREQ05"></a>
+The first word written from KMAC on the application interface is used to dynamically configure the algorithm executed within the KMAC block.
+Bits [1:0] select the appropriate SHA3/cSHAKE/SHAKE algorithm and bits [4:2] select the appropriate Keccak drive strength.
+The CSR for configuring the KMAC operation can be found at 0x7D9.
+
+<a id="CR-VREQ01 "></a>
+
+<table>
+  <thead>
+    <tr>
+      <th>CSR Name</th>
+      <th>Offset</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>CsrKmacCfg</code></td><td>0x7D9</td></tr>
+    <tr><td><code>CsrKmacMsg0</code></td><td>0x7DA</td></tr>
+    <tr><td><code>CsrKmacMsg1</code></td><td>0x7DB</td></tr>
+    <tr><td><code>CsrKmacMsg2</code></td><td>0x7DC</td></tr>
+    <tr><td><code>CsrKmacMsg3</code></td><td>0x7DD</td></tr>
+    <tr><td><code>CsrKmacMsg4</code></td><td>0x7DE</td></tr>
+    <tr><td><code>CsrKmacMsg5</code></td><td>0x7DF</td></tr>
+    <tr><td><code>CsrKmacMsg6</code></td><td>0x7E0</td></tr>
+    <tr><td><code>CsrKmacMsg7</code></td><td>0x7E1</td></tr>
+    <tr><td><code>CsrStatus</code></td><td>0x7E2</td></tr>
+    <tr><td><code>CsrKmacDigestW0</code></td><td>0x7E3</td></tr>
+    <tr><td><code>CsrKmacDigestW1</code></td><td>0x7E4</td></tr>
+    <tr><td><code>CsrKmacDigestW2</code></td><td>0x7E5</td></tr>
+    <tr><td><code>CsrKmacDigestW3</code></td><td>0x7E6</td></tr>
+    <tr><td><code>CsrKmacDigestW4</code></td><td>0x7E7</td></tr>
+    <tr><td><code>CsrKmacDigestW5</code></td><td>0x7E8</td></tr>
+    <tr><td><code>CsrKmacDigestW6</code></td><td>0x7E9</td></tr>
+    <tr><td><code>CsrKmacDigestW7</code></td><td>0x7EA</td></tr>
+    <tr><td><code>CsrKmacWriteLen</code></td><td>0x7EB</td></tr>
+  </tbody>
+</table>
+
+#### Partial Word Support
+
+To reduce additional complexity and code size in the OTBN when initializing a SHA3/SHAKE algorithm the OTBN supports partial word writes.
+Writing to the `Send to KMAC` register is used to transfer data over the AppIntf.
+The optimization provides a reduced code size for the following reason.
+If software wanted to compute SHAKE128(a || b) where a is 2 bytes and b is 32 bytes, without partial write support, software is required to compute a || b[29:0].
+Then write the result and follow with the last two bytes, b[31:30].
+A `_KMAC_WRITE_LEN` register is used to write the size of the next word being transferred, if it is not 32B in size. <!-- CR-VREQ02 --> <!-- AI-VREQ03 --><a id="CR-VREQ02"></a><a id="AI-VREQ03"></a>
+After writing the partial word to the KMAC register, the `_KMAC_WRITE_LEN` register will clear itself unless a new value is written. <!-- CR-VREQ03 --><a id="CR-VREQ03"></a>
+The OTBN should be able to make requests to the KMAC block back-to-back. <a id="AI-VREQ06"></a>
+
+#### Requirement References
+
+- <a href="#CR-VREQ01">CR-VREQ01</a>
+- <a href="#CR-VREQ02">CR-VREQ02</a>
+- <a href="#CR-VREQ03">CR-VREQ03</a>
+- <a href="#CR-VREQ04">CR-VREQ04</a>
+- <a href="#RS-VREQ01">RS-VREQ01</a>
+- <a href="#AI-VREQ01">AI-VREQ01</a>
+- <a href="#AI-VREQ02">AI-VREQ02</a>
+- <a href="#AI-VREQ03">AI-VREQ03</a>
+- <a href="#AI-VREQ04">AI-VREQ04</a>
+- <a href="#AI-VREQ05">AI-VREQ05</a>
+- <a href="#AI-VREQ06">AI-VREQ06</a>

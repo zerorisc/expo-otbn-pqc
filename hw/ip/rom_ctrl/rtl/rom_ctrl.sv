@@ -118,6 +118,8 @@ module rom_ctrl
 
     // SEC_CM: MEM.DIGEST
     assign kmac_data_o = '{valid: kmac_rom_vld,
+                           hold: 1'b0,  // Tied to 1'b0 outside of OTBN mode
+                           next: 1'b0,  // Not used in ROM mode
                            data: kmac_rom_data,
                            strb: kmac_pkg::MsgStrbW'({NumBytes{1'b1}}),
                            last: kmac_rom_last};

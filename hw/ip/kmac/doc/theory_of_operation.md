@@ -198,7 +198,7 @@ size_t kmac_absorb(const uint8_t *in, size_t in_len) {
 
 The method recommended above is always safe.
 However, in specific contexts, it may be okay to skip polling `STATUS.fifo_depth`.
-Normally, KMAC will process data faster than software can write it, and back pressure on the FIFO interface, should ensure that writes from software will simply block until KMAC can process messages.
+Normally, KMAC will process data faster than software can write it, and back pressure on the FIFO interface, should ensure that writes from software will simply block until KMAC can process messages. <!-- AI-VREQ05 --><a id="AI-VREQ05"></a>
 The only reason for polling, then, is to prevent a specific deadlock scenario:
 1. Software has configured KMAC to wait forever for entropy.
 2. There is a problem with the EDN, so entropy is never coming.
@@ -226,7 +226,7 @@ If the `EnMasking` parameter is set, the `SwKeyMasked` parameter has no effect: 
 
 ### Keccak State Access
 
-After the Keccak round completes the KMAC/SHA3 operation, the contents of the Keccak state contain the digest value.
+After the Keccak round completes the KMAC/SHA3 operation, the contents of the Keccak state contain the digest value. <!-- MT-VREQ01 --><a id="MT-VREQ01"></a>
 The software can access the 1600 bit of the Keccak state directly through the window of the KMAC/SHA3 register.
 
 If the compile-time parameter masking feature is enabled, the upper 256B of the window is the second share of the Keccak state.
@@ -251,25 +251,55 @@ If `EnMasking` is not defined, the KMAC merges the shared key to the unmasked fo
 The IP has N number of the application interface. The apps connected to the KMAC IP may initiate the SHA3/cSHAKE/KMAC hashing operation via the application interface `kmac_pkg::app_{req|rsp}_t`.
 The type of the hashing operation is determined in the compile-time parameter `kmac_pkg::AppCfg`.
 
-| Index | App      | Algorithm | Prefix
-|:-----:|:--------:|:---------:|------------
-| 0     | KeyMgr   | KMAC      | CSR prefix
-| 1     | LC_CTRL  | cSHAKE128 | "LC_CTRL"
-| 2     | ROM_CTRL | cSHAKE256 | "ROM_CTRL"
+```systemverilog
+typedef struct packed {
+  logic valid;                          // Valid assertion for current data
+  logic [MsgWidth-1:0] data;            // 64-bit data word
+  logic [MsgStrbW-1:0] strb;            // 8-bit signal for byte-wise data keep
+  logic last;                           // Last flag for transmitted message
+  logic hold;                           // Hold status for current operation
+  logic next;                           // Next status for digest permutation
+} app_req_t;
+```
 
-In the current version of IP, the IP has three application interfaces, which are KeyMgr, LC_CTRL, and ROM_CTRL.
+```systemverilog
+typedef struct packed {
+  logic ready;                          //
+  logic done;                           //
+  logic [AppDigestW-1:0] digest_share0; // 384-bit digest share0 sent from KMAC
+  logic [AppDigestW-1:0] digest_share1; // 384-bit digest share1 sent from KMAC (All 0 if masking not enabled)
+  logic error;                          // Error flag in application request digest calculation
+} app_rsp_t;
+```
+
+| Index | App      | Algorithm    | Prefix
+|:-----:|:--------:|:------------:|------------
+| 0     | KeyMgr   | KMAC         | CSR prefix
+| 1     | LC_CTRL  | cSHAKE128    | "LC_CTRL"
+| 2     | ROM_CTRL | cSHAKE256    | "ROM_CTRL"
+| 3     | OTBN     | Configurable | N/A
+
+In the current version of IP, the IP has four application interfaces, which are KeyMgr, LC_CTRL, ROM_CTRL, and OTBN.
 KeyMgr uses the KMAC operation with CSR prefix value.
 LC_CTRL and ROM_CTRL use the cSHAKE operation with the compile-time parameter prefixes.
 
+The OTBN AppIntf does not use a prefix value but is configurable to select between different operations. <!-- AI-VREQ01 --><a id="AI-VREQ01"></a>
+OTBN will use the SHA3-256, SHA3-512, SHAKE128, and SHAKE256 algorithms. <!-- AI-VREQ02 --><a id="AI-VREQ02"></a>
+
 The app sends 64-bit data (`MsgWidth`) in a beat with the message strobe signal.
 The state machine inside the AppIntf logic starts when it receives the first valid data from any of the AppIntf.
-The AppIntf module chooses the winner based on the fixed priority.
+The AppIntf module chooses the winner based on the fixed priority. (1. KeyMgr, 2. LC_CTRL, 3. ROM_CTRL, 4. OTBN) <a id="AI-VREQ06"></a>
 Then it forwards the selected App to the next stage.
 Because this logic sees the first valid data as an initiator, the Apps cannot run the hashing operation with an empty message.
 After the logic switches to accept the message bitstream from the selected App, if the hashing operation is KMAC, the logic forces the sideloaded key to be used as a secret.
-Also it ignores the command issued from the software.
+In OTBN mode the first word of the message request configures the drive strength and operation.
+Bits [4:2] configure the Keccak drive strength and bits [1:0] select the appropriate SHA3/cSHAKE/SHAKE algorithm.
+Also it ignores the command issued from the software. <!-- CR-VREQ03 --><a id="CR-VREQ03"></a>
 Instead it generates the commands and sends them to the KMAC core.
 
+The interface uses the `strb` signal for a byte-wise valid signal to enable the support for partial data message words.
+Partial words may appear at any point during the App data and KMAC will only send the appropriate valid bytes to the message FIFO.
+An `strb` value of `0xFF` indicates all 8-bytes in the word are valid whereas `0x0F` indicates that only the 4 LSB bytes are valid. <!-- AI-VREQ04 --><a id="AI-VREQ04"></a>
 The last beat of the App data moves the state machine to append the encoded output length if the hashing operation is KMAC.
 The output length is the digest width, which is 256 bit always.
 It means that the logic appends `0x020100` (little-endian) to the end of the message.
@@ -280,7 +310,41 @@ After the encoded output length is pushed to the KMAC core, the interface logic 
 
 After hashing operation is completed, KMAC does not raise a `kmac_done` interrupt; rather it triggers the `done` status in the App response channel.
 The result digest always comes in two shares.
-If the `EnMasking` parameter is not set, the second share is always zero.
+If the `EnMasking` parameter is not set, the second share is always zero. <!-- SP-VREQ01 --><a id="SP-VREQ01"></a>
+
+#### OTBN Interface Connection
+
+OTBN initiated SHA3/SHAKE algorithms over the AppIntf may require multiple permutations for the resulting digest with a single function call. <!-- AI-VREQ03 --><a id="AI-VREQ03"></a>
+Support for the OTBN application interface introduced the `next` and `hold` signals in the AppIntf request channel.
+The `hold` signal is asserted `1'b1` for the duration of an OTBN initiated operation. This prevents the KMAC from finishing its hashing computation for the duration until OTBN has received enough digest words.
+While remaining digest words and permutations exist, the `next` signal is asserted `1'b1` when the KMAC block triggers the `done` status in the App response channel.
+Given the `hold` and `next` signals are only required by the AppIntf state machine for OTBN initiated functions, both signals are held to `1'b0` for the three previously existing interfaces.<a id="AI-VREQ07"></a>
+The OTBN application interface uses the same AppIntf state machine as KeyMgr, LC_CTRL, and ROM_CTRL which a seperate internal state path.
+
+The OTBN expects a 256-bit digest in the response channel from KMAC.
+The digest shares in `app_rsp_t` are both 384-bits wide.
+A 256-bit `prim_packer` FIFO takes the computed 256-bit digest from the Keccak state and buffers for sending it on the AppIntf response channel.
+The FIFO should only be read from when an AppIntf response is active for an OTBN request.
+FIFO writes are controlled by the state machine and should occur when the FIFO is ready with an available digest.
+The Keccak state should not change while digest words from the current permutation are still being packed/squeezed into the FIFO.
+
+#### Requirement References
+
+- <a href="#SP-VREQ01">SP-VREQ01</a>
+- <a href="#CR-VREQ01">CR-VREQ01</a>
+- <a href="#CR-VREQ02">CR-VREQ02</a>
+- <a href="#CR-VREQ03">CR-VREQ03</a>
+- <a href="#CR-VREQ04">CR-VREQ04</a>
+- <a href="#RS-VREQ01">RS-VREQ01</a>
+- <a href="#RS-VREQ02">RS-VREQ02</a>
+- <a href="#AI-VREQ01">AI-VREQ01</a>
+- <a href="#AI-VREQ02">AI-VREQ02</a>
+- <a href="#AI-VREQ03">AI-VREQ03</a>
+- <a href="#AI-VREQ04">AI-VREQ04</a>
+- <a href="#AI-VREQ05">AI-VREQ05</a>
+- <a href="#AI-VREQ06">AI-VREQ06</a>
+- <a href="#AI-VREQ07">AI-VREQ07</a>
+- <a href="#MT-VREQ01">MT-VREQ01</a>
 
 ### Entropy Generator
 

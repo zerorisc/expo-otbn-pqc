@@ -12,6 +12,55 @@ class kmac_app_host_seq extends kmac_app_base_seq;
   //
   // This also implicitly controls when the `last` signal is asserted.
   int unsigned msg_size_bytes = 1;
+  int unsigned init_msg_size_bytes = 1;
+
+  // AppIntf mode for generating first message
+  logic [1:0] mode;
+
+  // SHA3 configuration constraints
+  rand bit [1:0] sha3_mode;
+  rand bit [2:0] keccak_drive;
+  rand bit [3:0] max_digest_word;
+
+  constraint kmac_app_config_c {
+    sha3_mode inside {AppSHA3, AppKMAC};
+    keccak_drive inside {sha3_pkg::L128, sha3_pkg::L256, sha3_pkg::L512};
+
+    if (sha3_mode == AppSHA3) {
+      keccak_drive inside {sha3_pkg::L256, sha3_pkg::L512}; // SHA3-256/512
+      if (keccak_drive == sha3_pkg::L256) {
+        max_digest_word == 4'h1; // SHA3-256
+      } else if (keccak_drive == sha3_pkg::L512) {
+        max_digest_word == 4'h2; // SHA3-512
+      }
+    } else if (sha3_mode == AppKMAC) {
+      keccak_drive inside {sha3_pkg::L128, sha3_pkg::L256}; // SHAKE-128/256
+      max_digest_word inside {[4'h1:4'hF]}; // Any size digest
+    }
+  }
+
+  function bit [KmacDataIfWidth-1:0] get_header_word();
+    bit [KmacDataIfWidth-1:0] word = '0; // Initialize header
+    word[1:0] = sha3_mode; // Assign hash mode
+    word[4:2] = keccak_drive; // Assign keccak strength
+    return word;
+  endfunction
+
+
+  // Send the OTBN-specific header word
+  virtual task send_header();
+
+    bit [KmacDataIfWidth-1:0] header_data = get_header_word();
+    bit [KmacDataIfWidth/8-1:0] header_strb = '1;
+    bit header_last = 0;
+
+    push_pull_host_seq#(`CONNECT_DATA_WIDTH) header_seq;
+    `uvm_create_on(header_seq, p_sequencer.m_push_pull_sequencer)
+    `DV_CHECK_RANDOMIZE_FATAL(header_seq)
+
+    cfg.m_data_push_agent_cfg.add_h_user_data({header_data, header_strb, header_last});
+    `uvm_send(header_seq)
+  endtask
 
   virtual task body();
 
@@ -25,6 +74,14 @@ class kmac_app_host_seq extends kmac_app_base_seq;
     `DV_CHECK_RANDOMIZE_WITH_FATAL(req, byte_data_q.size() == msg_size_bytes;)
     `uvm_info(`gfn, $sformatf("Randomized req: %0s", req.sprint()), UVM_HIGH)
     `uvm_info(`gfn, $sformatf("byte_data_q: %0p", req.byte_data_q), UVM_HIGH)
+
+    init_msg_size_bytes = msg_size_bytes;
+
+    if (mode == AppConfigDynamic) begin
+      cfg.vif.otbn_start = 1'b1;
+      cfg.vif.max_per = max_digest_word;
+      send_header();
+    end
 
     while (msg_size_bytes > 0) begin
 

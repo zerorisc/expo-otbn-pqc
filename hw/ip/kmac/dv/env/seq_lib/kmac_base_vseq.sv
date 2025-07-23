@@ -578,6 +578,7 @@ class kmac_base_vseq extends cip_base_vseq #(
     `uvm_create_on(kmac_app_seq, p_sequencer.kmac_app_sequencer_h[mode]);
     `DV_CHECK_RANDOMIZE_FATAL(kmac_app_seq)
     kmac_app_seq.msg_size_bytes = msg.size();
+    kmac_app_seq.mode = mode;
     `uvm_send(kmac_app_seq)
   endtask
 

@@ -51,7 +51,7 @@ module sha3
   input prim_mubi_pkg::mubi4_t done_i,    // see sha3pad for details
 
   output prim_mubi_pkg::mubi4_t absorbed_o,
-  output logic                  squeezing_o,
+  output prim_mubi_pkg::mubi4_t squeezing_o,
 
   // Indicate of one block processed. KMAC main state tracks the progression
   // based on this signal.
@@ -200,7 +200,7 @@ module sha3
   end
 
   // Squeezing output
-  assign squeezing_o = squeezing;
+  assign squeezing_o = squeezing ? prim_mubi_pkg::MuBi4True : prim_mubi_pkg::MuBi4False;
 
   // processing
   always_ff @(posedge clk_i or negedge rst_ni) begin

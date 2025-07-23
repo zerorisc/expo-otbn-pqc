@@ -21,6 +21,24 @@ interface kmac_app_intf (input clk, input rst_n);
   wire [kmac_pkg::AppDigestW-1:0] rsp_digest_share1;
   wire rsp_error;
 
+  // The following signals and enum declaration are temporary for driving the next/hold lines
+  wire next_tmp;
+  wire hold_tmp;
+  logic next;
+  logic hold;
+  logic otbn_start;
+  logic [3:0] per_ctr;
+  logic [3:0] max_per;
+
+  typedef enum logic [1:0] {
+    StIdle,
+    StStart,
+    StWait,
+    StNext
+  } otbn_state_e;
+
+  otbn_state_e st_otbn;
+
   // all the host pins are handled by push_pull driver, only include clk and rst here
   clocking host_cb @(posedge clk);
     input  rst_n;
@@ -32,6 +50,8 @@ interface kmac_app_intf (input clk, input rst_n);
     output rsp_digest_share0;
     output rsp_digest_share1;
     output rsp_error;
+    output next;
+    output hold;
   endclocking
 
   clocking mon_cb @(posedge clk);
@@ -40,19 +60,71 @@ interface kmac_app_intf (input clk, input rst_n);
     input rsp_digest_share0;
     input rsp_digest_share1;
     input rsp_error;
+    input next;
+    input hold;
   endclocking
 
   always @(if_mode) req_data_if.if_mode = if_mode;
 
   assign kmac_data_req = (if_mode == dv_utils_pkg::Host) ?
-                         {req_data_if.valid, req_data_if.h_data} : 'z;
-  assign {req_data_if.valid, req_data_if.h_data} = (if_mode == dv_utils_pkg::Device) ?
+                         {req_data_if.valid, hold, next, req_data_if.h_data} : 'z;
+  assign {req_data_if.valid, hold_tmp, next_tmp, req_data_if.h_data} = (if_mode == dv_utils_pkg::Device) ?
                                                    kmac_data_req : 'z;
 
   assign {req_data_if.ready, rsp_done, rsp_digest_share0, rsp_digest_share1, rsp_error} =
          (if_mode == dv_utils_pkg::Host) ? kmac_data_rsp : 'z;
   assign kmac_data_rsp = (if_mode == dv_utils_pkg::Device) ?
          {req_data_if.ready, rsp_done, rsp_digest_share0, rsp_digest_share1, rsp_error} : 'z;
+
+  // The following fsm is temporary for driving next/hold in the interface
+  // It should be removed once the restructuring of the sequencer/driver is complete
+  // Hold is asserted 1'b1 at the start of the OTBN app req and returns to 1'b0 after last rsp
+  // Hold is asserted 1'b0 on the cycle immediately following last rsp_done
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      st_otbn <= StIdle;
+      hold <= 1'b0;
+      next <= 1'b0;
+      per_ctr <= 4'h0;
+      otbn_start <= 1'b0;
+      max_per <= 4'h0;
+    end else if (otbn_start) begin
+      case (st_otbn)
+
+        StIdle: begin
+          st_otbn <= StWait;
+          hold <= 1'b1;
+        end
+
+        StWait: begin
+          if (rsp_done == 1'b1) begin
+            st_otbn <= StNext;
+            per_ctr <= per_ctr + 1'b1;
+            if ((per_ctr + 1) < max_per) begin
+              next <= 1'b1;
+            end else begin
+              hold <= 1'b0;
+            end
+          end
+        end
+
+        StNext: begin
+          if (per_ctr == max_per) begin
+            st_otbn <= StIdle;
+            per_ctr <= 3'h0;
+            next <= 1'b0;
+            hold <= 1'b0;
+            otbn_start <= 1'b0;
+          end else begin
+            next <= 1'b0;
+            if (rsp_done == 1'b0) begin
+              st_otbn <= StWait;
+            end
+          end
+        end
+      endcase
+    end
+  end
 
   // The following assertions only apply to device mode.
   // strb should never be 0

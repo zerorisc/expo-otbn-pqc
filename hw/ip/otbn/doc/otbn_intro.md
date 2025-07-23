@@ -18,7 +18,7 @@ To run an OTBN program, Ibex loads the program into OTBN's instruction memory (a
 When OTBN is done, it sends an interrupt to Ibex, which reads back the results from data memory.
 See [below](#an-example-program) for an example of a standalone OTBN program.
 
-OTBN protects its data from Ibex in various ways:
+OTBN protects its data from Ibex in various ways: <!-- CR-VREQ04 -->
 - Ibex cannot read OTBN's memory while it is busy executing a program.
 - Ibex cannot stop OTBN in the middle of execution; it has to wait until OTBN is done.
 - The [key manager][keymgr] can sideload keys directly into OTBN without giving Ibex access to them.
