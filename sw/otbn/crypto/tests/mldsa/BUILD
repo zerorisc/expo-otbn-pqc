@@ -20,6 +20,17 @@ otbn_sim_test(
 )
 
 otbn_sim_test(
+    name = "poly_sparse_schoolbook_test",
+    srcs = [
+        "poly_sparse_schoolbook_test.s",
+    ],
+    dexp = "poly_sparse_schoolbook_test.dexp",
+    deps = [
+        "//sw/otbn/crypto/mldsa:poly_pointwise_dilithium",
+    ],
+)
+
+otbn_sim_test(
     name = "dilithium2_keypair_test",
     srcs = [
         "dilithium_keypair_test.s",
