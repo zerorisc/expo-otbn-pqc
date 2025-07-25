@@ -223,50 +223,35 @@ sign_dilithium:
     #define STACK_RND -160 /* Prev - 32 */
     #define STACK_KEY -192 /* Prev - 32 */
         #define STACK_RHOPRIME -192 /* Prev */
+    #define STACK_T0  -1216 /* Prev - 1024 */
+        #define STACK_S1  -1216 /* Prev */
+        #define STACK_S2  -1216 /* Prev */
+        #define STACK_Y   -1216 /* Prev */
+        #define STACK_H   -1216 /* Prev */
+    #define STACK_TMP  -2240 /* Prev - 1024 */
 #if DILITHIUM_MODE == 2
-    #define STACK_T0  -4288 /* Prev - K*1024 */
-    #define STACK_S1  -8384 /* Prev - L*1024 */
-    #define STACK_S2  -12480 /* Prev - K*1024 */
-    #define STACK_CP  -13504 /* Prev - 1024 */
-    #define STACK_Y  -14528 /* Prev - 1024 */
-    #define STACK_Z  -18624 /* Prev - L*1024 */
-    #define STACK_W1  -22720 /* Prev - K*1024 */
-        #define STACK_H  -22720 /* Prev */
-    #define STACK_W0  -26816 /* Prev - K*1024 */
-        #define STACK_CTXLEN  -26816 /* Prev */
-    #define STACK_CTX  -26820 /* Prev - 4 */
-    #define INIT_SP -26848
-    #define STACK_SIZE -26976
+    #define STACK_W1  -6336 /* Prev - K*1024 */
+    #define STACK_W0  -10432 /* Prev - K*1024 */
+        #define STACK_CTXLEN  -10432 /* Prev */
+    #define STACK_CTX  -10436 /* Prev - 4 */
+    #define INIT_SP -10464
+    #define STACK_SIZE 10592
 
 #elif DILITHIUM_MODE == 3
-    #define STACK_T0  -6336 /* Prev - K*1024 */
-    #define STACK_S1  -11456 /* Prev - L*1024 */
-    #define STACK_S2  -17600 /* Prev - K*1024 */
-    #define STACK_CP  -18624 /* Prev - 1024 */
-    #define STACK_Y  -19648 /* Prev - 1024 */
-    #define STACK_Z  -24768 /* Prev - L*1024 */
-    #define STACK_W1  -30912 /* Prev - K*1024 */
-        #define STACK_H  -30912 /* Prev */
-    #define STACK_W0  -37056 /* Prev - K*1024 */
-        #define STACK_CTXLEN  -37056 /* Prev */
-    #define STACK_CTX  -37060 /* Prev - 4 */
-    #define INIT_SP -37088
-    #define STACK_SIZE -37216
+    #define STACK_W1  -8384 /* Prev - K*1024 */
+    #define STACK_W0  -14528 /* Prev - K*1024 */
+        #define STACK_CTXLEN  -14528 /* Prev */
+    #define STACK_CTX  -14532 /* Prev - 4 */
+    #define INIT_SP -14560
+    #define STACK_SIZE 14688
 
 #elif DILITHIUM_MODE == 5
-    #define STACK_T0  -8384 /* Prev - K*1024 */
-    #define STACK_S1  -15552 /* Prev - L*1024 */
-    #define STACK_S2  -23744 /* Prev - K*1024 */
-    #define STACK_CP  -24768 /* Prev - 1024 */
-    #define STACK_Y  -25792 /* Prev - 1024 */
-    #define STACK_Z  -32960 /* Prev - L*1024 */
-    #define STACK_W1  -41152 /* Prev - K*1024 */
-        #define STACK_H  -41152 /* Prev */
-    #define STACK_W0  -49344 /* Prev - K*1024 */
-        #define STACK_CTXLEN  -49344 /* Prev */
-    #define STACK_CTX  -49348 /* Prev - 4 */
-    #define INIT_SP -49376
-    #define STACK_SIZE -49504
+    #define STACK_W1  -10432 /* Prev - K*1024 */
+    #define STACK_W0  -18624 /* Prev - K*1024 */
+        #define STACK_CTXLEN  -18624 /* Prev */
+    #define STACK_CTX  -18628 /* Prev - 4 */
+    #define INIT_SP -18656
+    #define STACK_SIZE 18784
 #endif
     /* Initialize the frame pointer */
     addi fp, sp, 0
@@ -357,7 +342,7 @@ sign_dilithium:
     li t2, STACK_CTXLEN
     add a0, fp, t2
     lw t2, 0(a0) /* t2 <= ctxlen */
-    li t3, STACK_Z /* Re-use Z buffer for absorbing ctxlen and ctx */
+    li t3, STACK_TMP /* Use temporary buffer for absorbing ctxlen and ctx */
     add t3, fp, t3
 
     /* Note: Add support for non-4B multiple ctxlen */
@@ -457,7 +442,7 @@ sign_dilithium:
     /* a1 still contains length but includes TRBYTES */
     addi a1, a1, -TRBYTES
 
-    li t3, STACK_Z /* Re-use Z buffer for absorbing ctxlen and ctx */
+    li t3, STACK_TMP /* Use temporary buffer for absorbing ctxlen and ctx */
     add a0, fp, t3
 
     jal x1, keccak_send_message
@@ -580,13 +565,13 @@ _rej_sign_dilithium:
             /* Compute A[i][j]. */
             li   a0, STACK_RHO
             add  a0, fp, a0
-            li   a1, STACK_Z
+            li   a1, STACK_TMP
             add  a1, fp, a1
             addi a2, s4, 0 /* matrix nonce */
             jal  x1, poly_uniform
             li   a0, STACK_Y
             add  a0, fp, a0
-            li   a1, STACK_Z
+            li   a1, STACK_TMP
             add  a1, fp, a1
             addi a2, s1, 0 /* *W1[i] */
             /* Add A[i][j] * y[j] to w1[i]. */
@@ -691,7 +676,7 @@ _rej_sign_dilithium:
     bn.wsrr w8, 0xA
 
     /* Get always-aligned temporary buffer. */
-    li   t0, STACK_CP
+    li   t0, STACK_TMP
     add  t0, fp, t0
 #if CTILDEBYTES == 32
     /* Store first 32 bytes into temp buffer and signature. */
@@ -727,9 +712,9 @@ _rej_sign_dilithium:
     /* Finish the SHAKE-256 operation. */
 
     /* Challenge */
-    /* CTILDE was temporarily stored in STACK_CP. Re-use here because it is aligned,
+    /* CTILDE was temporarily stored in STACK_TMP. Re-use here because it is aligned,
        for CTILDEBYTES = 48 as well */
-    li   a0, STACK_CP
+    li   a0, STACK_TMP
     add  a0, fp, a0
     jal  x1, poly_challenge_compact
 
@@ -746,7 +731,7 @@ _rej_sign_dilithium:
     /* Save some stack pointers. */
     li   s1, STACK_S1
     add  s1, fp, s1
-    li   s2, STACK_Z
+    li   s2, STACK_TMP
     add  s2, fp, s2
     li   s3, STACK_RHOPRIME
     add  s3, fp, s3
@@ -869,13 +854,13 @@ _rej_sign_dilithium:
     /* This loop computes the hint one element at a time, and performs
        rejection sampling. For each index i=0..k-1, it does:
 
-         h = cp * s2[i]
-         w0[i] -= h
+         tmp = cp * s2[i]
+         w0[i] -= tmp
          tmp = reduce32(w0[i])
          if not poly_chknorm(tmp, gamma - beta):
            goto _rej_sign_dilithium
-         h = cp * t0[i]
-         h = reduce32(h)
+         tmp = cp * t0[i]
+         h = reduce32(tmp)
          if not poly_chknorm(h, gamma):
            goto _rej_sign_dilithium
          w0[i] += h
@@ -894,23 +879,24 @@ _rej_sign_dilithium:
         /* Update the packed s2 pointer. */
         addi s2, a1, 0
 
-        /* h = cp * s2 */
-        addi a1, s1, 0
+        /* tmp = cp * s2 */
+        li   a1, STACK_TMP
+        add  a1, fp, a1
         jal  x1, poly_sparse_schoolbook
 
-        /* w0[i] -= h */
+        /* w0[i] -= tmp */
         addi a0, s3, 0
         addi a2, s3, 0
         jal  x1, poly_sub_dilithium
 
         /* tmp = reduce32(w0[i]) to move to mod^{+-} for bound check */
         addi a0, s3, 0
-        li   a1, STACK_Z
+        li   a1, STACK_TMP
         add  a1, fp, a1
         jal  x1, poly_reduce32_dilithium
 
         /* chknorm(tmp, gamma2 - beta) */
-        li   a0, STACK_Z
+        li   a0, STACK_TMP
         add  a0, fp, a0
         li   t0, GAMMA2
         li   t1, BETA
@@ -927,18 +913,20 @@ _rej_sign_dilithium:
         /* Update the packed t0 pointer. */
         addi s0, a1, 0
 
-        /* h = cp * t0 */
+        /* tmp = cp * t0 */
         addi a0, a0, -1024
-        addi a1, s1, 0
+        li   a1, STACK_TMP
+        add  a1, fp, a1
         jal  x1, poly_sparse_schoolbook
 
-        /* w0[i] += h */
+        /* w0[i] += tmp */
         addi a0, s3, 0
         addi a2, s3, 0
         jal  x1, poly_add_dilithium
 
-        /* reduce32(h) to move to mod^{+-} for bound check */
-        addi a0, s1, 0
+        /* h = reduce32(tmp) to move to mod^{+-} for bound check */
+        li   a0, STACK_TMP
+        add  a0, fp, a0
         addi a1, s1, 0
         jal  x1, poly_reduce32_dilithium
 
