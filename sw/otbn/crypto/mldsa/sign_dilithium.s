@@ -325,36 +325,6 @@ sign_dilithium:
     bn.lid t0, 0(a3++)
     bn.sid t0, 32(t1)
 
-
-    /* Unpack s1 */
-    /* Load pointer to s1 */
-    li   a0, STACK_S1
-    add  a0, fp, a0
-    /* Load pointer to packed s1 */
-    addi a1, a3, 0
-
-    LOOPI L, 2
-        jal x1, polyeta_unpack_dilithium
-        nop
-
-    /* Unpack s2 */
-    /* Load pointer to s2 */
-    li  a0, STACK_S2
-    add a0, fp, a0
-
-    LOOPI K, 2
-        jal x1, polyeta_unpack_dilithium
-        nop
-
-    /* Unpack t0 */
-    /* Load pointer to t0 */
-    li  a0, STACK_T0
-    add a0, fp, a0
-
-    LOOPI K, 2
-        jal x1, polyt0_unpack_dilithium
-        nop
-
     /* CRH(tr, msg) */
 
     /* Initialize a SHAKE256 operation. */
@@ -553,58 +523,6 @@ sign_dilithium:
     bn.sid  t1, 0(a0++) /* Store into rhoprime buffer */
 
     /* Finish the SHAKE-256 operation. */
-
-    /* NTT(s1) */
-    li   a0, STACK_S1
-    add  a0, fp, a0
-    addi a2, a0, 0 /* Inplace */
-    la   a1, twiddles_fwd
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-       push \reg
-    .endr
-
-    LOOPI L, 2
-        jal x1, ntt_dilithium
-        addi a1, a1, -1024 /* Reset twiddle pointer */
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
-
-    /* NTT(s2) */
-    li   a0, STACK_S2
-    add  a0, fp, a0
-    addi a2, a0, 0 /* inplace */
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-       push \reg
-    .endr
-
-    LOOPI K, 2
-      jal  x1, ntt_dilithium
-      addi a1, a1, -1024 /* Reset twiddle pointer */
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
-
-    /* NTT(t0) */
-    li   a0, STACK_T0
-    add  a0, fp, a0
-    addi a2, a0, 0 /* Inplace */
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-       push \reg
-    .endr
-
-    LOOPI K, 2
-        jal x1, ntt_dilithium
-        addi a1, a1, -1024 /* Reset twiddle pointer */
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
 
     li s11, 0 /* nonce */
 
@@ -811,59 +729,31 @@ _rej_sign_dilithium:
     /* Challenge */
     /* CTILDE was temporarily stored in STACK_CP. Re-use here because it is aligned,
        for CTILDEBYTES = 48 as well */
-    li   a1, STACK_CP
-    add  a1, fp, a1
     li   a0, STACK_CP
     add  a0, fp, a0
-    jal  x1, poly_challenge
+    jal  x1, poly_challenge_compact
 
-    /* NTT(cp) */
-    li   a0, STACK_CP
-    add  a0, fp, a0 /* Input */
-    addi a2, a0, 0  /* Output inplace */
-    la   a1, twiddles_fwd
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-        push \reg
-    .endr
-
-    jal x1, ntt_dilithium /* Only one polynomial */
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
+    /* Load pointer to packed s1 */
+    li   s0, STACK_SK
+    add  s0, fp, s0
+    lw   s0, 0(s0)
+    addi s0, s0, 128
 
     /* z = cp * s1 */
-    li  a0, STACK_CP
+    li  a0, STACK_S1
     add a0, fp, a0
-    li  a1, STACK_S1
+    li  a1, STACK_Z
     add a1, fp, a1
-    li  a2, STACK_Z
-    add a2, fp, a2
 
-    LOOPI L, 2
-        jal  x1, poly_pointwise_dilithium
+    LOOPI L, 8
+        addi s1, a1, 0
+        addi a1, s0, 0
+        jal x1, polyeta_unpack_dilithium
         addi a0, a0, -1024
-
-    /* Inverse NTT on z */
-    li  a0, STACK_Z
-    add a0, fp, a0
-    la  a1, twiddles_inv
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-        push \reg
-    .endr
-
-    LOOPI L, 3
-        jal  x1, intt_dilithium
-        /* Reset the twiddle pointer */
-        addi a1, a1, -960
-        /* Go to next input polynomial */
-        addi a0, a0, 1024
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
+        addi s0, a1, 0
+        addi a1, s1, 0
+        jal  x1, poly_sparse_schoolbook
+        addi a1, a1, 1024
 
     /* Add y to z, computing values of y on the fly. */
     addi s11, s11, -L /* reset y nonce */
@@ -920,37 +810,33 @@ _rej_sign_dilithium:
         bne a0, zero, _rej_sign_dilithium
     .endr
 
+    /* Load pointer to packed S2. */
+    li   s0, STACK_SK
+    add  s0, fp, s0
+    lw   s0, 0(s0)
+#if DILITHIUM_MODE == 2
+    addi s0, s0, 512
+#elif DILITHIUM_MODE == 3
+    addi s0, s0, 768
+#elif DILITHIUM_MODE == 5
+    addi s0, s0, 800
+#endif
+
     /* h = cp * s2 */
-    li  a0, STACK_CP
+    li  a0, STACK_S2
     add a0, fp, a0
-    li  a1, STACK_S2
+    li  a1, STACK_H
     add a1, fp, a1
-    li  a2, STACK_H
-    add a2, fp, a2
 
-    LOOPI K, 2
-        jal  x1, poly_pointwise_dilithium
+    LOOPI K, 8
+        addi s1, a1, 0
+        addi a1, s0, 0
+        jal x1, polyeta_unpack_dilithium
         addi a0, a0, -1024
-
-    /* Inverse NTT on h */
-    li  a0, STACK_H
-    add a0, fp, a0
-    la  a1, twiddles_inv
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-        push \reg
-    .endr
-
-    LOOPI K, 3
-        jal  x1, intt_dilithium
-        /* Reset the twiddle pointer */
-        addi a1, a1, -960
-        /* Go to next input polynomial */
-        addi a0, a0, 1024
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
+        addi s0, a1, 0
+        addi a1, s1, 0
+        jal  x1, poly_sparse_schoolbook
+        addi a1, a1, 1024
 
     /* w0 = w0 + h */
     li     x4, 0
@@ -1004,37 +890,33 @@ _rej_sign_dilithium:
         addi s0, s0, 1024
     .endr
 
+    /* Load pointer to packed T0. */
+    li   s0, STACK_SK
+    add  s0, fp, s0
+    lw   s0, 0(s0)
+#if DILITHIUM_MODE == 2
+    addi s0, s0, 896
+#elif DILITHIUM_MODE == 3
+    addi s0, s0, 1536
+#elif DILITHIUM_MODE == 5
+    addi s0, s0, 1568
+#endif
+
     /* h = cp * t0 */
-    li  a0, STACK_CP
+    li  a0, STACK_T0
     add a0, fp, a0
-    li  a1, STACK_T0
+    li  a1, STACK_H
     add a1, fp, a1
-    li  a2, STACK_H
-    add a2, fp, a2
 
-    LOOPI K, 2
-        jal  x1, poly_pointwise_dilithium
+    LOOPI K, 8
+        addi s1, a1, 0
+        addi a1, s0, 0
+        jal x1, polyt0_unpack_dilithium
         addi a0, a0, -1024
-
-    /* Inverse NTT on h */
-    li  a0, STACK_H
-    add a0, fp, a0
-    la  a1, twiddles_inv
-
-    .irp reg,t0,t1,t2,t3,t4,t5,t6,a0,a1,a2,a3,a4,a5,a6,a7
-        push \reg
-    .endr
-
-    LOOPI K, 3
-        jal  x1, intt_dilithium
-        /* Reset the twiddle pointer */
-        addi a1, a1, -960
-        /* Go to next input polynomial */
-        addi a0, a0, 1024
-
-    .irp reg,a7,a6,a5,a4,a3,a2,a1,a0,t6,t5,t4,t3,t2,t1,t0
-        pop \reg
-    .endr
+        addi s0, a1, 0
+        addi a1, s1, 0
+        jal  x1, poly_sparse_schoolbook
+        addi a1, a1, 1024
 
     /* w0 = w0 + h */
     li     x4, 0
