@@ -2080,7 +2080,7 @@ polyt0_unpack_dilithium:
     /* Load mask for zeroing the upper bits of the unpacked coefficients. */
     li t2, 5
     la t3, polyt0_unpack_dilithium_mask
-    bn.lid t5, 0(t3)
+    bn.lid t2, 0(t3)
 
     /* Setup WDR */
     li t2, 2
