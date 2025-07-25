@@ -688,6 +688,150 @@ _loop_inner_skip_load_poly_challenge:
     ret
 
 /**
+ * poly_challenge
+ *
+ * Implementation of H. Samples polynomial with TAU nonzero coefficients in
+ * {-1,1} using the output stream of SHAKE128(seed|nonce).
+ *
+ * To save space, we represent c as two 256-bit values:
+ *   - cnz, with 1 bits at indices i where c[255-i] is nonzero (1 or -1)
+ *   - csn, with 1 bits at indices i where c[255-i] is negative (-1)
+ *
+ * Returns: -
+ *
+ * Flags: Clobbers FG0, has no meaning beyond the scope of this subroutine.
+ *
+ * @param[in]  a0: mu byte array containing seed of length CTILDEBYTES
+ * @param[out] w28: cnz, 1 bits where c is nonzero (in reverse order)
+ * @param[out] w29: csn, 1 bits where c is negative (in reverse order)
+ *
+ * clobbered registers: a0-a4, t0-t4, w0-w5
+ */
+.global poly_challenge_compact
+poly_challenge_compact:
+    li    a1, CTILDEBYTES /* a1 <= CTILDEBYTES */
+    slli  t0, a1, 5
+    addi  t0, t0, SHAKE256_CFG
+    csrrw zero, KECCAK_CFG_REG, t0
+
+    /* Send the message to the Keccak core. */
+    /* a0 contains *mu already */
+    /* a1 contains CTILDEBYTES already */
+    jal  x1, keccak_send_message
+
+    /* Read first SHAKE output */
+    bn.wsrr w5, 0xA /* KECCAK_DIGEST */
+
+    /* Initialize outputs to 0 */
+    bn.xor w28, w28, w28
+    bn.xor w29, w29, w29
+
+    /* w3 <= signs */
+    /* Mask out the 64 sign bits from the WDR containing the SHAKE output */
+    bn.rshi w3, w5, bn0 >> 64
+    bn.rshi w3, bn0, w3 >> 192
+    /* shift out sign bits from the register containing the SHAKE output */
+    bn.rshi w5, bn0, w5 >> 64
+
+    /* a2 <= number of remaining bits in SHAKE output buffer */
+    li a2, 192
+
+    /* w4 <= i = N-TAU */
+    bn.addi w4, bn0, N
+    bn.subi w4, w4, TAU
+
+    /* Set up pointer to tmp buffer. */
+    la t4, poly_wdr2gpr
+
+    /*
+      Loop invariants (i=N-TAU..N-1):
+        w28 = cnz >> (N - 1 - i)
+        w2 = csn >> (N - 1 - i)
+        w3 = ROTR(signs, i-(N-TAU))
+        w4 = i
+
+      The shifting of cnz and csn is designed to ensure that during the loop,
+      the LSbs of cnz and csn correspond logically to the coefficient c[i].
+     */
+    LOOPI TAU, 36
+    /* start do-while loop */
+_loop_inner_poly_challenge_compact:
+        /* If the SHAKE output "buffer" register w0 is empty, squeeze again.
+           Since all reads from w0 are equally large (8 bits) and 8 | 256,
+           we can just check for "zero" */
+        bne     zero, a2, _loop_inner_skip_load_poly_challenge_compact
+        bn.wsrr w5, 0xA /* KECCAK_DIGEST */
+        li      a2, 256 /* reset the remaining bits counter */
+_loop_inner_skip_load_poly_challenge_compact:
+        /* Rotate the SHAKE digest so that LSB (b) is now the MSB. */
+        bn.rshi w5, w5, w5 >> 8
+        addi    a2, a2, -8 /* decrease number of remaining bits */
+
+        /* Compare the SHAKE byte to the index: while (b < i); from ref. */
+        bn.sub w0, w4, w5 >> 248
+        csrrs t0, FG0, zero
+        andi t0, t0, 1
+        bne t0, zero, _loop_inner_poly_challenge_compact
+
+        /* Implements:
+        c->coeffs[i] = c->coeffs[b];
+        c->coeffs[b] = 1 - 2*(signs & 1);
+        signs >>= 1; */
+
+        /* Shift both cnz and csn by one. */
+        bn.add w28, w28, w28
+        bn.add w29, w29, w29
+
+        /* Store the difference i - b into memory and read it into a GPR. */
+        bn.sid zero, 0(t4)
+        lw t0, 0(t4)
+
+        /* Reset the WDR buffer to 0. */
+        li t1, 31
+        bn.sid t1, 0(t4)
+
+        /* Get the byte address within the WDR buffer for bit index (i-b). */
+        srli t2, t0, 5
+        slli t2, t2, 2
+        add t2, t4, t2
+
+        /* Get a mask for the bit within the word (SLLI uses only bits 0-5). */
+        li t1, 1
+        sll t3, t1, t0
+
+        /* Store the bit and load the WDR buffer (now a 1-bit mask for bit i-b). */
+        sw t3, 0(t2)
+        bn.lid zero, 0(t4)
+
+        /* Set w29[0] = w29[i-b] (i.e. cnz[i] = cnz[b]). */
+        bn.addi w1, w28, 1
+        bn.and w7, w28, w0
+        bn.sel w28, w28, w1, FG0.z
+
+        /* Set w28[i-b] = 1 (i.e. cnz[b] = 1). */
+        bn.or w28, w28, w0
+
+        /* Set w29[0] = w29[i-b] (i.e. csn[i] = csn[b]). */
+        bn.addi w1, w29, 1
+        bn.and w7, w29, w0
+        bn.sel w29, w29, w1, FG0.z
+
+        /* Set w29[i-b] = w5[0] (i.e. csn[b] = signs[0]). */
+        bn.and w1, w29, w0
+        bn.xor w1, w1, w29
+        bn.or w29, w29, w0
+        bn.addi w7, w3, 1
+        bn.sel w29, w1, w29, FG0.l
+
+        bn.rshi w3, bn0, w3 >> 1 /* Discard the used bit: signs >>= 1 */
+        bn.addi w4, w4, 1 /* i++ */
+
+    /* Finish the SHAKE-256 operation. */
+
+    ret
+
+
+/**
  * poly_uniform
  *
  * Returns: -

@@ -20,6 +20,19 @@ otbn_sim_test(
 )
 
 otbn_sim_test(
+    name = "poly_dilithium2_challenge_test",
+    srcs = [
+        "poly_challenge_test.s",
+    ],
+    copts = ["-DDILITHIUM_MODE=2"],
+    exp = "poly_dilithium2_challenge_test.exp",
+    deps = [
+        "//sw/otbn/crypto/mldsa:poly_dilithium2",
+        "//sw/otbn/crypto/mldsa:rounding_dilithium2",
+    ],
+)
+
+otbn_sim_test(
     name = "dilithium2_keypair_test",
     srcs = [
         "dilithium_keypair_test.s",
