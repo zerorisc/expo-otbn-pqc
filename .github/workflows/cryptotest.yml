@@ -1,0 +1,57 @@
+# Copyright zeroRISC Inc.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+name: OpenTitan crypto tests
+on:
+  workflow_call:
+    inputs:
+      job-name:
+        required: true
+        type: string
+        description: Name of the job
+      runner:
+        required: true
+        type: string
+        description: Runner type to use.
+      tag-filters:
+        type: string
+        default: ''
+        description: Bazel tag filters for the tests
+      timeout-filters:
+        type: string
+        default: ''
+        description: Bazel timeout filters for the tests
+      targets:
+        required: true
+        type: string
+        description: Bazel targets to test
+      timeout:
+        default: 30
+        type: number
+        description: Timeout for the job in minutes
+
+jobs:
+  cryptotest:
+    name: ${{ inputs.job-name }}
+    runs-on:
+      group: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare environment
+        uses: ./.github/actions/prepare-env
+      - name: Show environment
+        run: ./ci/scripts/show-env.sh
+      - name: Run cryptolib unit tests
+        run: |
+            ./bazelisk.sh test --build_tests_only --keep_going \
+              --test_timeout_filters=${{ inputs.timeout-filters }} \
+              --test_tag_filters=${{ inputs.tag-filters }} \
+              --test_output=errors \
+              ${{ inputs.targets }}
