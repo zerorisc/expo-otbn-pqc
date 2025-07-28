@@ -16,7 +16,37 @@ concurrency:
 
 jobs:
   lint:
+    name: Run linters
+    runs-on:
+      group: zerorisc-none
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required so we can lint commit messages.
+      - name: Prepare environment
+        uses: ./.github/actions/prepare-env
+        with:
+          service_account_json: '${{ secrets.BAZEL_CACHE_CREDS }}'
+      - name: Show environment
+        run: ./ci/scripts/show-env.sh
+      - name: Header guards
+        run: ./ci/scripts/include-guard.sh "$GITHUB_BASE_REF"
+        # $GITHUB_BASE_REF is unset unless this is a PR, because otherwise we
+        # have no branch to compare against.
+        if: ${{ github.event_name == 'pull_request' }}
+      - name: Commit metadata
+        run: ./ci/scripts/lint-commits.sh "$GITHUB_BASE_REF"
+        # $GITHUB_BASE_REF is unset unless this is a PR, because otherwise we
+        # have no branch to compare against.
+        if: ${{ github.event_name == 'pull_request' }}
+      - name: C/C++ formatting
+        run: ./bazelisk.sh test //quality:clang_format_check
+      - name: Buildifier
+        run: ./bazelisk.sh test //quality:buildifier_check
+
+  otbn-dv:
     name: Run OTBN DV tests (quick)
+    needs: lint
     runs-on:
       group: zerorisc-synopsys
     steps:
@@ -42,3 +72,68 @@ jobs:
         with:
           name: html-test-report
           path: report.tar.gz
+
+  bitstream-earlgrey-cw310:
+    name: Build Earlgrey CW310 Bitstream
+    needs: lint
+    uses: ./.github/workflows/bitstream.yml
+    secrets: inherit
+    with:
+      top_name: earlgrey
+      design_suffix: cw310
+      vivado_version: '2024.1'
+
+  build:
+    name: Build device software
+    needs: [lint, bitstream-earlgrey-cw310]
+    runs-on:
+      group: zerorisc-none
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        uses: ./.github/actions/prepare-env
+        with:
+          service_account_json: '${{ secrets.BAZEL_CACHE_CREDS }}'
+      - name: Show environment
+        run: ./ci/scripts/show-env.sh
+      - name: Build device software
+        run: ./bazelisk.sh build //sw/device/...
+
+  unit-tests:
+    name: Run cryptolib unit tests
+    needs: lint
+    uses: ./.github/workflows/cryptotest.yml
+    secrets: inherit
+    with:
+      job-name: unit-tests
+      runner: zerorisc-none
+      tag-filters: '-broken,-nightly,-cw310,-hyper310,-cw340,-hyper340,-sim_verilator,-sim_dv,-qemu'
+      timeout-filters: '-long,-eternal'
+      targets: '//sw/device/lib/crypto/... //sw/device/lib/base/... //sw/device/silicon_creator/manuf/lib/...'
+      timeout: 20
+
+  otbn-sim-tests:
+    name: Run cryptolib OTBN simulator tests
+    needs: lint
+    uses: ./.github/workflows/cryptotest.yml
+    secrets: inherit
+    with:
+      job-name: otbn-sim-tests
+      runner: zerorisc-none
+      tag-filters: '-broken,-nightly,-cw310,-hyper310,-cw340,-hyper340,-sim_verilator,-sim_dv,-qemu'
+      timeout-filters: '-long,-eternal'
+      targets: '//sw/otbn/crypto/...'
+      timeout: 20
+
+  cw310-functests:
+    name: Run CW310 crypto functional tests
+    needs: [unit-tests, bitstream-earlgrey-cw310]
+    uses: ./.github/workflows/cryptotest.yml
+    secrets: inherit
+    with:
+      job-name: cw310-functests
+      runner: zerorisc-fpga-cw310
+      tag-filters: 'cw310,-broken,-nightly,-cw310_sival_rom_ext'
+      timeout-filters: '-long,-eternal'
+      targets: '//sw/device/tests/crypto/... //sw/device/lib/crypto/... //sw/device/lib/base/... //sw/device/silicon_creator/manuf/lib/...'
+      timeout: 30
