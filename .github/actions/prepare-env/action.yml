@@ -1,11 +1,13 @@
 # Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
-
 name: Prepare environment
 description: Install dependencies and prepare environment needed for OpenTitan
 
 inputs:
+  service_account_json:
+    description: Service account JSON for Google Cloud access
+    default: ''
   verilator-version:
     description: Verilator version to install
     required: true
@@ -22,36 +24,88 @@ inputs:
     description: Path at which to install Verible
     required: true
     default: /tools/verible
-  skip-verilator:
-    required: false
-    default: false
-  skip-verible:
-    required: false
-    default: false
-  skip-junit:
-    required: false
+  configure-bazel:
+    description: Configure Bazel to use remote cache
+    required: true
     default: true
+  vivado-version:
+    description: Vivado version to configure, if any.
+    default: ''
+  xilinx-license-host:
+    description: Hostname of the Xilinx license server.
+    default: 'license-server'
+  xilinx-license-port:
+    description: Port on license-server that the license server is serving Xilinx licenses on.
+    default: '2100'
+  synopsys-license-host:
+    description: Hostname of the Synopsys license server.
+    default: 'license-server'
+  synopsys-license-port:
+    description: Port on license-server that the license server is serving Synopsys licenses on.
+    default: '27020'
+  ts-oauth-client-id:
+    description: Tailscale OAuth client ID
+  ts-oauth-secret:
+    description: Tailscale OAuth secret
+  ts-tag:
+    description: Tailscale device tag
+    default: "ci-runner"
+  ts-version:
+    description: Tailscale version
+    default: "1.84.0"
+  ts-args:
+    description: Additional arguments to pass to tailscaled.
+    default: ""
+  fpga:
+    description: FPGA board type to prepare, if any.
+    default: ''
+  vivado-lab-version:
+    description: Vivado Lab Edition version for FPGA bootstrapping, if required.
+    default: '2024.2'
+  vcs-version:
+    description: Version of Synopsys VCS to use, e.g. U-2023.03-SP2
+    default: ''
 
 runs:
   using: composite
   steps:
     - name: Install system dependencies
       run: |
-        sudo apt update
-        grep '^[^#]' apt-requirements.txt | xargs sudo apt install -y
+        if command -v apt > /dev/null; then
+          sudo apt update --fix-missing
+          grep '^[^#]' apt-requirements.txt | xargs sudo apt install -y
+        else
+          # Install groupinstall groups
+          grep '^["]' yum-requirements.txt | xargs sudo yum groupinstall -y
+          # Install individual packages
+          grep '^[^#"]' yum-requirements.txt | xargs sudo yum install -y
+        fi
       shell: bash
-
-    - uses: actions/setup-python@v5
+    - uses: astral-sh/setup-uv@v5
       with:
-        python-version: '3.10'
-        cache: 'pip' # caching pip dependencies
+        version: '0.6.1'
+        enable-cache: true
+        cache-dependency-glob: |
+          pyproject.toml
+          python-requirements.txt
+
+    - name: Install Python
+      shell: bash
+      run: |
+        uv python install 3.10
+        # Create a virtual environment for UV
+        uv venv ~/.local/share/venv
+        echo "$HOME/.local/share/venv/bin" >> "$GITHUB_PATH"
+        echo "VIRTUAL_ENV=$HOME/.local/share/venv" >> "$GITHUB_ENV"
 
     - name: Install Python dependencies
       shell: bash
-      run: pip install -r python-requirements.txt --require-hashes
+      run: |
+        uv pip install -r python-requirements.txt --require-hashes
+        # We installed uv from setup-uv action, so uninstall from venv to prevent conflict
+        uv pip uninstall uv
 
     - name: Install Verilator
-      if: inputs.skip_verilator == 'false'
       run: |
         VERILATOR_TAR="verilator-v${{ inputs.verilator-version }}.tar.gz"
         VERILATOR_URL="https://storage.googleapis.com/verilator-builds/${VERILATOR_TAR}"
@@ -61,7 +115,6 @@ runs:
       shell: bash
 
     - name: Install Verible
-      if: inputs.skip_verible == 'false'
       run: |
         VERIBLE_TAR="verible-${{ inputs.verible-version }}-linux-static-x86_64.tar.gz"
         VERIBLE_URL="https://github.com/chipsalliance/verible/releases/download/${{ inputs.verible-version }}/${VERIBLE_TAR}"
@@ -72,13 +125,52 @@ runs:
         echo "${{ inputs.verible-path }}/bin" >> "$GITHUB_PATH"
       shell: bash
 
-    - name: Configure ~/.bazelrc
+    # Log into Google Cloud using workload_identity_provider.
+    - id: auth
+      name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@71fee32a0bb7e97b4d33d548e7d957010649d8fa # v2.1.3
+      with:
+        workload_identity_provider: projects/456088206277/locations/global/workloadIdentityPools/github-actions-pool/providers/${{ github.event.repository.name }}
+        service_account: ${{ github.event.repository.name }}-gh-actions-sa@bazel-cache-78ffec40.iam.gserviceaccount.com
+
+
+    # The above action creates a credential file in workspace and it doesn't provide a way to configure
+    # it. This influences with a few scripts that assume clean workspace, and introduce security risk
+    # that it may be exposed when uploading to buckets.
+    - name: Move Google credentials out from workspace
       run: |
-        cp ci/.bazelrc ~/.bazelrc
+        SOURCE=${{ steps.auth.outputs.credentials_file_path }}
+        TARGET=${{ runner.temp }}/$(basename "$SOURCE")
+        mv $SOURCE $TARGET
+        echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$TARGET" >> $GITHUB_ENV
+        echo "GOOGLE_APPLICATION_CREDENTIALS=$TARGET" >> $GITHUB_ENV
+        echo "GOOGLE_GHA_CREDS_PATH=$TARGET" >> $GITHUB_ENV
+      shell: bash
+
+    - uses: google-github-actions/setup-gcloud@v2
+      if: github.event_name != 'pull_request'
+
+    - name: Generate ci.bazelrc
+      run: ci/gen-ci-bazelrc.sh $GOOGLE_GHA_CREDS_PATH
+      shell: bash
+
+    - name: Configure ~/.bazelrc
+      if: inputs.configure-bazel == 'true'
+      run: |
+        # Inject the OS version into a parameter used in the action key computation to
+        # avoid collisions between different operating systems in the caches.
+        # See #14695 for more information.
+        echo "build --remote_default_exec_properties=OSVersion=\"$(lsb_release -ds)\"" >> ~/.bazelrc
+
+        if ${{ github.event_name != 'pull_request' }}; then
+          echo "Will upload to the cache." >&2
+        else
+          echo "Download from cache only." >&2
+          echo "build --remote_upload_local_results=false" >> ~/.bazelrc
+        fi
       shell: bash
 
     - name: Install merge-junit
-      if: inputs.skip_junit == 'false'
       run: |
         MERGE_JUNIT_PATH="/tools/merge-junit"
         MERGE_JUNIT_TAR="merge-junit-v0.2.1-x86_64-unknown-linux-musl.tar.gz"
@@ -98,4 +190,94 @@ runs:
         tar -C $MERGE_JUNIT_PATH -xvzf "/tmp/${MERGE_JUNIT_TAR}" --strip-components=1
         echo $MERGE_JUNIT_PATH >> "$GITHUB_PATH"
         rm "/tmp/${MERGE_JUNIT_TAR}"
+      shell: bash
+
+    # Configure use of upstream bitstream cache.
+    - name: Configure bitstream cache.
+      run: cp util/git/hooks/post-checkout .git/hooks/
+      shell: bash
+
+    # Setup FPGA, if requested.
+    - name: FPGA setup
+      if: inputs.fpga != ''
+      run: |
+         # Install dependencies
+         sudo apt install -y libudev-dev libclang-dev libftdi1-dev language-pack-gnome-en-base
+         # Add Vivado Lab binary directory to path
+         echo "/tools/Xilinx/Vivado_Lab/${{ inputs.vivado-lab-version }}/bin" >> $GITHUB_PATH
+      shell: bash
+    - name: Run FPGA set-pll
+      if: inputs.fpga == 'cw310' || inputs.fpga == 'cw340'
+      run: |
+         # Run set-pll command for FPGA.
+         ./bazelisk.sh run //sw/host/opentitantool -- --interface=${{ inputs.fpga }} fpga set-pll
+      shell: bash
+
+    # Authenticate to tailscale to access the license server, if necessary.
+    - name: Authenticate to tailscale to access license server
+      uses: tailscale/github-action@v3
+      with:
+        oauth-client-id: ${{ inputs.ts-oauth-client-id }}
+        oauth-secret: ${{ inputs.ts-oauth-secret }}
+        tailscaled-args: '--tun=userspace-networking ${{ inputs.ts-args }}'
+        tags: tag:${{ inputs.ts-tag }}
+        version: ${{ inputs.ts-version }}
+        use-cache: 'true'
+      if: inputs.ts-oauth-client-id != ''
+
+    # Setup Vivado, if requested.
+    - name: Add Xilinx license host to /etc/hosts
+      if: inputs.ts-oauth-client-id != '' && inputs.vivado-version != ''
+      run: |
+         LICENSE_SERVER_IP=$(
+           tailscale status --json | \
+           jq --join-output --raw-output \
+           '.Peer[] | select(.HostName  == "${{ inputs.xilinx-license-host }}") | .TailscaleIPs[0]'
+         )
+         sudo bash -c "echo $LICENSE_SERVER_IP ${{ inputs.xilinx-license-host }} >> /etc/hosts"
+      shell: bash
+
+    - name: Vivado setup
+      if: inputs.vivado-version != ''
+      run: |
+         # Install dependencies
+         sudo apt install -y libudev-dev language-pack-gnome-en-base jq
+         # Symlink ld to what Xilinx expects
+         sudo ln /lib64/ld-linux-x86-64.so.2 /lib64/ld-lsb-x86-64.so.3
+         # Add Vivado binary directory to path
+         echo "/tools/Xilinx/Vivado/${{ inputs.vivado-version }}/bin" >> $GITHUB_PATH
+         echo "XILINXD_LICENSE_FILE=${{ inputs.xilinx-license-port }}@${{ inputs.xilinx-license-host }}" >> $GITHUB_ENV
+      shell: bash
+
+    # Setup Synopsys VCS, if requested
+    - name: Add Synopsys license host to /etc/hosts
+      if: inputs.ts-oauth-client-id != '' && inputs.vcs-version != ''
+      run: |
+         LICENSE_SERVER_IP=$(
+           tailscale status --json | \
+           jq --join-output --raw-output \
+           '.Peer[] | select(.HostName  == "${{ inputs.synopsys-license-host }}") | .TailscaleIPs[0]'
+         )
+         sudo bash -c "echo $LICENSE_SERVER_IP ${{ inputs.synopsys-license-host }} >> /etc/hosts"
+      shell: bash
+
+    - name: VCS Setup
+      if: inputs.vcs-version != ''
+      run: |
+         LICENSE_SERVER_IP=$(
+           tailscale status --json | \
+           jq --join-output --raw-output \
+           '.Peer[] | select(.HostName  == "${{ inputs.synopsys-license-host }}") | .TailscaleIPs[0]'
+         )
+         # Set license environment variable for Synopsys.
+         echo "SNPSLMD_LICENSE_FILE=${{ inputs.synopsys-license-port }}@${{ inputs.synopsys-license-host }}" >> $GITHUB_ENV
+         # Set path to the requested VCS version.
+         echo "VCS_HOME=/tools/synopsys/vcs/${{ inputs.vcs-version }}" >> $GITHUB_ENV
+         # Add VCS binary directory to PATH.
+         echo "/tools/synopsys/vcs/${{ inputs.vcs-version }}/bin" >> $GITHUB_PATH
+         # For fusesoc to get on the PATH later
+         echo "$HOME/.local/bin" >> $GITHUB_PATH
+         # Use system-provided certs, which are in a different directory than
+         # Debian derivatives, and the latter is the default for bazel's python
+         echo "SSL_CERT_FILE=/etc/pki/tls/cert.pem" >> $GITHUB_ENV
       shell: bash

@@ -1,0 +1,44 @@
+# Copyright zeroRISC Inc.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+name: OTBN tests
+on: [push]
+
+permissions:
+  contents: read
+  # Needed for workload identity federation
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Run OTBN DV tests (quick)
+    runs-on:
+      group: zerorisc-synopsys
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare environment
+        uses: ./.github/actions/prepare-env
+        with:
+          service_account_json: '${{ secrets.BAZEL_CACHE_CREDS }}'
+          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          ts-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          vcs-version: 'U-2023.03-SP2'
+      - name: Run DVSim
+        run: |
+          util/dvsim/dvsim.py hw/ip/otbn/dv/uvm/otbn_sim_cfg.hjson -t vcs -mp $(nproc) -i all_once
+      - name: Package test report HTML
+        if: always()
+        run: |
+          tar -czf report.tar.gz $(find scratch | grep "\.html$")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: html-test-report
+          path: report.tar.gz
