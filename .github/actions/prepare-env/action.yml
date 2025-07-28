@@ -260,6 +260,15 @@ runs:
          )
          sudo bash -c "echo $LICENSE_SERVER_IP ${{ inputs.synopsys-license-host }} >> /etc/hosts"
       shell: bash
+    - name: Fetch RISC-V toolchain
+      if: inputs.ts-oauth-client-id != '' && inputs.vcs-version != ''
+      run: |
+        # Build RISC-V CC target
+        ./bazelisk.sh build @lowrisc_rv32imcb_toolchain//:clang
+        # Set environment variable for CC toolchain location.
+        CC_PATH="$PWD/$(./bazelisk.sh cquery --output=files @lowrisc_rv32imcb_toolchain//:clang)"
+        echo "RV32_TOOL_GCC=$CC_PATH" >> $GITHUB_ENV
+      shell: bash
 
     - name: VCS Setup
       if: inputs.vcs-version != ''
