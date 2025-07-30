@@ -66,7 +66,6 @@ SMOKE_SRC_DIR=$REPO_TOP/hw/ip/otbn/dv/smoke
 mkdir -p $SMOKE_BIN_DIR
 
 if [[ ! -z "$BNMULV_VER" ]]; then
-  export BNMULV_VER
   BNMULV_SMOKE_BIN_DIR=$BIN_DIR/otbn/smoke_test/bnmulv_ver$BNMULV_VER
   BNMULV_SMOKE_SRC_DIR=$REPO_TOP/hw/ip/otbn/dv/smoke/bnmulv_ver$BNMULV_VER
   mkdir -p $BNMULV_SMOKE_BIN_DIR
@@ -116,7 +115,6 @@ if [[ ! -z "$BNMULV_VER" ]]; then
       -o $SMOKE_BIN_DIR/smoke_test.o $SMOKE_SRC_DIR/smoke_test.s || \
       fail "Failed to assemble smoke_test.s"
 else
-  export BNMULV_VER=0
   $OTBN_UTIL/otbn_as.py -o $SMOKE_BIN_DIR/smoke_test.o $SMOKE_SRC_DIR/smoke_test.s || \
       fail "Failed to assemble smoke_test.s"
 fi
