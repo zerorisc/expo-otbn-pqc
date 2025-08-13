@@ -232,7 +232,7 @@ module otbn_mac_bignum
   logic acc_used;
   assign acc_used = mac_en_i & ~operation_i.zero_acc;
 `ifdef BNMULV_ACCH
-  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err[2*BaseWordsPerWLEN-1:0]); // FIX ME - add acch
+  assign operation_intg_violation_err_o = acc_used & |(acc_intg_err); // FIX ME - add acch
 `else
   assign operation_intg_violation_err_o = acc_used & |(acc_intg_err);
 `endif
@@ -246,6 +246,7 @@ module otbn_mac_bignum
     .en_i (mac_predec_bignum_i.acc_rd_en),
     .out_o(acc_blanked)
   );
+
 `ifdef BNMULV_ACCH
   prim_blanker #(.Width(WLEN)) u_acch_blanker (
     .in_i (acch_no_intg_q),
@@ -256,6 +257,7 @@ module otbn_mac_bignum
 
   // Add shifted multiplier result to current accumulator.
   assign adder_op_a = mul_res_shifted;
+
 `ifdef BNMULV_ACCH
   assign adder_op_b = {acch_blanked, acc_blanked};
 `else
@@ -418,7 +420,7 @@ module otbn_mac_bignum
   // wipe of the internal state is occuring.
   assign acc_en = (mac_en_i & mac_commit_i) | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
 `ifdef BNMULV_ACCH
-  assign acch_en = (mac_en_i & mac_commit_i & operation_i.mulv) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME
+  assign acch_en = (mac_en_i & mac_commit_i & operation_i.mulv) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME acch
 `endif
 
   always_ff @(posedge clk_i) begin
@@ -683,19 +685,15 @@ module otbn_mac_bignum
       end
     endcase
   end
-  `ifdef BNMULV_ACCH
-    `ifdef BNMULV_COND_SUB
-    cond_sub cond (
-      .A        (pre_cond),
-      .B        (cond_sub_B),
-      .word_mode(operation_i.data_type), // 0: vec16, 1: vec32
-      .cin      (1'b1),
-      .sum      (operation_result_o),
-      .cout     ()
-    ); 
-    `else
-    assign operation_result_o = pre_cond;
-    `endif
+  `ifdef BNMULV_COND_SUB
+  cond_sub cond (
+    .A        (pre_cond),
+    .B        (cond_sub_B),
+    .word_mode(operation_i.data_type), // 0: vec16, 1: vec32
+    .cin      (1'b1),
+    .sum      (operation_result_o),
+    .cout     ()
+  );
   `else
   assign operation_result_o = pre_cond;
   `endif
