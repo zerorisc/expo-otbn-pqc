@@ -1,41 +1,59 @@
-# set command [list synth_design]
-# 
-# lappend command -part $partname 
-# lappend command -top $top_module 
-# #lappend command -mode default
-# lappend command -mode out_of_context
-# 
-# set splitPar [split $parameters " "] ;
-# foreach param $splitPar {
-#     lappend command -generic $param
-# }
-# 
-# set splitMac [split $macros " "] ;
-# foreach macro $splitMac {
-#     lappend command -verilog_define $macro
-# }
-# 
-# puts $command
-# 
-# eval $command
+set start_f 10
 
-#synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1
-synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1 -verilog_define BNMULV=1
+set help_text {
+Usage: vivado -mode batch -source my_script.tcl -tclargs [options]
 
-#synth_design -part xc7a200tfbg676-3 -top otbn -mode out_of_context -verilog_define SYNTHESIS=1
-#synth_design -part xc7a200tfbg676-3 -top otbn -mode out_of_context -verilog_define SYNTHESIS=1 -verilog_define BNMULV=1
+Options:
+  --top_module <name>   Name of the top module to synthesize.
+  --wrap                Enable wrapping.
+  --start_freq <freq>   Start frequrncy for search (default: $start_f MHz).
+  -h, --help            Show this help and exit.
+}
 
-#    -generic $parameters
+if {$argc == 0 || [lindex $argv 0] in {"-h" "--help"}} {
+    puts $help_text
+    exit 0
+}
 
-# write_edif test.edf
 
-#After synthesis and befor implement we will read xdc pin
-#Reference: https://docs.xilinx.com/v/u/2013.2-English/ug903-vivado-using-constraints
+set top_module ""
+set wrap 0
 
-#--STEP2: Implement design
-#read_xdc $constraints_pin
+for {set i 0} {$i < $argc} {incr i} {
+    set arg [lindex $argv $i]
+    switch -- $arg {
+        --top_module {
+            incr i
+            set top_module [lindex $argv $i]
+        }
+        --start_freq {
+            incr i
+            set start_f [lindex $argv $i]
+        }
+        --wrap {
+            set wrap 1
+        }
+        default {
+            puts "Unknown option: $arg"
+        }
+    }
+}
 
-set outdir reports/text/
+puts "top_module=$top_module, start_freq=$start_f, wrap=$wrap"
+
+source lowrisc_ip_otbn_0.1.tcl
+
+if {$wrap} {
+  puts "Generating wrapper."
+  source gen_sv.tcl
+  set top_module wrapper
+}
+
+
+synth_design -mode out_of_context -top $top_module
+
+
+set outdir reports/
 
 set file_utilization $outdir/utilization.txt
 set file_utilization_hierarchical $outdir/utilization_hierarchical.txt
@@ -45,29 +63,44 @@ set file_clocks $outdir/clocks.txt
 
 
 write_checkpoint -force $outdir/synth.dcp
-#open_checkpoint $outdir/synth.dcp
 
 
 # Set clock port name
-set clk_port "clk_i"
+set clk "clk_i"
 
 
-# Create clock to atach it to a clock buffer.
-create_clock -name $clk_port -period 5 [get_ports $clk_port]
-set_property HD.CLK_SRC BUFGCTRL_X0Y2 [get_ports $clk_port]
+# Create clock to attach it to a clock buffer.
+create_clock -name $clk -period [expr 1000.0/$start_f] [get_ports $clk]
+set_property HD.CLK_SRC BUFGCTRL_X0Y2 [get_ports $clk]
 
 
 # Define search range
 set slow_f    1
 set fast_f 1000
+
 set best_f $slow_f
 set max_freq $best_f
 
+set mid_f [expr $start_f/2]
+
 
 # Binary search for max frequency
-#while {[expr $slow_period - $fast_period] > 0.1} {
-while {[expr ($fast_f - $slow_f)] > 5} {
-    set mid_f [expr 1000.0/((1000.0/$slow_f + 1000.0/$fast_f) / 2.0)]
+while {1} {
+
+    if {[expr ($fast_f - $slow_f)] <= 5} {
+      break
+    }
+
+    if {$fast_f == 1000} {
+       set mid_f [expr 2*$mid_f]
+    } else {
+      set mid_f [expr 1000.0/((1000.0/$slow_f + 1000.0/$fast_f) / 2.0)]
+    }
+
+    if {[expr $mid_f >= $fast_f]} {
+       puts "$mid_f >= $fast_f"
+       exit -1
+    }
 
     set mid_f [expr ((int($mid_f) + 4) / 5) * 5]
 
@@ -82,7 +115,7 @@ while {[expr ($fast_f - $slow_f)] > 5} {
     set mid_period [expr 1000.0/$mid_f]
 
     # Apply new clock constraint
-    create_clock -name $clk_port -period $mid_period [get_ports $clk_port]
+    create_clock -name $clk -period $mid_period [get_ports $clk]
 
     puts "new clock"
 
@@ -131,27 +164,15 @@ while {[expr ($fast_f - $slow_f)] > 5} {
 
 set best_period [expr 1000.0/$max_freq]
 
-# Compute final max frequency
 puts "\n\n================================================"
 puts "Maximum Achievable Frequency: $max_freq MHz"
 puts "Clock Period: $best_period ns"
 puts "================================================\n\n"
 
-create_clock -name $clk_port -period $best_period [get_ports $clk_port]
-
-# # Save successful constraint to the XDC file
-# set xdc_file "constraints.xdc"
-# set xdc_content "create_clock -name my_clk -period $best_period [get_ports $clk_port]"
-# set xdc_handle [open $xdc_file w]
-# puts $xdc_handle $xdc_content
-# close $xdc_handle
-# 
-# puts "Updated constraints saved to $xdc_file"
-
+create_clock -name $clk -period $best_period [get_ports $clk]
 
 opt_design
 set ACTIVE_STEP opt_design
-
 
 place_design
 set ACTIVE_STEP place_design
@@ -165,32 +186,27 @@ route_design
 set ACTIVE_STEP route_design
 
 
-#Compute utilization of device and display report
 report_utilization -file $file_utilization
 report_utilization -hierarchical -hierarchical_depth 6 -file $file_utilization_hierarchical
-#Report timing paths
+
 report_timing -file $file_timing
-#Report timing summary
+
 report_timing_summary -file $file_timing_summary
-#Report clocks
+
 report_clocks -file $file_clocks
 
-# write_verilog -force test.v
+
+set rpt [report_utilization -return_string]
+puts "==== Resource Overview ===="
+puts $rpt
 
 
-##--STEP3: Generated bitstream
+set p [lindex [get_timing_paths -from [get_clocks $clk] -to [get_clocks $clk] -setup -nworst 1] 0]
+report_timing -of_objects $p
 
-# write_bitstream -force $top_module.bit
-# set ACTIVE_STEP write_bitstream
-# 
-# open_hw_manager
-# connect_hw_server -url localhost:3121
-# open_hw_target
-# 
-# current_hw_device [lindex [get_hw_devices] 0]
-# refresh_hw_device -update_hw_probes false [lindex [get_hw_devices] 0]
-# set_property PROGRAM.FILE $top_module.bit [lindex [get_hw_devices] 0]
-# 
-# program_hw_devices [lindex [get_hw_devices] 0]
-# refresh_hw_device [lindex [get_hw_devices] 0]
+
+puts "================================================\n"
+puts "Maximum Achievable Frequency: $max_freq MHz"
+puts "Clock Period: $best_period ns"
+puts "\n================================================\n"
 
