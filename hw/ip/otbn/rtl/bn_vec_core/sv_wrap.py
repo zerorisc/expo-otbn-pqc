@@ -109,7 +109,7 @@ def group_by_pp(tokens):
             items.append({"port": t})
     return items
 
-def emit_port_header(items):
+def emit_port_header(items, clk):
     """Reconstruct the port list (direction/type/name), preserving PP lines."""
     out = []
     for it in items:
@@ -117,9 +117,10 @@ def emit_port_header(items):
             out.append(it["pp"])
         else:
             p = it["port"]
-            line = f"{p['dir']} {p['type']}"
-            line += f" {p['name']},"
-            out.append(line)
+            if p['name'] != clk:
+                line = f"{p['dir']} {p['type']}"
+                line += f" {p['name']},"
+                out.append(line)
     # Remove trailing comma on the last real port (leave PP lines intact)
     for i in range(len(out) - 1, -1, -1):
         if any(out[i].lstrip().startswith(k) for k in PP_START):
@@ -180,11 +181,17 @@ def wrapper(input_file, target, wrapper, output_path, clk="clk_i"):
     header_ports = []
     header_ports.append(f"input  logic {clk},")
 #    header_ports.append("input  logic rst_n,")
-    header_ports.append(emit_port_header(items))
+    header_ports.append(emit_port_header(items, clk))
+    
     header_ports_str = "\n".join(header_ports)
+
+#    if clk not in header_ports_str:
+#      header_ports_str = f"  input  logic {clk},\n" + header_ports_str
 
     # ---- Input registers ----
     def decl_input_q(p):
+        if p["name"] == clk:
+            return None
         if p["dir"] != "input":
             return None
         return f"{p['type']} {p['name']}_q;"
@@ -192,8 +199,8 @@ def wrapper(input_file, target, wrapper, output_path, clk="clk_i"):
     input_decls = emit_section_with_pp(items, decl_input_q)
 
     # input flop body (assignments) – only for inputs
-    input_reset = emit_section_with_pp(items, lambda p: f"{p['name']}_q <= '0;" if p["dir"] == "input" else None)
-    input_load  = emit_section_with_pp(items, lambda p: f"{p['name']}_q <= {p['name']};" if p["dir"] == "input" else None)
+    #input_reset = emit_section_with_pp(items, lambda p: f"{p['name']}_q <= '0;" if p["dir"] == "input" else None)
+    input_load  = emit_section_with_pp(items, lambda p: f"{p['name']}_q <= {p['name']};" if p["dir"] == "input" and p["name"] != clk else None)
 
     # ---- DUT output pre-reg wires ----
     def decl_output_dut(p):
@@ -205,7 +212,7 @@ def wrapper(input_file, target, wrapper, output_path, clk="clk_i"):
 
     # ---- DUT instance connections ----
     def inst_conn(p):
-        sig = f"{p['name']}_q" if p["dir"] == "input" else (f"{p['name']}_dut" if p["dir"] == "output" else p["name"])
+        sig = clk if p["name"] == clk else f"{p['name']}_q" if p["dir"] == "input" else (f"{p['name']}_dut" if p["dir"] == "output" else p["name"])
         return f".{p['name']}({sig}),"
 
     inst_ports = []
@@ -221,7 +228,7 @@ def wrapper(input_file, target, wrapper, output_path, clk="clk_i"):
     inst_ports_str = "\n".join(inst_lines)
 
     # ---- Output flop section ----
-    out_reset = emit_section_with_pp(items, lambda p: f"{p['name']} <= '0;" if p["dir"] == "output" else None)
+    #out_reset = emit_section_with_pp(items, lambda p: f"{p['name']} <= '0;" if p["dir"] == "output" else None)
     out_load  = emit_section_with_pp(items, lambda p: f"{p['name']} <= {p['name']}_dut;" if p["dir"] == "output" else None)
 
     # ---- Reconstruct parameter list (verbatim) ----

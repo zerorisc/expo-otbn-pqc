@@ -19,8 +19,11 @@
 # 
 # eval $command
 
-synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1
-#synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1 -verilog_define BNMULV=1
+#synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1
+synth_design -part xc7a200tfbg676-3 -top wrapper -mode out_of_context -verilog_define SYNTHESIS=1 -verilog_define BNMULV=1
+
+#synth_design -part xc7a200tfbg676-3 -top otbn -mode out_of_context -verilog_define SYNTHESIS=1
+#synth_design -part xc7a200tfbg676-3 -top otbn -mode out_of_context -verilog_define SYNTHESIS=1 -verilog_define BNMULV=1
 
 #    -generic $parameters
 
@@ -47,6 +50,12 @@ write_checkpoint -force $outdir/synth.dcp
 
 # Set clock port name
 set clk_port "clk_i"
+
+
+# Create clock to atach it to a clock buffer.
+create_clock -name $clk_port -period 5 [get_ports $clk_port]
+set_property HD.CLK_SRC BUFGCTRL_X0Y2 [get_ports $clk_port]
+
 
 # Define search range
 set slow_f    1

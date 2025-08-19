@@ -9,6 +9,6 @@ Also there run:
 and issue commands:
 
   source lowrisc_ip_otbn_0.1.tcl
-  read_xdc timing_artix7_100t.xdc
+  #read_xdc timing_artix7_100t.xdc
   source timing.tcl
 
