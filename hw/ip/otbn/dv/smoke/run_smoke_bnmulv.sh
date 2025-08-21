@@ -6,7 +6,7 @@
 # Runs the OTBN smoke test (builds software, build simulation, runs simulation
 # and checks expected output)
 
-while getopts 'hstv:' OPTION; do
+while getopts 'hst:v:' OPTION; do
   case "$OPTION" in
     h)
       echo "This script is for running the smoke tests with the new BNMULV instruction."
