@@ -4,7 +4,7 @@ set clk_name clk_i
 set clk_port_name clk_i
 
 # clk unit: ps
-set clk_period 2105
+set clk_period 4000
 
 set in2reg_max  $clk_period
 set reg2out_max $clk_period

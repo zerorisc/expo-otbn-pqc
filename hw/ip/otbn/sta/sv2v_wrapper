@@ -28,7 +28,7 @@ sv2v --define=SYNTHESIS \
    --define=SYNTHESIS_MEMORY_BLACK_BOXING --define=YOSYS \
    $5 \
    $3 \
-   -I$4/rtl \
+   $4 \
    $1 \
    > $2
 
@@ -45,7 +45,7 @@ sed -i 's/prim_and2/prim_xilinx_and2/g'              $2
 sed -i 's/prim_ram_1p/prim_generic_ram_1p/g'         $2
 
 # Remove calls to $value$plusargs(). Yosys doesn't seem to support this.
-sed -i '/$value$plusargs(.*/d' $3
+sed -i '/$value$plusargs(.*/d' $2
 
 if [ "$2" = "src/prim_sparse_fsm_flop.v" ]; then
   # Rename the prim_sparse_fsm_flop module. For some reason, sv2v decides to append a suffix.

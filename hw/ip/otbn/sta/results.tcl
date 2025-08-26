@@ -28,9 +28,6 @@ foreach group {in2reg reg2out reg2reg in2out} {
     set paths [find_timing_paths -path_group $group -path_delay max ]
     set path [lindex $paths 0]
 #    set slack [get_property $path slack]
-    #set arrival [expr $clock_period - $slack]
-    #set arrival [expr $slack]
-    #set arrival [get_property $path arrival]
 
     # List of path points (start pin -> ... -> end pin)
     set points [get_property $path points]
@@ -42,14 +39,12 @@ foreach group {in2reg reg2out reg2reg in2out} {
     # (Optional) start-point arrival, if you want pure path delay = end - start
     set start_point       [lindex $points 0]
     set start_arrival_time [get_property $start_point arrival]
-#    set path_delay [expr {$end_arrival_time - $start_arrival_time}]
 
     set arrival [expr {$end_arrival_time - $start_arrival_time}]
 
-#    # Slack is available on the path-end object
-#    set slack [get_property $path_end slack]
+#    set required [get_property $end_point required]
 
-#    puts "delay=$path_delay  start_arrival_time=$start_arrival_time  end_arrival=$end_arrival_time  slack=$slack"
+#    puts "start_arrival_time=$start_arrival_time  end_arrival=$end_arrival_time  slack=$slack  required=$required"
 
     write_both $f "${group}_arrival: $arrival"
     set slowest_path [expr { $arrival > $slowest_path ? $arrival : $slowest_path }]

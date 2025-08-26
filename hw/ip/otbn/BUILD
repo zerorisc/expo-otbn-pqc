@@ -28,23 +28,23 @@ filegroup(
     ],
 )
 
+
 load("@bazel-orfs//:openroad.bzl", "orfs_flow","orfs_run")
 load("@bazel-orfs//:ppa.bzl", "orfs_ppa")
-#load("@rules_python//python:pip.bzl", "compile_pip_requirements")
-#load("@bazel-orfs//:write_binary.bzl", "write_binary")
 
-
-# If you want to run both sky130hd and/or asap7 just comment/uncomment respectively 
 PDKS = [
-#    "sky130hd",
+    "sky130hd",
     "asap7",
 ]
 
-#BASE_NAME  = "buffer_bit"  # Change this to your module's name
-#BASE_NAME  = "otbn_mac_bignum"  # Change this to your module's name
-BASE_NAME  = "otbn_alu_bignum"  # Change this to your module's name
-#BASE_NAME  = "otbn" # Change this to your module's name
+TOP_MODULES = ["otbn_alu_bignum", "otbn_mac_bignum"]
 
+VERSION = [
+  ("TOWARDS", ["TOWARDS_ADDER"]),
+  ("VER1", ["BNMULV", "BUFFER_BIT"]),
+  ("VER2", ["BNMULV", "BNMULV_ACCH", "BUFFER_BIT"]),
+  ("VER3", ["BNMULV", "BNMULV_ACCH", "BNMULV_COND_SUB", "BUFFER_BIT"])
+]
 
 sh_binary(
     name = "sv2v_tool",
@@ -53,8 +53,8 @@ sh_binary(
 
 load(":sta/sv_rules.bzl", "sv2v_rule")
 
-sv2v_rule(
-    name = "rtl_sv2v",
+[sv2v_rule(
+    name = "rtl_sv2v_" + name,
     srcs = glob(["rtl/*.sv", "rtl/bn_vec_core/*.sv"]) + 
       [
         "//hw/ip/tlul:sta_files",
@@ -75,18 +75,18 @@ sv2v_rule(
        "//hw/ip/keymgr:rtl_files",
        "//hw/ip/kmac:rtl_files",
        "//hw/ip/otp_ctrl:rtl_files",
-       "rtl_files"
+       "//hw/ip/otbn:rtl_files"
     ],
     includes = ["//hw/ip/prim:rtl_files"],
-    defines = ["TOWARDS_ADDER"]
-)
+    defines = defines
+) for name, defines in VERSION]
 
 
-filegroup(
-    name = BASE_NAME + "_files", 
-    srcs = [":rtl_sv2v"],
+[filegroup(
+    name = name + "_files", 
+    srcs = [":rtl_sv2v_" + name],
     visibility = ["//visibility:public"],
-)
+) for name, defines in VERSION]
 
 
 FASTER = {
@@ -102,12 +102,11 @@ FASTER = {
 }
 
 [orfs_flow(
-    name = BASE_NAME,
+    name = base_name,
     arguments =  FASTER | {
                     "SETUP_SLACK_MARGIN": "0.05",
                     "SETUP_HOLD_MARGIN": "-0.05",
                     "SYNTH_HIERARCHICAL": "1",
-                    "CORE_UTILIZATION": "60",    # decrease if not sufficient space for pins
                     "PLACE_DENSITY": "0.5",
                     "CORE_MARGIN": "1",
                     "SYNTH_MEMORY_MAX_BITS": "16384",
@@ -115,10 +114,6 @@ FASTER = {
 #                    "GRT_RESIZER_HOLD_MAX_BUFFER_PCT": "50",
 #                    "PL_RESIZER_SETUP_MAX_BUFFER_PCT" : "50",
 #                    "GRT_RESIZER_SETUP_MAX_BUFFER_PCT": "50",
-
-                    # Make sure to pass your module's parameter correctly here. 
-		    #"VERILOG_TOP_PARAMS": "ADDER {adder}".format(
-                    #adder = parameter["ADDER"]),
                 } 
                 | 
                 (
@@ -130,33 +125,50 @@ FASTER = {
                         "IO_PLACER_V": "met2 met4",
                     }
                 ),
+    stage_arguments = {
+       "floorplan": {
+           "CORE_UTILIZATION": "40",    # decrease if not sufficient space for pins
+       },
+    },
     pdk = "@docker_orfs//:{}".format(pdk),
     sources = {
         "SDC_FILE": [":sta/constraints_{}.sdc".format(pdk)],
     },
-    variant="{pdk}".format(pdk=pdk),
-    verilog_files = [":" + BASE_NAME + "_files"],
-) for pdk in PDKS]
+    variant="{name}_{pdk}".format(name=name, pdk=pdk),
+    verilog_files = [":" + name + "_files"],
+) for pdk in PDKS for name, defines in VERSION for base_name in TOP_MODULES]
 
 
 [orfs_run(
-    name = "{base_name}_{pdk}_results".format(base_name=BASE_NAME,pdk=pdk),
-    src = "{base_name}_{pdk}_cts".format(base_name=BASE_NAME,pdk=pdk),
-    outs = ["{base_name}_{pdk}_stats".format(base_name=BASE_NAME,pdk=pdk),],
+    name = "{base_name}_{name}_{pdk}_results".format(base_name=base_name,name=name,pdk=pdk),
+    src = "{base_name}_{name}_{pdk}_cts".format(base_name=base_name,name=name,pdk=pdk),
+    outs = ["{base_name}_{name}_{pdk}_stats".format(base_name=base_name,name=name,pdk=pdk),],
     arguments = {
-        "OUTPUT": "$(location :{base_name}_{pdk}_stats)".format(base_name=BASE_NAME,pdk=pdk),
+        "OUTPUT": "$(location :{base_name}_{name}_{pdk}_stats)".format(base_name=base_name,name=name,pdk=pdk),
     },
     script = ":sta/results.tcl",
-) for pdk in PDKS]  
+) for pdk in PDKS for name, defines in VERSION for base_name in TOP_MODULES]
 
+
+[ filegroup(
+    name = base_name + "_" + name + "_" + pdk + "_all_results",
+    srcs = [
+        ":{base_name}_{name}_{pdk}_results".format(
+            base_name=base_name,
+            name=name,
+            pdk=pdk
+        )
+    ],
+) for pdk in PDKS for name, defines in VERSION for base_name in TOP_MODULES]
 
 filegroup(
-    name = BASE_NAME + "_all_results",
+    name = "all_results",
     srcs = [
-        ":{base_name}_{pdk}_results".format(
-            base_name=BASE_NAME,
+        ":{base_name}_{name}_{pdk}_results".format(
+            base_name=base_name,
+            name=name,
             pdk=pdk
-        ) for pdk in PDKS
+        ) for pdk in PDKS for name, defines in VERSION for base_name in TOP_MODULES
     ],
 )
 
