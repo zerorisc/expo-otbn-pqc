@@ -6,7 +6,7 @@ module brent_kung
   input vec_type_e        word_mode,
   input logic             b_invert,
   input logic             cin,
-  output logic [WLEN+1:0] res,
+  output logic [WLEN-1:0] res,
   output logic [15:0]     cout
 );
 
@@ -397,7 +397,7 @@ module brent_kung
     // Step 4: Final sum
     generate
         for (i = 0; i < 256; i++) begin : res_gen
-            assign res[i+1] = P[i] ^ C[i];
+            assign res[i] = P[i] ^ C[i];
         end
     endgenerate
 
@@ -407,7 +407,4 @@ module brent_kung
     end
   endgenerate
 
-  assign res[WLEN + 1] = cout[15];
-
 endmodule
-

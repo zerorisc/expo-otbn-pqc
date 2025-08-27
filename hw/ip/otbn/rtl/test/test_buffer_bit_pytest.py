@@ -39,7 +39,7 @@ async def run_buffer_bit_test(dut):
         sum_expected = reference_vector_addition(in_a, in_b, addition, word_mode)
         sum_expected = reference_vector_addition(in_a, in_b, addition, word_mode)
         sum_out = dut.res.value.integer
-        sum_out = (sum_out >> 1) & ((1 << 256) - 1)
+        sum_out = sum_out & ((1 << 256) - 1)
 
         print(f"in_a: {format(in_a, '064x')}")
         print(f"in_b: {format(in_b, '064x')}")
