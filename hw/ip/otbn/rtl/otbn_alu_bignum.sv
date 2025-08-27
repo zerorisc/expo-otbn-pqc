@@ -1334,7 +1334,7 @@ module otbn_alu_bignum
     .out_o(adder_x_op_b_blanked)
   );
 
-  buffer_bit adder_x (
+  brent_kung adder_x (
     .A        (adder_x_op_a_blanked),
     .B        (adder_x_op_b_blanked),
     .word_mode(mode),
@@ -1370,7 +1370,7 @@ module otbn_alu_bignum
   assign adder_y_op_a = x_res_operand_a_mux_out;
   assign adder_y_op_b = adder_y_op_b_invert ? ~shift_mod_mux_out : shift_mod_mux_out;
 
-  buffer_bit adder_y (
+  brent_kung adder_y (
     .A        (adder_y_op_a),
     .B        (adder_y_op_b),
     .word_mode(mode),
