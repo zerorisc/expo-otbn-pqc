@@ -1045,7 +1045,6 @@ polyvec_decompress:
    * to the right 16 bits is taking the high parts of the multiplication
    * results. All of this can be done in bn.mulv.l.16H.acc.hi. */
 #if (KYBER_K == 2 || KYBER_K == 3)
-  bn.shv.16H w4, w2 >> 2  /* w4 = (0x3ff)^16 */
   LOOPI KYBER_POLYVECCOMPRESSED_LOOP, 69
     /* First WDR: 160 bits of w0 */
     bn.lid x4, 0(x10++)
@@ -1132,7 +1131,6 @@ polyvec_decompress:
     jal    x1, _polyvec_decompress_16
     bn.sid x5, 0(x12++)
 #elif (KYBER_K == 4)
-  bn.shv.16H w4, w2 >> 1  /* w4 = (0x07ff)^16 */
   LOOPI KYBER_K, 149
     /* First WDR: 176 bits */
     bn.lid x4, 0(x10++) 
@@ -1323,14 +1321,12 @@ polyvec_decompress:
  * Description: Subroutine of polyvec_decompress for decompressing 16 coefficients
  *
  * @param[inout]   w1: input/output vector with 16 16-bit coefficients
- * @param[in]      w4: (0x03ff)^16 or (0x07ff)^16
  * @param[in]     w16: KYBER_Q
  * @param[in]     w31: all-zero
  *
  * clobbered registers:
  */
 _polyvec_decompress_16:
-  bn.and               w1, w1, w4 /* When K == 2 or K == 3: & 0x03ff; when K == 4: & 0x07ff */
 #if (KYBER_K == 2 || KYBER_K == 3)
   bn.shv.16H           w1, w1 << 6 /* *(2**6) */
 #elif (KYBER_K == 4)
