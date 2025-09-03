@@ -139,6 +139,10 @@ parameters:
     datatype: str
     paramtype: vlogdefine
     default: "buffer_bit"
+  ALU_ADDER:
+    datatype: str
+    paramtype: vlogdefine
+    default: "buffer_bit"
 
 targets:
   default: &default_target
