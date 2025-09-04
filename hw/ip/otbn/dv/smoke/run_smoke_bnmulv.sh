@@ -59,7 +59,7 @@ while getopts 'hst:v:m:a:' OPTION; do
     a)
       ALU_ADDER="${OPTARG//-/_}"
       ALU_ADDER="${ALU_ADDER,,}"
-      echo "-m is given: Using $ALU_ADDER. This option also needs '-v BNMULV_VER'"
+      echo "-a is given: Using $ALU_ADDER. This option also needs '-v BNMULV_VER'"
       ;;
     ?)
       echo "run_smoke_bnmulv: Unrecognized option: '$OPTARG'"

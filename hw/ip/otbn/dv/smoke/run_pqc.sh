@@ -9,7 +9,7 @@
 MAC_ADDER=buffer_bit
 ALU_ADDER=buffer_bit
 
-while getopts 'hst:v:l' OPTION; do
+while getopts 'hst:v:lm:a:' OPTION; do
   case "$OPTION" in
     h)
       echo "This script is for running ML-{KEM,DSA} tests with the old or new BNMULV instruction."
@@ -66,7 +66,7 @@ while getopts 'hst:v:l' OPTION; do
     a)
       ALU_ADDER="${OPTARG//-/_}"
       ALU_ADDER="${ALU_ADDER,,}"
-      echo "-m is given: Using $ALU_ADDER. This option also needs '-v BNMULV_VER'"
+      echo "-a is given: Using $ALU_ADDER. This option also needs '-v BNMULV_VER'"
       ;;
     ?)
       echo "run_pqc: Unrecognized option: '$OPTARG'"
