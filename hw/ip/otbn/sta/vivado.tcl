@@ -50,6 +50,10 @@ set file_clocks $outdir/clocks.txt
 puts "top_module=$top_module, start_freq=$start_f"
 
 proc set_timing_paths {clk clk_period} {
+#  global outdir
+#
+#  open_checkpoint $outdir/synth.dcp
+
   if {[llength [get_ports -quiet $clk]] > 0} {
     # Create clock to attach it to a clock buffer.
     create_clock -name $clk -period $clk_period [get_ports $clk]
@@ -67,8 +71,6 @@ proc set_timing_paths {clk clk_period} {
 }
 
 proc place_and_route {} {
-  open_checkpoint $outdir/synth.dcp
-
   opt_design
   set ACTIVE_STEP opt_design
   
@@ -96,7 +98,7 @@ source timing.tcl
 
 synth_design -mode out_of_context -top $top_module
 
-write_checkpoint -force $outdir/synth.dcp
+#write_checkpoint -force $outdir/synth.dcp
 
 
 # Set clock port name
