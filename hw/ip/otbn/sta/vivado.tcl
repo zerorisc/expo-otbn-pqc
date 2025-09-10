@@ -67,6 +67,8 @@ proc set_timing_paths {clk clk_period} {
 }
 
 proc place_and_route {} {
+  open_checkpoint $outdir/synth.dcp
+
   opt_design
   set ACTIVE_STEP opt_design
   
@@ -93,6 +95,9 @@ source timing.tcl
 
 
 synth_design -mode out_of_context -top $top_module
+
+write_checkpoint -force $outdir/synth.dcp
+
 
 # Set clock port name
 set clk "clk_i"

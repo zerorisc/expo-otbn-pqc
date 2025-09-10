@@ -110,6 +110,8 @@ def extract(top_module, flag_group):
 
   timing = extract_delay_FPGA(f"reports/FPGA/{outdir}/timing.txt")
 
+  result["Fmax"] = timing
+
   #asap7 = extract_ORFS(f"reports/ASIC/{top_module}{'_' + flag_group if flag_group else ''}_asap7_stats")
   sky130hd = extract_ORFS(f"reports/ASIC/{top_module}{'_' + flag_group if flag_group else ''}_sky130hd_stats")
 
