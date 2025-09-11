@@ -108,13 +108,13 @@ def target_list(bnmulv_ver, verbose):
     """
     targets = []
     query_cmd = (
-        f"./bazelisk.sh query 'filter(.*_ver{bnmulv_ver}, "
+        f"./bazelisk.sh query 'filter(.*_test_ver{bnmulv_ver}, "
         "kind(otbn_binary, //sw/otbn/crypto/tests/mlkem/...))' "
         "&& "
-        f"./bazelisk.sh query 'filter(.*_ver{bnmulv_ver}, "
+        f"./bazelisk.sh query 'filter(.*_test_ver{bnmulv_ver}, "
         "kind(otbn_binary, //sw/otbn/crypto/tests/mldsa/...))' "
         "&& "
-        f"./bazelisk.sh query 'filter(.*_ver{bnmulv_ver}, "
+        f"./bazelisk.sh query 'filter(.*_test_ver{bnmulv_ver}, "
         "kind(otbn_binary, //hw/ip/otbn/dv/smoke:*))' "
     )
     if bnmulv_ver != 0:
