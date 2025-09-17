@@ -131,9 +131,16 @@ def create_cout(verbose=False):
     i7 = [0] * 64
 
     init = ""
-    for i in range(32, 64):
-        # I0 = CO_HI1, I1 = CO, I2 = CO_HI0, I3 = B, I4 = A, I5 = 1, O5 = cout, O6 = CO
-        i6[i] = i1[i]
+    for i in range(64):
+        # I0 = O, I1 = word_mode1, I2 = CO, I3 = B, I4 = A, I5 = 1, O5 = res, O6 = cout
+        di = i3[i] & i4[i]
+        s = i3[i] ^ i4[i]
+        sfix = s ^ i2[i]
+        if i >= 32:
+            i6[i] = (s & i0[i]) | di
+        else:
+            i6[i] = i0[i] if i1[i] else sfix
+
         init += str(i6[i])
     return init[::-1]
 
