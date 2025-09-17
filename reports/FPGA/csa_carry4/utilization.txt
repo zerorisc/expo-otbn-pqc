@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
-| Date         : Tue Sep 16 15:42:10 2025
+| Date         : Wed Sep 17 14:20:56 2025
 | Host         : jadem4ci running 64-bit unknown
 | Command      : report_utilization -file ../../../reports/FPGA/csa_carry4_carry4/utilization.txt
 | Design       : csa_carry4
@@ -32,8 +32,8 @@ Table of Contents
 +-------------------------+------+-------+------------+-----------+-------+
 |        Site Type        | Used | Fixed | Prohibited | Available | Util% |
 +-------------------------+------+-------+------------+-----------+-------+
-| Slice LUTs              |  486 |    32 |          0 |    101400 |  0.48 |
-|   LUT as Logic          |  486 |    32 |          0 |    101400 |  0.48 |
+| Slice LUTs              |  474 |     8 |          0 |    101400 |  0.47 |
+|   LUT as Logic          |  474 |     8 |          0 |    101400 |  0.47 |
 |   LUT as Memory         |    0 |     0 |          0 |     35000 |  0.00 |
 | Slice Registers         |    0 |     0 |          0 |    202800 |  0.00 |
 |   Register as Flip Flop |    0 |     0 |          0 |    202800 |  0.00 |
@@ -70,12 +70,12 @@ Table of Contents
 |                 Site Type                | Used | Fixed | Prohibited | Available | Util% |
 +------------------------------------------+------+-------+------------+-----------+-------+
 | Slice                                    |  134 |     0 |          0 |     25350 |  0.53 |
-|   SLICEL                                 |  102 |     0 |            |           |       |
-|   SLICEM                                 |   32 |     0 |            |           |       |
-| LUT as Logic                             |  486 |    32 |          0 |    101400 |  0.48 |
+|   SLICEL                                 |   99 |     0 |            |           |       |
+|   SLICEM                                 |   35 |     0 |            |           |       |
+| LUT as Logic                             |  474 |     8 |          0 |    101400 |  0.47 |
 |   using O5 output only                   |    0 |       |            |           |       |
-|   using O6 output only                   |   44 |       |            |           |       |
-|   using O5 and O6                        |  442 |       |            |           |       |
+|   using O6 output only                   |    8 |       |            |           |       |
+|   using O5 and O6                        |  466 |       |            |           |       |
 | LUT as Memory                            |    0 |     0 |          0 |     35000 |  0.00 |
 |   LUT as Distributed RAM                 |    0 |     0 |            |           |       |
 |     using O5 output only                 |    0 |       |            |           |       |
@@ -183,10 +183,9 @@ Table of Contents
 +----------+------+---------------------+
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
-| LUT5     |  460 |                 LUT |
-| LUT6     |  452 |                 LUT |
+| LUT6     |  472 |                 LUT |
+| LUT5     |  468 |                 LUT |
 | CARRY4   |   96 |          CarryLogic |
-| LUT3     |   16 |                 LUT |
 +----------+------+---------------------+
 
 
