@@ -30,55 +30,55 @@ def gen_code():
     for i in range(0, WLEN//2, 4):
         block += (
             f'\t// {i}..{i + 3}\n'
-            f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+            f'\t(* DONT_TOUCH = "yes", BEL = "A6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
             f'gen_SDI_{i}  (.I0(A[{i}]), .I1(B[{i}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI[{i}]), .O6(S[{i}]));\n'
-            f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+            f'\t(* DONT_TOUCH = "yes", BEL = "B6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
             f'gen_SDI_{i + 1}  (.I0(A[{i + 1}]), .I1(B[{i + 1}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI[{i + 1}]), .O6(S[{i + 1}]));\n'
-            f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+            f'\t(* DONT_TOUCH = "yes", BEL = "C6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
             f'gen_SDI_{i + 2}  (.I0(A[{i + 2}]), .I1(B[{i + 2}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI[{i + 2}]), .O6(S[{i + 2}]));\n'
         )
         if i in {12, 44, 76, 108}:
             block += (
-                f'\tLUT6_2 #(.INIT(64\'h66606660888F8880)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h66606660888F8880)) '
                 f'gen_SDI_{i+3}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[0]), '
                 f'.I3(word_mode[1]), .I4(b_invert), .I5(1), .O5(DI[{i + 3}]), .O6(S[{i + 3}]));\n'
             )
         elif i in {28, 92}:
             block += (
-                f'\tLUT6_2 #(.INIT(64\'h606060608F808F80)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h606060608F808F80)) '
                 f'gen_SDI_{i+3}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[1]), .I3(b_invert), .I4(0), .I5(1), .O5(DI[{i + 3}]), .O6(S[{i + 3}]));\n'
             )
         elif i in {60, 124}:
             block += (
-                f'\tLUT6_2 #(.INIT(64\'h600060008FFF8000)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h600060008FFF8000)) '
                 f'gen_SDI_{i+3}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[0]), '
                 f'.I3(word_mode[1]), .I4(b_invert), .I5(1), .O5(DI[{i + 3}]), .O6(S[{i + 3}]));\n'
             )
         else:
             block += (
-                f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
                 f'gen_SDI_{i + 3}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI[{i + 3}]), .O6(S[{i + 3}]));\n'
             )
         # CARRY4
         if i == 0:
             block += (
-                # f'  (* BOX_TYPE = "PRIMITIVE", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
-                f'\tCARRY4 c_lo_{count} (.CI(1\'b0), .CYINIT(cin), .DI(DI[{i + 3}:{i}]), '
-                f'.S(S[{i + 3}:{i}]), .O(res[{i + 3}:{i}]), .CO(CO[{count}]));\n\n'
+                # f'  (* BOX_TYPE = "PRIMITIVE", DONT_TOUCH = "yes", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
+                f'\t(* DONT_TOUCH = "yes", BEL = "CARRY4", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)CARRY4 c_lo_{count} (.CI(1\'b0), .CYINIT(cin), .DI(DI[{i + 3}:{i}]), '
+                f'.S(S[{i + 3}:{i}]), .O(res[{i + 3}:{i}]), .CO(CO[{count}]));\n'
             )
         else:
             if (i + 4) % 16 == 0:
                 block += (
-                    # f'  (* BOX_TYPE = "PRIMITIVE", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
-                    f'\tCARRY4 c_lo_{count} (.CI(CO[{count - 1}][3]), .CYINIT(1\'b0), .DI(DI[{i + 3}:{i}]), '
-                    f'.S(S[{i + 3}:{i}]), .O({{O[{tmp}], res[{i + 2}:{i}]}}), .CO(CO[{count}]));\n\n'
+                    # f'  (* BOX_TYPE = "PRIMITIVE", DONT_TOUCH = "yes", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
+                    f'\t(* DONT_TOUCH = "yes", BEL = "CARRY4", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)CARRY4 c_lo_{count} (.CI(CO[{count - 1}][3]), .CYINIT(1\'b0), .DI(DI[{i + 3}:{i}]), '
+                    f'.S(S[{i + 3}:{i}]), .O({{O[{tmp}], res[{i + 2}:{i}]}}), .CO(CO[{count}]));\n'
                 )
                 tmp += 1
             else:
                 block += (
-                    # f'  (* BOX_TYPE = "PRIMITIVE", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
-                    f'\tCARRY4 c_lo_{count} (.CI(CO[{count - 1}][3]), .CYINIT(1\'b0), .DI(DI[{i + 3}:{i}]), '
-                    f'.S(S[{i + 3}:{i}]), .O(res[{i + 3}:{i}]), .CO(CO[{count}]));\n\n'
+                    # f'  (* BOX_TYPE = "PRIMITIVE", DONT_TOUCH = "yes", BEL = "CARRY4", LOC = "SLICE_X{x}Y{y}" *)\n'
+                    f'\t(* DONT_TOUCH = "yes", BEL = "CARRY4", RLOC = "X{x}Y{y}", HU_SET = "BOTTOM" *)CARRY4 c_lo_{count} (.CI(CO[{count - 1}][3]), .CYINIT(1\'b0), .DI(DI[{i + 3}:{i}]), '
+                    f'.S(S[{i + 3}:{i}]), .O(res[{i + 3}:{i}]), .CO(CO[{count}]));\n'
                 )
         count += 1
         y += 1
@@ -90,43 +90,64 @@ def gen_code():
 
     cin = [0, 1]
     for c in cin:
+        x = 0
+        y = 0
         count = 0
         block += f"\t// COMPUTE S{c}, DI{c} FOR TOP 128 BITS WHEN CARRY IN = {c}\n"
         for i in range(WLEN//2, WLEN, 4):
             block += (
                 f'\t// {i}..{i + 3}\n'
-                f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "A6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
                 f'gen_SDI{c}_{i- 128}  (.I0(A[{i}]), .I1(B[{i}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI{c}[{i - 128}]), .O6(S{c}[{i - 128}]));\n'
-                f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "B6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
                 f'gen_SDI{c}_{i + 1 - 128}  (.I0(A[{i + 1}]), .I1(B[{i + 1}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI{c}[{i + 1 - 128}]), .O6(S{c}[{i + 1 - 128}]));\n'
-                f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+                f'\t(* DONT_TOUCH = "yes", BEL = "C6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
                 f'gen_SDI{c}_{i + 2 - 128}  (.I0(A[{i + 2}]), .I1(B[{i + 2}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI{c}[{i + 2 - 128}]), .O6(S{c}[{i + 2 - 128}]));\n'
             )
             if i in {140, 172, 204, 236}:
                 block += (
                     # Compute S0
-                    f'\tLUT6_2 #(.INIT(64\'h66606660888F8880)) '
+                    f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h66606660888F8880)) '
                     f'gen_SDI{c}_{i + 3 - 128}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[0]), '
                     f'.I3(word_mode[1]), .I4(b_invert), .I5(1), .O5(DI{c}[{i + 3 - 128}]), .O6(S{c}[{i + 3 - 128}]));\n'
                 )
             elif i in {156, 220}:
                 block += (
                     # Compute S0
-                    f'\tLUT6_2 #(.INIT(64\'h606060608F808F80)) '
+                    f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h606060608F808F80)) '
                     f'gen_SDI{c}_{i + 3 - 128}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[1]), .I3(b_invert), .I4(0), .I5(1), .O5(DI{c}[{i + 3 - 128}]), .O6(S{c}[{i + 3 - 128}]));\n'
                 )
             elif i in {188, 252}:
                 block += (
-                    f'\tLUT6_2 #(.INIT(64\'h600060008FFF8000)) '
+                    f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h600060008FFF8000)) '
                     f'gen_SDI{c}_{i + 3 - 128}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(word_mode[0]), '
                     f'.I3(word_mode[1]), .I4(b_invert), .I5(1), .O5(DI{c}[{i + 3 - 128}]), .O6(S{c}[{i + 3 - 128}]));\n'
                 )
             else:
                 block += (
-                    f'\tLUT6_2 #(.INIT(64\'h6666666688888888)) '
+                    f'\t(* DONT_TOUCH = "yes", BEL = "D6LUT", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)LUT6_2 #(.INIT(64\'h6666666688888888)) '
                     f'gen_SDI{c}_{i + 3 - 128}  (.I0(A[{i + 3}]), .I1(B[{i + 3}]), .I2(0), .I3(0), .I4(0), .I5(1), .O5(DI{c}[{i + 3 - 128}]), .O6(S{c}[{i + 3 - 128}]));\n'
                 )
             count += 1
+            y += 1
+        block += "\n"
+        count = 0
+        x = 0
+        y = 0
+        block += f"\t// COMPUTE CARRY4 CHAIN FOR TOP 128 BITS WHEN CARRY IN = {c}\n"
+        for i in range(0, WLEN//2, 4):
+            if i == 0:
+                block += (
+                    f'\t(* DONT_TOUCH = "yes", BEL = "CARRY4", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)CARRY4 c_hi{c}_{count} (.CI(1\'b{c}), .CYINIT(1\'b0), .DI(DI{c}[{i + 3}:{i}]), '
+                    f'.S(S{c}[{i + 3}:{i}]), .O(O_HI{c}[{count}]), .CO(CO_HI{c}[{count}]));\n'
+                )
+            else:
+                block += (
+                    f'\t(* DONT_TOUCH = "yes", BEL = "CARRY4", RLOC = "X{x}Y{y}", HU_SET = "TOPC{c}" *)CARRY4 c_hi{c}_{count} (.CI(CO_HI{c}[{count - 1}][3]), .CYINIT(1\'b0), .DI(DI{c}[{i + 3}:{i}]), '
+                    f'.S(S{c}[{i + 3}:{i}]), .O(O_HI{c}[{count}]), .CO(CO_HI{c}[{count}]));\n'
+                )
+            count += 1
+            y += 1
         block += "\n"
     return block
 
@@ -165,22 +186,26 @@ def gen_res(x, y):
     tmp = 0
     for i in range(WLEN//2, WLEN, 4):
         block += (
-            f'\t(* BEL = "A6LUT", RLOC = "X0Y{y}", U_SET = "R{count}" *)LUT6_2 #(.INIT(64\'hFF33CC00B8B8B8B8)) '
-            f'gen_res_{i}_{i+1} (.I0(O_HI1[{count}][{b_count}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count}]), .I3(O_HI1[{count}][{b_count + 1}]), .I4(O_HI0[{count}][{b_count + 1}]), .I5(1), .O5(res[{i}]), .O6(res[{i+1}]));\n'
+            f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8B8B8B8)) '
+            f'gen_res_{i}     (.I0(O_HI1[{count}][{b_count}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count}]), .I3(0), .I4(0), .I5(1), .O5(res[{i}]), .O6());\n'
+            f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8B8B8B8)) '
+            f'gen_res_{i+1}     (.I0(O_HI1[{count}][{b_count + 1}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count + 1}]), .I3(0), .I4(0), .I5(1), .O5(res[{i + 1}]), .O6());\n'
         )
         if (i + 3) in {143, 159, 175, 191, 207, 223, 239, 255}:
             block += (
-                f'\t(* BEL = "B6LUT", RLOC = "X0Y{y}", U_SET = "R{count}" *)LUT3 #(.INIT(8\'hB8))                  '
-                f'gen_res_{i+2}     (.I0(O_HI1[{count}][{b_count + 2}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count + 2}]), .O(res[{i + 2}]));\n'
-                f'\t(* BEL = "C6LUT", RLOC = "X0Y{y}", U_SET = "R{count}" *)LUT5 #(.INIT(32\'hB84747B8))           '
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8B8B8B8)) '
+                f'gen_res_{i+2}     (.I0(O_HI1[{count}][{b_count + 2}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count + 2}]), .I3(0), .I4(0), .I5(1), .O5(res[{i + 2}]), .O6());\n'
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B84747B8)) '
                 f'gen_res_{i+3}_tmp (.I0(CO_HI1[{count}][2]), .I1(CO[31][3]), .I2(CO_HI0[{count}][2]), '
-                f'.I3(A[{i + 3}]), .I4(B[{i + 3}]), .O(res_tmp[{tmp}]));\n\n'
+                f'.I3(A[{i + 3}]), .I4(B[{i + 3}]), .I5(1), .O5(res_tmp[{tmp}]), .O6());\n\n'
             )
             tmp += 1
         else:
             block += (
-                f'\t(* BEL = "B6LUT", RLOC = "X0Y{y}", U_SET = "R{count}" *)LUT6_2 #(.INIT(64\'hFF33CC00B8B8B8B8)) '
-                f'gen_res_{i+2}_{i+3} (.I0(O_HI1[{count}][{b_count+2}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count+2}]), .I3(O_HI1[{count}][{b_count + 3}]), .I4(O_HI0[{count}][{b_count + 3}]), .I5(1), .O5(res[{i+2}]), .O6(res[{i+3}]));\n'
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8B8B8B8)) '
+                f'gen_res_{i + 2}     (.I0(O_HI1[{count}][{b_count + 2}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count + 2}]), .I3(0), .I4(0), .I5(1), .O5(res[{i + 2}]), .O6());\n'
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8B8B8B8)) '
+                f'gen_res_{i + 3}     (.I0(O_HI1[{count}][{b_count + 3}]), .I1(CO[31][3]), .I2(O_HI0[{count}][{b_count + 3}]), .I3(0), .I4(0), .I5(1), .O5(res[{i + 3}]), .O6());\n'
             )
         count += 1
         y += 1
@@ -196,8 +221,8 @@ def gen_co_res(X, Y):
     for i in range(8):
         block += (
             # f'  // cout[{i}]\n'
-            f'\tLUT3 #(.INIT(8\'hE8)) ' 
-            f'gen_cout_{i} (.I0(CO[{i*4 + 3}][2]), .I1(A[{start}]), .I2(B[{start}]), .O(cout[{i}]));\n'
+            f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000E8E8E8E8)) ' 
+            f'gen_cout_{i} (.I0(CO[{i*4 + 3}][2]), .I1(A[{start}]), .I2(B[{start}]), .I3(0), .I4(0), .I5(1), .O5(cout[{i}]), .O6());\n'
         )
         start += 16
         y += 1
@@ -209,24 +234,24 @@ def gen_co_res(X, Y):
         if i % 2 == 0:
             block += (
                 # f'  // res[{start}]\n'
-                f'\tLUT6 #(.INIT(64\'hAAAAAAAAB88B8BB8)) '
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'hAAAAAAAAB88B8BB8)) '
                 f'gen_res_{start} (.I0(O[{i}]), .I1(word_mode[1]), .I2(CO[{i*4 + 3}][2]), .I3(A[{start}]), .I4(B[{start}]), '
-                f'.I5(word_mode[0]), .O(res[{start}]));\n'
+                f'.I5(word_mode[0]), .O5(), .O6(res[{start}]));\n'
             )
         else:
             if i % 4 == 1:
                 block += (
                     # f'  // res[{start}]\n'
-                    f'\tLUT5 #(.INIT(32\'hB88B8BB8))         '
+                    f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B88B8BB8)) '
                     f'gen_res_{start} (.I0(O[{i}]), .I1(word_mode[1]), .I2(CO[{i*4 + 3}][2]), .I3(B[{start}]), .I4(A[{start}]), '
-                    f'.O(res[{start}]));\n'
+                    f'.I5(1), .O5(res[{start}]), .O6());\n'
                 )
             else:
                 block += (
                     # f'  // res[{start}]\n'
-                    f'\tLUT6 #(.INIT(64\'hBF8080BF80BFBF80)) '
+                    f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'hBF8080BF80BFBF80)) '
                     f'gen_res_{start} (.I0(O[{i}]), .I1(word_mode[1]), .I2(word_mode[0]), .I3(CO[{i*4 + 3}][2]), '
-                    f'.I4(A[{start}]), .I5(B[{start}]), .O(res[{start}]));\n'
+                    f'.I4(A[{start}]), .I5(B[{start}]), .O5(), .O6(res[{start}]));\n'
                 )
         start += 16
         y += 1
@@ -238,9 +263,9 @@ def gen_co_res(X, Y):
     for i in range(8):
         block += (
             # f'  // cout[{i + 8}]\n'
-            f'\t(* BEL = "C6LUT", U_SET = "R{y}", RLOC = "X0Y{y}" *)LUT5 #(.INIT(32\'hFFB8B800)) ' 
+            f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000FFB8B800)) ' 
             f'gen_cout_{i + 8} (.I0(CO_HI1[{i*4 + 3}][2]), .I1(CO[31][3]), .I2(CO_HI0[{i*4 + 3}][2]), '
-            f'.I3(B[{start}]), .I4(A[{start}]), .O(cout[{i + 8}]));\n'
+            f'.I3(B[{start}]), .I4(A[{start}]), .I5(1), .O5(cout[{i + 8}]), .O6());\n'
         )
         start += 16
         y += 4
@@ -252,24 +277,24 @@ def gen_co_res(X, Y):
         if i % 2 == 0:
             block += (
                 # f'  // res[{start}]\n'
-                f'\t(* BEL = "D6LUT", U_SET = "R{y}", RLOC = "X0Y{y}" *)LUT6 #(.INIT(64\'hCFC0DFD5CFC08A80)) '
+                f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'hCFC0DFD5CFC08A80)) '
                 f'gen_res_{start} (.I0(word_mode[0]), .I1(O_HI1[{i*4 + 3}][3]), .I2(CO[31][3]), .I3(O_HI0[{i*4 + 3}][3]), '
-                f' .I4(word_mode[1]), .I5(res_tmp[{i}]), .O(res[{start}]));\n'
+                f' .I4(word_mode[1]), .I5(res_tmp[{i}]), .O5(), .O6(res[{start}]));\n'
             )
         else:
             if i % 4 == 1:
                 block += (
                     # f'  // res[{start}]\n'
-                    f'\t(* BEL = "D6LUT", U_SET = "R{y}", RLOC = "X0Y{y}" *)LUT5 #(.INIT(32\'hB8FFB800))         '
+                    f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'h00000000B8FFB800)) '
                     f'gen_res_{start} (.I0(O_HI1[{i*4 + 3}][3]), .I1(CO[31][3]), .I2(O_HI0[{i*4 + 3}][3]), '
-                    f' .I3(word_mode[1]), .I4(res_tmp[{i}]), .O(res[{start}]));\n'
+                    f' .I3(word_mode[1]), .I4(res_tmp[{i}]), .I5(1), .O5(res[{start}]), .O6());\n'
                 )
             else:
                 block += (
                     # f'  // res[{start}]\n'
-                    f'\t(* BEL = "D6LUT", U_SET = "R{y}", RLOC = "X0Y{y}" *)LUT6 #(.INIT(64\'hB8FFFFFFB8000000)) '
+                    f'\t(* DONT_TOUCH = "yes" *)LUT6_2 #(.INIT(64\'hB8FFFFFFB8000000)) '
                     f'gen_res_{start} (.I0(O_HI1[{i*4 + 3}][3]), .I1(CO[31][3]), .I2(O_HI0[{i*4 + 3}][3]), .I3(word_mode[1]), '
-                    f' .I4(word_mode[0]), .I5(res_tmp[{i}]), .O(res[{start}]));\n'
+                    f' .I4(word_mode[0]), .I5(res_tmp[{i}]), .O5(), .O6(res[{start}]));\n'
                 )
         start += 16
         y += 4
@@ -323,12 +348,14 @@ def main() -> int:
     )
     block = header + regs
     block += gen_code()
-    block += (
-        "\n\t//CARRY4 CHAIN FOR TOP 128 BITS\n"
-        "\tcsa_carry4_top_cin0 gen_c_0 (.S0(S0), .DI0(DI0), .O_HI0(O_HI0), .CO_HI0(CO_HI0));\n"
-        "\tcsa_carry4_top_cin1 gen_c_1 (.S1(S1), .DI1(DI1), .O_HI1(O_HI1), .CO_HI1(CO_HI1));\n"
-        "\n"
-    )
+    # block += gen_carry4(0)
+    # block += gen_carry4(1)
+    # block += (
+    #     "\n\t//CARRY4 CHAIN FOR TOP 128 BITS\n"
+    #     "\tcsa_carry4_top_cin0 gen_c_0 (.S0(S0), .DI0(DI0), .O_HI0(O_HI0), .CO_HI0(CO_HI0));\n"
+    #     "\tcsa_carry4_top_cin1 gen_c_1 (.S1(S1), .DI1(DI1), .O_HI1(O_HI1), .CO_HI1(CO_HI1));\n"
+    #     "\n"
+    # )
     block += gen_res(2, 0)
     block += gen_co_res(2, 32)
     block += "endmodule\n"
