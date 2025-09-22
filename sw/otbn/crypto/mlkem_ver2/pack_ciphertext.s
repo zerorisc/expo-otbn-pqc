@@ -230,7 +230,7 @@ polyvec_compress:
 #if (KYBER_K == 2 || KYBER_K == 3)
   bn.shv.8S w3, w2 >> 16 /* w2 = (0x681)^8 */
   bn.mov    w16, w5 /* w16 = (1290167) */
-  LOOPI KYBER_POLYVECCOMPRESSED_LOOP, 73
+  LOOPI KYBER_POLYVECCOMPRESSED_LOOP, 61
     /* First WDR: 160 bits (16 coeffs) + (Reload) 90 bits (9 coeffs) + 6 bits */
     /* Load the first batch */
     bn.lid x4, 0(x10++)
@@ -248,16 +248,12 @@ polyvec_compress:
       bn.rshi w1, w31, w1 >> 16
     /* Pack 6 bits */
     bn.rshi w4, w1, w4 >> 6
-    bn.rshi w1, w31, w1 >> 6
     bn.sid  x5, 0(x12++)
 
     /* Second WDR: 4 bits + 60 bits (6 coeffs) + (Reload) 160 bits (16 coeffs) +
     * (Reload) 30 bits (3 coeffs) + 2 bits */
-    /* Pack 4 bits */
-    bn.rshi w4, w1, w4 >> 4 /* store 4 bits of w1 to w4 */
-    bn.rshi w1, w31, w1 >> 10
-    /* Pack 60 bits */
-    LOOPI 6, 2
+    /* Pack 4 + 60 bits */
+    LOOPI 7, 2
       bn.rshi w4, w1, w4 >> 10
       bn.rshi w1, w31, w1 >> 16
     /* Load the third batch */
@@ -276,14 +272,11 @@ polyvec_compress:
       bn.rshi w1, w31, w1 >> 16
     /* Pack 2 bits */
     bn.rshi w4, w1, w4 >> 2
-    bn.rshi w1, w31, w1 >> 2
     bn.sid  x5, 0(x12++)
 
     /* Third WDR: 8 bits + 120 bits (12 coeffs) + (Reload) 120 bits (12 coeffs) + 8 bits */
-    bn.rshi w4, w1, w4 >> 8 /* store 8 bits of w1 to w4 */
-    bn.rshi w1, w31, w1 >> 14
-    /* Pack 120 bits */
-    LOOPI 12, 2
+    /* Pack 8 + 120 bits */
+    LOOPI 13, 2
       bn.rshi w4, w1, w4 >> 10
       bn.rshi w1, w31, w1 >> 16
     /* Load the fifth batch */
@@ -295,15 +288,12 @@ polyvec_compress:
       bn.rshi w1, w31, w1 >> 16
     /* Pack 8 bits */
     bn.rshi w4, w1, w4 >> 8
-    bn.rshi w1, w31, w1 >> 8
     bn.sid  x5, 0(x12++)
 
     /* Fourth WDR: 2 bits + 30 bits (3 coeffs) + (Reload) 160 bits (16 coeffs) +
      * (Reload) 60 bits (6 coeffs) + 4 bits */
-    bn.rshi w4, w1, w4 >> 2 /* store 2 bits of w1 to w4 */
-    bn.rshi w1, w31, w1 >> 8
-    /* Pack 30 bits */
-    LOOPI 3, 2
+    /* Pack 2 + 30 bits */
+    LOOPI 4, 2
       bn.rshi w4, w1, w4 >> 10
       bn.rshi w1, w31, w1 >> 16
     /* Load the sixth batch */
@@ -322,14 +312,11 @@ polyvec_compress:
       bn.rshi w1, w31, w1 >> 16
     /* Pack 4 bits */
     bn.rshi w4, w1, w4 >> 4
-    bn.rshi w1, w31, w1 >> 4
     bn.sid  x5, 0(x12++)
 
     /* Fifth WDR: 6 bits + 90 bits (9 coeffs) + (Reload) 160 bits (16 coeffs) */
-    bn.rshi w4, w1, w4 >> 6 /* store 6 bits of w1 to w4 */
-    bn.rshi w1, w31, w1 >> 12
-    /* Pack 90 bits */
-    LOOPI 9, 2
+    /* Pack 6 + 90 bits */
+    LOOPI 10, 2
       bn.rshi w4, w1, w4 >> 10
       bn.rshi w1, w31, w1 >> 16
     /* Load the eighth batch */
