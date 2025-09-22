@@ -13,7 +13,7 @@
 // The adder is meant to replace Adder X and Adder Y in BN-ALU. So it can either
 // compute in_A + in_B (A + B) or in_A + ~in_B + 1 (A + B + cin).
 
-module csa_carry4
+module csa_carry4_ref
   import otbn_pkg::*;
 (
   input logic [WLEN-1:0]  A,
