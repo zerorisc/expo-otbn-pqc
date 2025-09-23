@@ -413,6 +413,7 @@ otbn_sim_test = rv_rule(
         "binary": attr.label(providers = [DefaultInfo, OutputGroupInfo, CcInfo]),
         "exp": attr.label(allow_single_file = True),
         "dexp": attr.label(allow_single_file = True),
+        "copts": attr.string_list(),
         "testcase": attr.label(allow_single_file = True),
         "_riscv32_ar": attr.label(
             default = Label("@lowrisc_rv32imcb_toolchain//:bin/riscv32-unknown-elf-ar"),

@@ -9,8 +9,11 @@ import argparse
 import subprocess
 import sys
 from enum import IntEnum
-from typing import List
+from typing import Dict, List
 import tempfile
+
+from elftools.elf.elffile import ELFFile  # type: ignore
+from elftools.elf.sections import SymbolTableSection  # type: ignore
 
 from shared.check import CheckResult
 from shared.elf import read_elf
@@ -52,6 +55,18 @@ def get_err_names(err: int) -> List[str]:
         if err & err_bit != 0:
             out.append(err_bit.name)
     return out
+
+def _get_symbol_addr_map(elf_file: ELFFile) -> Dict[int, str]:
+    section = elf_file.get_section_by_name('.symtab')
+
+    if not isinstance(section, SymbolTableSection):
+        return {}
+
+    # Filter lables and offsets from data section
+    return {
+        sym.name: sym.entry.st_value
+        for sym in section.iter_symbols() if sym.entry['st_shndx'] == 2
+    }
 
 
 def main() -> int:
