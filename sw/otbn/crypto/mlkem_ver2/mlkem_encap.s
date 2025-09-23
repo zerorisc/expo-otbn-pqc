@@ -260,12 +260,15 @@ indcpa_enc:
   .endr
 
   /* After basemul, w16 is still R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** INTT v ***/
-  li  a0, STACK_ENC_V
-  add a0, fp, a0 
-  add a2, zero, a0 
-  la  a1, twiddles_intt
-  jal x1, intt
+  li      a0, STACK_ENC_V
+  add     a0, fp, a0 
+  add     a2, zero, a0 
+  la      a1, twiddles_intt
+  jal     x1, intt
+  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /*** CBD epp ***/
   lw   a0, STACK_ENC_COINS_ADDR(fp)
@@ -325,6 +328,8 @@ indcpa_enc:
   .endr
 
   /* After basemul, w16 is still R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** INTT ***/
   li  a0, STACK_ENC_AT
   add a0, fp, a0 
@@ -333,6 +338,7 @@ indcpa_enc:
   .rept KYBER_K
     jal x1, intt
   .endr 
+  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /*** CBD ep ***/
   lw  a0, STACK_ENC_COINS_ADDR(fp)

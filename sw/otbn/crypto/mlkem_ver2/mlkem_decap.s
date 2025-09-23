@@ -215,11 +215,14 @@ indcpa_dec:
   .endr 
 
   /* After basemul, w16 is still R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** INTT ***/
-  add a0, a0, K_POLYS 
-  la  a1, twiddles_intt
-  add a2, zero, a0 
-  jal x1, intt
+  add     a0, a0, K_POLYS 
+  la      a1, twiddles_intt
+  add     a2, zero, a0 
+  jal     x1, intt
+  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /*** SUB ***/
   li   a0, STACK_DEC_V
