@@ -199,9 +199,8 @@ indcpa_dec:
   .rept KYBER_K 
     jal x1, ntt
   .endr 
-  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
-  /* After NTT, w16 is still R | Q */
+  /* After NTT, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** Vector vector multiplication ***/
   addi x29, a0, K_POLYS
   addi a1, a2, 512
@@ -214,9 +213,7 @@ indcpa_dec:
     jal  x1, basemul_acc 
   .endr 
 
-  /* After basemul, w16 is still R | Q */
-  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
-  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
+  /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT ***/
   add     a0, a0, K_POLYS 
   la      a1, twiddles_intt

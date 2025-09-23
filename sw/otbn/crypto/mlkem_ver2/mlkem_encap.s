@@ -241,9 +241,8 @@ indcpa_enc:
   .rept KYBER_K
     jal x1, ntt
   .endr
-  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
-  /* After NTT, w6 is still R | Q */
+  /* After NTT, w6 is still R | Q and MOD is still 2*R | 2*Q */
   /** v = sp * pkpv **/ 
   li   x29, STACK_ENC_PKPV 
   add  x29, fp, x29
@@ -259,9 +258,7 @@ indcpa_enc:
     jal  x1, basemul_acc 
   .endr
 
-  /* After basemul, w16 is still R | Q */
-  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
-  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
+  /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT v ***/
   li      a0, STACK_ENC_V
   add     a0, fp, a0 
@@ -292,6 +289,9 @@ indcpa_enc:
   addi a2, a2, POLY
   jal  x1, poly_add
 
+  /* w6 is still R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** Matrix vector multiplication ***/
   li   a1, STACK_ENC_AT
   add  a1, fp, a1
@@ -302,7 +302,6 @@ indcpa_enc:
     jal  x1, poly_gen_matrix
     addi a2, a2, 0x0100
 
-    bn.wsrr w16, 0x0
     /* Mutliply this generated poly with sk */
     addi a1, a1, POLY /* point back to A[0][0] */
     li   x29, STACK_ENC_SP
@@ -316,7 +315,6 @@ indcpa_enc:
       jal  x1, poly_gen_matrix
       addi a2, a2, 0x0100
 
-      bn.wsrr w16, 0x0
       /* Mutliply this generated poly with sk */
       addi a1, a1, POLY /* points back to A[0][1] */
       addi a3, a1, POLY /* points back to A[0][0] for accumulation */
@@ -327,9 +325,7 @@ indcpa_enc:
     addi a2, a2, KYBER_GEN_MATRIX_AT_NONCE 
   .endr
 
-  /* After basemul, w16 is still R | Q */
-  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
-  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
+  /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT ***/
   li  a0, STACK_ENC_AT
   add a0, fp, a0 

@@ -243,6 +243,8 @@ indcpa_keypair:
   lw   a3, STACK_SK_ADDR(fp)
   jal  x1, pack_sk
 
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** Matrix-vector multiplication ***/
   li   a1, STACK_A
   add  a1, fp, a1
@@ -253,7 +255,6 @@ indcpa_keypair:
     jal  x1, poly_gen_matrix
     addi a2, a2, 1
 
-    bn.wsrr w16, 0x0
     /* Mutliply this generated poly with sk */
     addi a1, a1, POLY /* point back to A[0][0] */
     li   x29, STACK_SKPV
@@ -268,7 +269,6 @@ indcpa_keypair:
       jal  x1, poly_gen_matrix
       addi a2, a2, 1
 
-      bn.wsrr w16, 0x0
       /* Mutliply this generated poly with sk */
       addi a1, a1, POLY /* points back to A[0][1] */
       addi a3, a1, POLY /* points back to A[0][0] for accumulation */
@@ -278,6 +278,7 @@ indcpa_keypair:
     .endr 
     addi a2, a2, KYBER_GEN_MATRIX_NONCE 
   .endr 
+  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /* After basemul, w16 is still R | Q */
   bn.xor w31, w31, w31
@@ -302,7 +303,7 @@ indcpa_keypair:
     jal  x1, poly_getnoise_eta_1
     addi a2, a2, 1
 
-  bn.wsrr   w16, 0x0 /* w16 = MOD = R | Q */
+  /* After cbd, w16 is still R | Q */
   bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
   bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** NTT e ***/
