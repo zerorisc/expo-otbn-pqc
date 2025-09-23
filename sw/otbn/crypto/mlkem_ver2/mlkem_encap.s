@@ -230,7 +230,9 @@ indcpa_enc:
     add  a0, zero, a4
     addi a2, a2, 1  
 
-  bn.wsrr w16, 0x0
+  bn.wsrr   w16, 0x0 /* w16 = R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   /*** NTT sp ***/
   li  a0, STACK_ENC_SP 
   add a0, fp, a0
@@ -239,8 +241,9 @@ indcpa_enc:
   .rept KYBER_K
     jal x1, ntt
   .endr
+  bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
-  bn.wsrr w16, 0x0
+  /* After NTT, w6 is still R | Q */
   /** v = sp * pkpv **/ 
   li   x29, STACK_ENC_PKPV 
   add  x29, fp, x29
@@ -256,7 +259,7 @@ indcpa_enc:
     jal  x1, basemul_acc 
   .endr
 
-  bn.wsrr w16, 0x0
+  /* After basemul, w16 is still R | Q */
   /*** INTT v ***/
   li  a0, STACK_ENC_V
   add a0, fp, a0 
@@ -321,7 +324,7 @@ indcpa_enc:
     addi a2, a2, KYBER_GEN_MATRIX_AT_NONCE 
   .endr
 
-  bn.wsrr w16, 0x0
+  /* After basemul, w16 is still R | Q */
   /*** INTT ***/
   li  a0, STACK_ENC_AT
   add a0, fp, a0 
