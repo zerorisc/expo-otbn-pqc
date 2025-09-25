@@ -5,6 +5,7 @@ import re
 import argparse
 import subprocess
 import time
+import csv
 from datetime import datetime
 from pathlib import Path
 from itertools import islice
@@ -90,7 +91,13 @@ def target_list(scheme, verbose):
         subprocess.run(query_cmd, stdout=subprocess.PIPE, text=True, shell=True, check=True)
     targets = results.stdout.strip().split('\n')
     targets = sorted(targets, key=lambda x: int(re.search(r'\d+', x).group()))
+    n = len(targets)
+    # In case we want NOLD codesize, uncomment the following lines
+    # for i in range(0, n, 6):
+    #     targets[i + 1], targets[i + 2] = targets[i + 2], targets[i + 1]
+    #     targets[i + 3], targets[i + 4] = targets[i + 4], targets[i + 3]
 
+    targets = [t for t in targets if 'nold' not in t]
     return targets
 
 
@@ -169,6 +176,59 @@ def latex_print(cs, filename):
         f.write(lines)
 
 
+def output_csv(cs, outdir):
+    filename = outdir + "/codesize.csv"
+
+    del cs['TARGET']
+    cs_list = [[
+        "Level", "Platform", "Text MLKEM", "Ratio MLKEM", "Const MLKEM", "IO MLKEM",
+        "Text MLDSA", "Ratio MLDSA", "Const MLDSA", "IO MLDSA"
+    ]]
+    # Change list to list of lists
+    for k, v in cs.items():
+        if 'ver1' in k:
+            platform = "\\otbnmulv"
+        elif 'ver2' in k:
+            platform = "\\otbnmulvacch"
+        elif 'ver3' in k:
+            platform = "\\otbnmulvacchcond"
+        else:
+            platform = "\\otbnbl"
+        if 'mlkem512' in k:
+            k = "\\mlkemlow"
+        elif 'mlkem768' in k:
+            k = "\\mlkemmid"
+        elif 'mlkem1024' in k:
+            k = "\\mlkemhigh"
+        elif 'mldsa44' in k:
+            k = "\\mldsalow"
+        elif 'mldsa65' in k:
+            k = "\\mldsamid"
+        elif 'mldsa87' in k:
+            k = "\\mldsahigh"
+        v[1] = "$\\times$" + str(v[1])
+        data = [k] + [platform] + v
+        cs_list.append(data)
+
+    print(cs_list)
+
+    # Remove repeated Level
+    n = len(cs_list)
+    for i in range(1, n // 2, 4):
+        cs_list[i] += cs_list[i + 12][2:] # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 1] += cs_list[i + 13][2:] # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 2] += cs_list[i + 14][2:] # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 3] += cs_list[i + 15][2:] # Append ML-DSA code size to ML-KEM code size
+        cs_list[i][0] = ""
+        cs_list[i + 2][0] = cs_list[i + 14][0]
+        cs_list[i + 3][0] = ""
+
+    cs_list = cs_list[:13]
+    with open(filename, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(cs_list)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Please provide at least one argument as follows to run this script (except -v)",
@@ -210,6 +270,19 @@ def main() -> int:
         type=str,
         metavar="LATEX_FILENAME",
         help=("Output file of --output_latex option. If file does not exist, it will be created\n"
+              "Must be given with full path")
+    )
+    parser.add_argument(
+        '--output_csv',
+        action="store_true",
+        help=("If given, output code size in a csv-formatted file\n"
+              "Must be used with --csv_outdir")
+    )
+    parser.add_argument(
+        '--csv_outdir',
+        type=str,
+        metavar="CSV_OUTDIR",
+        help=("Directory of output file of --output_csv option. If file does not exist, it will be created\n"
               "Must be given with full path")
     )
 
@@ -313,12 +386,12 @@ def main() -> int:
         cs_len = len(cs_list)
         for i in range(0, cs_len, 4):
             ki, vi = cs_list[i]
-            vi.insert(1, 1.00)
+            vi.insert(1, 1.000)
             # Update cs_sorted
             cs[ki] = vi
             for j in range(i + 1, i + 4):
                 kj, vj = cs_list[j]
-                cs_vji = round((vj[0] / vi[0]), 2)
+                cs_vji = round((vj[0] / vi[0]), 3)
                 vj.insert(1, cs_vji)
                 # Update cs_sorted
                 cs[kj] = vj
@@ -327,12 +400,15 @@ def main() -> int:
     cs_sorted.update(cs)
 
     # Print out cs_sorted
-    if not args.output_latex:
-        print_info('INFO: Print out code size')
-        dict_print(cs_sorted)
-    else:
+    if args.output_latex:
         print_info('INFO: Create LaTex file')
         latex_print(cs_sorted, args.latex_filename)
+    elif args.output_csv:
+        print_info('INFO: Create CSV file')
+        output_csv(cs_sorted, args.csv_outdir)
+    else:
+        print_info('INFO: Print out code size')
+        dict_print(cs_sorted)
 
     # End timer
     end_time = time.perf_counter()
