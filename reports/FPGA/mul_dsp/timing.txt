@@ -1,0 +1,107 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2022.2 (lin64) Build 3671981 Fri Oct 14 04:59:54 MDT 2022
+| Date         : Fri Sep 26 23:24:55 2025
+| Host         : ruben-nb02 running 64-bit Ubuntu 22.04.5 LTS
+| Command      : report_timing -file ../../../reports/FPGA/mul_dsp/timing.txt
+| Design       : mul_dsp
+| Device       : 7k160t-fbg676
+| Speed File   : -1  PRODUCTION 1.12 2017-02-17
+------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             0.090ns  (required time - arrival time)
+  Source:                 mode[1]
+                            (input port)
+  Destination:            p32[3][61]
+  Path Group:             **default**
+  Path Type:              Max at Slow Process Corner
+  Requirement:            11.765ns  (MaxDelay Path 11.765ns)
+  Data Path Delay:        11.675ns  (logic 8.972ns (76.851%)  route 2.703ns (23.149%))
+  Logic Levels:           22  (CARRY4=16 DSP48E1=4 LUT4=1 LUT5=1)
+  Output Delay:           0.000ns
+  Timing Exception:       MaxDelay Path 11.765ns -datapath_only
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                                                      0.000     0.000 r  mode[1] (IN)
+                         net (fo=580, unset)          0.672     0.672    mode[1]
+    SLICE_X13Y113        LUT5 (Prop_lut5_I4_O)        0.053     0.725 r  u_dsp3_i_18/O
+                         net (fo=1, routed)           0.285     1.010    u_dsp3_i_18_n_0
+    DSP48_X0Y44          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.421     4.431 r  u_dsp3/PCOUT[47]
+                         net (fo=1, routed)           0.000     4.431    PCOUT[3][47]
+    DSP48_X0Y45          DSP48E1 (Prop_dsp48e1_PCIN[47]_PCOUT[47])
+                                                      1.452     5.883 r  u_dsp6/PCOUT[47]
+                         net (fo=1, routed)           0.000     5.883    PCOUT[6][47]
+    DSP48_X0Y46          DSP48E1 (Prop_dsp48e1_PCIN[47]_PCOUT[47])
+                                                      1.452     7.335 r  u_dsp9/PCOUT[47]
+                         net (fo=1, routed)           0.000     7.335    PCOUT[9][47]
+    DSP48_X0Y47          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[19])
+                                                      1.286     8.621 r  u_dsp12/P[19]
+                         net (fo=4, routed)           0.601     9.222    p16[12][19]
+    SLICE_X10Y120        LUT4 (Prop_lut4_I3_O)        0.053     9.275 r  p32[3][0]_INST_0_i_1/O
+                         net (fo=1, routed)           0.465     9.740    sum641200_out
+    SLICE_X11Y120        CARRY4 (Prop_carry4_DI[3]_CO[3])
+                                                      0.230     9.970 r  p32[3][0]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000     9.970    p32[3][0]_INST_0_n_0
+    SLICE_X11Y121        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.028 r  p32[3][4]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.028    p32[3][4]_INST_0_n_0
+    SLICE_X11Y122        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.086 r  p32[3][8]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.086    p32[3][8]_INST_0_n_0
+    SLICE_X11Y123        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.144 r  p32[3][12]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.144    p32[3][12]_INST_0_n_0
+    SLICE_X11Y124        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.202 r  p32[3][16]_INST_0/CO[3]
+                         net (fo=1, routed)           0.008    10.210    p32[3][16]_INST_0_n_0
+    SLICE_X11Y125        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.268 r  p32[3][20]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.268    p32[3][20]_INST_0_n_0
+    SLICE_X11Y126        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.326 r  p32[3][24]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.326    p32[3][24]_INST_0_n_0
+    SLICE_X11Y127        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.384 r  p32[3][28]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.384    p32[3][28]_INST_0_n_0
+    SLICE_X11Y128        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.442 r  p32[3][32]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.442    p32[3][32]_INST_0_n_0
+    SLICE_X11Y129        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.500 r  p32[3][36]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.500    p32[3][36]_INST_0_n_0
+    SLICE_X11Y130        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.558 r  p32[3][40]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.558    p32[3][40]_INST_0_n_0
+    SLICE_X11Y131        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.616 r  p32[3][44]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.616    p32[3][44]_INST_0_n_0
+    SLICE_X11Y132        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.674 r  p32[3][48]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.674    p32[3][48]_INST_0_n_0
+    SLICE_X11Y133        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.732 r  p32[3][52]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.732    p32[3][52]_INST_0_n_0
+    SLICE_X11Y134        CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.058    10.790 r  p32[3][56]_INST_0/CO[3]
+                         net (fo=1, routed)           0.000    10.790    p32[3][56]_INST_0_n_0
+    SLICE_X11Y135        CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.213    11.003 r  p32[3][60]_INST_0/O[1]
+                         net (fo=0)                   0.672    11.675    p32[3][61]
+                                                                      r  p32[3][61] (OUT)
+  -------------------------------------------------------------------    -------------------
+
+                         max delay                   11.765    11.765    
+                         output delay                -0.000    11.765    
+  -------------------------------------------------------------------
+                         required time                         11.765    
+                         arrival time                         -11.675    
+  -------------------------------------------------------------------
+                         slack                                  0.090    
+
+
+
+
