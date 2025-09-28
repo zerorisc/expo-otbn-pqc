@@ -5,35 +5,135 @@
 //   mode=2'b10 : 16× (16x16  ->  32b)
 //
 // Single-cycle: all DSP regs disabled. Unsigned arithmetic.
-//
-// \begin{tabular}{lrrrrrr}
-// \hline
-//  top\_module   &   LUT &   DSP &   CARRY4 &   FF &   BRAM &   Fmax \\
-// \hline
-//  mul\_dsp      &   715 &    16 &       52 &    0 &      0 &     85 \\
-// \hline
-// \end{tabular}
-//
-module mul_dsp (
-    input  logic [1:0] mode,         // 00:64x64, 01:4x32, 10:16x16
 
-    // 64x64 inputs
-    input  logic [63:0] a64,
-    input  logic [63:0] b64,
-
-    // 4× 32x32 inputs
-    input  logic [3:0][31:0] a32,
-    input  logic [3:0][31:0] b32,
-
-    // 16× 16x16 inputs
-    input  logic [15:0][15:0] a16,
-    input  logic [15:0][15:0] b16,
-
-    // Outputs
-    output logic [127:0]       p64,
-    output logic [3:0][63:0]   p32,
-    output logic [15:0][31:0]  p16
+module mul_dsp #(
+  parameter int WLEN = 256,
+  parameter int DLEN = 64,
+  parameter int SLEN = 32,
+  parameter int HLEN = 16
+) (
+  input  logic [1:0]                   word_mode, // 00 = 64x64, 11 = 4x32x32, 10 = 16x16x16
+  input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_A,
+  input  logic [$clog2(WLEN/DLEN)-1:0] word_sel_B,
+`ifdef BNMULV_ACCH
+  input  logic [1:0]                   exec_mode,
+`endif
+  input  logic                         half_sel,
+  input  logic                         lane_mode,
+  input  logic                         lane_word_32,
+  input  logic                         lane_word_16,
+  input  logic [WLEN-1:0]              A,
+  input  logic [WLEN-1:0]              B,
+  input  logic [1:0]                   data_type_64_shift,
+`ifdef BNMULV_ACCH
+  output logic [2*WLEN-1:0]            result
+`else
+  output logic [WLEN-1:0]              result
+`endif
 );
+
+  localparam int NHALF = WLEN / HLEN;  // 16
+`ifndef BNMULV_ACCH
+  localparam int NSING = WLEN / SLEN;  // 8
+`endif
+  localparam int NDOUB = WLEN / DLEN;  // 4
+
+
+    logic [63:0] a64;
+    logic [63:0] b64;
+
+    logic [3:0][31:0] a32;
+    logic [3:0][31:0] b32;
+
+    logic [15:0][15:0] a16;
+    logic [15:0][15:0] b16;
+
+    logic [127:0]       p64;
+    logic [3:0][63:0]   p32;
+    logic [15:0][31:0]  p16;
+
+
+  // -------------------------------------------------------------------
+  // Input and intermediate arrays
+  // -------------------------------------------------------------------
+  logic [2*HLEN-1:0] products [0:NHALF-1];
+  logic [2*SLEN-1:0] partial32 [0:NDOUB-1];
+
+  localparam MODE_64 = 2'b00;
+  localparam MODE_32 = 2'b11;
+  localparam MODE_16 = 2'b10;
+
+  logic [63:0] scalar64_A;
+  logic [63:0] scalar64_B;
+
+  // -------------------------------------------------------------------
+  // Index Scalar Operands
+  // -------------------------------------------------------------------
+
+  assign scalar64_A = A[DLEN*word_sel_A +: DLEN];
+  assign scalar64_B = B[DLEN*word_sel_B +: DLEN];
+
+  logic [31:0] scalar32;
+  logic [15:0] scalar16;
+
+  assign scalar32 = scalar64_B[SLEN*lane_word_32 +: SLEN];
+  assign scalar16 = scalar32[HLEN*lane_word_16 +: HLEN];
+
+  // -------------------------------------------------------------------
+  // Input Decomposition
+  // -------------------------------------------------------------------
+  always_comb begin
+    // 16 x 16
+    `ifdef BNMULV_ACCH
+    if (exec_mode == 2'b00) begin
+      for (int i = 0; i < NHALF; i+=2) begin
+        if (half_sel == 1'b0) begin
+          a16[i] = A[HLEN*i +: HLEN];
+          b16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
+          a16[i+1] = 16'b0;
+          b16[i+1] = 16'b0;
+        end else begin
+          a16[i] = 16'b0;
+          b16[i] = 16'b0;
+          a16[i+1] = A[(i+1)*HLEN +: HLEN];
+          b16[i+1] = (lane_mode == 1'b0) ? B[(i+1)*HLEN +: HLEN] : scalar16;
+        end
+      end
+    end else begin
+      for (int i = 0; i < NHALF; i++) begin
+        a16[i] = A[HLEN*i +: HLEN];
+        b16[i] = (lane_mode == 1'b0) ? B[HLEN*i +: HLEN] : scalar16;
+      end
+    end
+    `else
+    for (int i = 0; i < NSING; i++) begin
+      if (half_sel == 1'b0) begin
+        a16[i] = A[HLEN*(2*i + 0) +: HLEN];
+        b16[i] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 0) +: HLEN] : scalar16;
+      end else begin
+        a16[i] = A[HLEN*(2*i + 1) +: HLEN];
+        b16[i] = (lane_mode == 1'b0) ? B[HLEN*(2*i + 1) +: HLEN] : scalar16;
+      end
+    end
+    `endif
+
+    // 32 x 32
+    for (int i = 0; i < NDOUB; i++) begin
+      if (half_sel == 1'b0) begin
+        a32[i] = A[SLEN*(2*i + 0) +: SLEN];
+        b32[i] = (lane_mode == 1'b0) ? B[SLEN*(2*i + 0) +: SLEN] : scalar32;
+      end
+      else begin
+        a32[i] = A[SLEN*(2*i + 1) +: SLEN];
+        b32[i] = (lane_mode == 1'b0) ? B[SLEN*(2*i + 1) +: SLEN] : scalar32;
+      end
+    end
+
+    // 64 x 64
+    a64 = scalar64_A;
+    b64 = scalar64_B;
+  end
+
 
     localparam logic [6:0] OPMODE_M_ONLY       = 7'b0000001; // P = M
     localparam logic [6:0] OPMODE_M_PLUS_PCIN  = 7'b0010001; // P = M + PCIN
@@ -66,12 +166,12 @@ module mul_dsp (
         int gg = (i/2)*2 + (j/2);          // tile index 0..3 (TL,TR,BL,BR)
         int ii = i%2; int jj = j%2;        // 2×2 local row/col inside tile
 
-        unique case (mode)
+        unique case (word_mode)
         2'b00: begin // 64×64
             dspA16[k] = A64[i];
             dspB16[k] = B64[j];
         end
-        2'b01: begin // 4×32×32 mapped by tiles
+        2'b11: begin // 4×32×32 mapped by tiles
             dspA16[k] = A32h[gg][ii];      // A0/A1
             dspB16[k] = B32h[gg][jj];      // B0/B1
         end
@@ -89,7 +189,7 @@ module mul_dsp (
     function automatic logic [6:0] op_for(input logic [1:0] m, input int idx);
       unique case (m)
         2'b10: op_for = OPMODE_M_ONLY;                                     // 16×16
-        2'b01: op_for = (idx==4 || idx==6 || idx==12 || idx==14) ? OPMODE_M_PLUS_PCIN
+        2'b11: op_for = (idx==4 || idx==6 || idx==12 || idx==14) ? OPMODE_M_PLUS_PCIN
                                            : OPMODE_M_ONLY;                // 32×32
         default: op_for = (idx==4 || idx==6 || idx==12 || idx==14 || idx==2 || idx==5  || idx==9  || idx==13  || idx== 10) 
                           ? OPMODE_M_PLUS_PCIN : OPMODE_M_ONLY;   // 64×64
@@ -110,7 +210,7 @@ module mul_dsp (
           .P(P[idx]), \
           .PCIN(pcin_wire), \
           .PCOUT(PCOUT[idx]), \
-          .OPMODE(op_for(mode, idx)), \
+          .OPMODE(op_for(word_mode, idx)), \
           .ALUMODE(4'b0000), \
           .INMODE(5'b00000), \
           .ACIN(30'd0), .BCIN(18'd0), \
@@ -154,7 +254,7 @@ module mul_dsp (
     // 3:2 compressor input
     assign x = {{15'b0}, P[14][32:0], {14'd0}, P[ 5][33:0], P[0][31:16]};
     assign y = {P[15][31:0], P[10][31:0], {15'd0}, P[ 4][32:0]};
-    assign z = (mode == 2'b00) ? {{30'b0}, P[10][33:32],{14'd0}, P[12][33:0], {32'b0}} : {112'b0};
+    assign z = (word_mode == 2'b00) ? {{30'b0}, P[10][33:32],{14'd0}, P[12][33:0], {32'b0}} : {112'b0};
 
     // 3:2 compressor
     always_comb begin
@@ -185,6 +285,71 @@ module mul_dsp (
     for (genvar t=0; t<16; t++) begin : P16_OUT
       always_comb p16[t] = P[t][31:0];
     end
+
+`ifdef BNMULV_ACCH
+  logic [2*HLEN*NHALF-1:0] result_16;
+`else
+  logic [255:0] result_16;
+`endif
+
+  // -- 16x16 results --
+  always_comb begin
+    result_16 = '0;
+    `ifdef BNMULV_ACCH
+    for (int i = 0; i < NHALF; i++) begin : gen_output_16
+        result_16[2*HLEN*i +: 2*HLEN] = p16[i];
+    end
+    `else
+    for (int i = 0; i < NSING; i++) begin : gen_output_16
+        result_16[2*HLEN*i +: 2*HLEN] = p16[i];
+    end
+    `endif
+  end
+
+
+  // -------------------------------------------------------------------
+  // Unified Output Selection
+  // -------------------------------------------------------------------
+  always_comb begin
+    result = '0;
+
+    unique case (word_mode)
+      MODE_64: begin
+        unique case (data_type_64_shift)
+          2'd0: result[  0 +: 128] = p64;
+          2'd1: result[ 64 +: 128] = p64;
+          2'd2: result[128 +: 128] = p64;
+          `ifdef BNMULV_ACCH
+          2'd3: result[192 +: 128] = p64;
+          `else
+          2'd3: result[192 +:  64] = p64[63:0];
+          `endif
+        endcase
+      end
+      MODE_32: begin
+        `ifdef BNMULV_ACCH
+        if (half_sel == 1'b0) begin
+          for (int i = 0; i < NDOUB; i++) begin
+            result[(128*i) +  0 +: 64] = p32[i];
+          end
+        end else begin
+          for (int i = 0; i < NDOUB; i++) begin
+            result[(128*i) + 64 +: 64] = p32[i];
+          end
+        end
+        `else
+        result = p32;
+        `endif
+      end
+      MODE_16: begin
+        result = result_16;
+      end
+      default: begin
+        result = '0;
+      end
+    endcase
+  end
+
 
 endmodule
 

@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
 ----------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2022.2 (lin64) Build 3671981 Fri Oct 14 04:59:54 MDT 2022
-| Date         : Fri Sep 26 23:24:54 2025
+| Date         : Sat Sep 27 12:44:48 2025
 | Host         : ruben-nb02 running 64-bit Ubuntu 22.04.5 LTS
 | Command      : report_utilization -file ../../../reports/FPGA/mul_dsp/utilization.txt
 | Design       : mul_dsp
@@ -32,8 +32,8 @@ Table of Contents
 +-------------------------+------+-------+------------+-----------+-------+
 |        Site Type        | Used | Fixed | Prohibited | Available | Util% |
 +-------------------------+------+-------+------------+-----------+-------+
-| Slice LUTs              |  715 |     0 |          0 |    101400 |  0.71 |
-|   LUT as Logic          |  715 |     0 |          0 |    101400 |  0.71 |
+| Slice LUTs              | 1394 |     0 |          0 |    101400 |  1.37 |
+|   LUT as Logic          | 1394 |     0 |          0 |    101400 |  1.37 |
 |   LUT as Memory         |    0 |     0 |          0 |     35000 |  0.00 |
 | Slice Registers         |    0 |     0 |          0 |    202800 |  0.00 |
 |   Register as Flip Flop |    0 |     0 |          0 |    202800 |  0.00 |
@@ -69,13 +69,13 @@ Table of Contents
 +------------------------------------------+------+-------+------------+-----------+-------+
 |                 Site Type                | Used | Fixed | Prohibited | Available | Util% |
 +------------------------------------------+------+-------+------------+-----------+-------+
-| Slice                                    |  206 |     0 |          0 |     25350 |  0.81 |
-|   SLICEL                                 |  105 |     0 |            |           |       |
-|   SLICEM                                 |  101 |     0 |            |           |       |
-| LUT as Logic                             |  715 |     0 |          0 |    101400 |  0.71 |
+| Slice                                    |  433 |     0 |          0 |     25350 |  1.71 |
+|   SLICEL                                 |  264 |     0 |            |           |       |
+|   SLICEM                                 |  169 |     0 |            |           |       |
+| LUT as Logic                             | 1394 |     0 |          0 |    101400 |  1.37 |
 |   using O5 output only                   |    0 |       |            |           |       |
-|   using O6 output only                   |  655 |       |            |           |       |
-|   using O5 and O6                        |   60 |       |            |           |       |
+|   using O6 output only                   | 1168 |       |            |           |       |
+|   using O5 and O6                        |  226 |       |            |           |       |
 | LUT as Memory                            |    0 |     0 |          0 |     35000 |  0.00 |
 |   LUT as Distributed RAM                 |    0 |     0 |            |           |       |
 |   LUT as Shift Register                  |    0 |     0 |            |           |       |
@@ -178,13 +178,13 @@ Table of Contents
 +----------+------+---------------------+
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
-| LUT5     |  519 |                 LUT |
-| LUT2     |  130 |                 LUT |
-| LUT4     |   87 |                 LUT |
+| LUT6     |  536 |                 LUT |
+| LUT5     |  430 |                 LUT |
+| LUT4     |  402 |                 LUT |
+| LUT2     |  142 |                 LUT |
+| LUT3     |  110 |                 LUT |
 | CARRY4   |   52 |          CarryLogic |
-| LUT6     |   38 |                 LUT |
 | DSP48E1  |   16 |    Block Arithmetic |
-| LUT3     |    1 |                 LUT |
 +----------+------+---------------------+
 
 
