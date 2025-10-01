@@ -149,7 +149,7 @@ module ${mod_base}_csr_assert_fpv import tlul_pkg::*;
      mubi_regwen = False
      mubi_width = 4
      # Locate the REGWEN register and determine its type.
-     for reg in hro_regs_list:
+     for reg in rb.flat_regs:
        if reg.name == regwen:
          hidden_regwen = False
          if reg.fields[0].mubi:
@@ -163,7 +163,7 @@ module ${mod_base}_csr_assert_fpv import tlul_pkg::*;
   assign regwen[${hro_map.get(hro_reg.offset)[0]}] = 1;
     % elif mubi_regwen:
   assign regwen[${hro_map.get(hro_reg.offset)[0]}] =
-                  prim_mubi_pkg::mubi${mubi_width}_test_true_strict(prim_mubi_pkg::mubi${mubi_width}_t'(`REGWEN_PATH.${regwen.lower()}_qs));
+                  mubi${mubi_width}_test_true_strict(mubi${mubi_width}_t'(`REGWEN_PATH.${regwen.lower()}_qs));
     % elif hidden_regwen:
   // Register is controlled by a REGWEN that is not 'hwo' and not supported in fpv_csr
   assign regwen[${hro_map.get(hro_reg.offset)[0]}] = 1;

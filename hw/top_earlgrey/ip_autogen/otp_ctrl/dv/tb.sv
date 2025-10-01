@@ -85,7 +85,7 @@ module tb;
 
   // This signal probes design's alert request to avoid additional logic for triggering alert and
   // disable assertions.
-  // Alert checkings are done independently in otp_ctrl's scb.
+  // Alert checks are done independently in otp_ctrl's scb.
   // The correctness of this probed signal is checked in otp_ctrl's scb as well.
   assign otp_ctrl_if.alert_reqs = dut.alerts[0] | dut.alerts[1];
 
@@ -93,7 +93,20 @@ module tb;
   wire otp_ext_voltage_h = otp_ctrl_if.ext_voltage_h_io;
 
   // dut
-  otp_ctrl dut (
+  otp_ctrl #(
+    .RndCnstScrmblKey0(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlScrmblKey0),
+    .RndCnstScrmblKey1(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlScrmblKey1),
+    .RndCnstScrmblKey2(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlScrmblKey2),
+    .RndCnstDigestConst0(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestConst0),
+    .RndCnstDigestConst1(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestConst1),
+    .RndCnstDigestConst2(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestConst2),
+    .RndCnstDigestConst3(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestConst3),
+    .RndCnstDigestIV0(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestIV0),
+    .RndCnstDigestIV1(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestIV1),
+    .RndCnstDigestIV2(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestIV2),
+    .RndCnstDigestIV3(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlDigestIV3),
+    .RndCnstPartInvDefault(top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault)
+  ) dut (
     .clk_i                      (clk        ),
     .rst_ni                     (rst_n      ),
     // edn
@@ -154,8 +167,8 @@ module tb;
       .cio_test_en_o (otp_ctrl_if.cio_test_en_o),
 
       // Inter-module signals
-//      .obs_ctrl_i(otp_ctrl_if.obs_ctrl_i),
-//      .otp_obs_o(otp_obs_o),
+      .obs_ctrl_i('0),
+      .otp_obs_o (  ),
       .pwr_seq_o(ast_req),
       .pwr_seq_h_i(otp_ctrl_if.otp_ast_pwr_seq_h_i),
       .ext_voltage_h_io(otp_ext_voltage_h),
@@ -166,8 +179,8 @@ module tb;
       .otp_o(otp_ctrl_macro_rsp),
       .cfg_i('0),
       .cfg_rsp_o(),
-      .tl_i(prim_tl_if.h2d),
-      .tl_o(prim_tl_if.d2h),
+      .prim_tl_i(prim_tl_if.h2d),
+      .prim_tl_o(prim_tl_if.d2h),
       .scanmode_i (otp_ctrl_if.scanmode_i),
       .scan_rst_ni (otp_ctrl_if.scan_rst_ni),
       .scan_en_i (otp_ctrl_if.scan_en_i),
@@ -200,7 +213,7 @@ module tb;
   assign interrupts[OtpOperationDone] = intr_otp_operation_done;
   assign interrupts[OtpErr]           = intr_otp_error;
 
-  // Instantitate the memory backdoor util instance only for OS implementation
+  // Instantiate the memory backdoor util instance only for OS implementation
   // Proprietary IP will instantiate their own backdoor util
 
   if (`PRIM_DEFAULT_IMPL == prim_pkg::ImplGeneric) begin : gen_impl_generic
@@ -239,10 +252,10 @@ module tb;
     clk_rst_if.set_active();
     uvm_config_db#(virtual clk_rst_if)::set(null, "*.env", "clk_rst_vif", clk_rst_if);
     uvm_config_db#(virtual clk_rst_if)::set(null, "*.env",
-                                            "clk_rst_vif_otp_macro_reg_block", clk_rst_if);
+                                            "clk_rst_vif_otp_macro_prim_reg_block", clk_rst_if);
     uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent_otp_ctrl_core_reg_block*",
                                        "vif", tl_if);
-    uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent_otp_macro_reg_block",
+    uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent_otp_macro_prim_reg_block",
                                        "vif", prim_tl_if);
     uvm_config_db#(virtual push_pull_if#(.DeviceDataWidth(OTBN_DATA_SIZE)))::set(null,
                    "*env.m_otbn_pull_agent*", "vif", otbn_if);

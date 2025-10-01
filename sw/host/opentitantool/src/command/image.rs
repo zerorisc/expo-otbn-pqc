@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use clap::{Args, Subcommand};
 use serde_annotate::Annotate;
 use std::any::Any;
@@ -12,8 +12,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use opentitanlib::app::command::CommandDispatch;
 use opentitanlib::app::TransportWrapper;
+use opentitanlib::app::command::CommandDispatch;
 
 use opentitanlib::crypto::ecdsa::{
     EcdsaPrivateKey, EcdsaPublicKey, EcdsaRawPublicKey, EcdsaRawSignature,
@@ -282,7 +282,10 @@ impl CommandDispatch for ManifestUpdateCommand {
             .signed_region
             .iter()
             .map(|e| e.id())
-            .chain(vec![ManifestExtId::spx_key.into()])
+            .chain(vec![
+                ManifestExtId::spx_key.into(),
+                ManifestExtId::image_type.into(),
+            ])
             .collect::<HashSet<u32>>();
         image.update_signed_region(&signed_ids)?;
 

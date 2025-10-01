@@ -2,16 +2,13 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use handler::TransportCommandHandler;
-use mio::event::Event;
-use mio::net::TcpListener;
-use mio::{Registry, Token};
-use nonblocking_uart::NonblockingUartRegistry;
 use protocol::Message;
 use socket_server::{Connection, JsonSocketServer};
-use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use tokio::net::TcpListener;
 
 use crate::app::TransportWrapper;
 
@@ -23,61 +20,32 @@ mod socket_server;
 
 /// Interface for handlers of protocol messages, responding to each message with a single
 /// instance of the same protocol message.
-pub trait CommandHandler<Msg, E: ExtraEventHandler> {
-    fn execute_cmd(
-        &mut self,
-        conn_token: Token,
-        registry: &Registry,
-        extra_event_handler: &mut E,
-        msg: &Msg,
-    ) -> Result<Msg>;
-
-    fn register_nonblocking_help(
-        &self,
-        _registry: &mio::Registry,
-        _token: mio::Token,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    fn nonblocking_help(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
-pub trait ExtraEventHandler {
-    fn handle_poll_event(
-        &mut self,
-        event: &Event,
-        connection_map: &mut HashMap<Token, Connection>,
-    ) -> Result<bool>;
+pub trait CommandHandler<Msg> {
+    fn execute_cmd(&mut self, conn: &Arc<Mutex<Connection>>, msg: &Msg) -> Result<Msg>;
 }
 
 /// This is the main entry point for the session proxy.  This struct will either bind on a
 /// specified port, or find an available port from a range, before entering an event loop.
-pub struct SessionHandler<'a> {
+pub struct SessionHandler {
     port: u16,
-    socket_server: JsonSocketServer<Message, TransportCommandHandler<'a>, NonblockingUartRegistry>,
+    socket_server: JsonSocketServer<Message, TransportCommandHandler>,
 }
 
-impl<'a> SessionHandler<'a> {
-    pub fn init(transport: &'a TransportWrapper, listen_port: Option<u16>) -> Result<Self> {
+impl SessionHandler {
+    pub fn init(transport: TransportWrapper, listen_port: Option<u16>) -> Result<Self> {
         let mut port = listen_port.unwrap_or(9900);
         let limit = listen_port.unwrap_or(9999);
         // Find a suitable port to bind to.
         let socket = loop {
             let addr = SocketAddr::from(([0u8; 4], port));
-            match TcpListener::bind(addr) {
+            match crate::util::runtime::block_on(async { TcpListener::bind(addr).await }) {
                 Ok(socket) => break socket,
                 Err(e) if port >= limit => bail!(e),
                 Err(_) => port += 1,
             }
         };
-        let socket_server = JsonSocketServer::new(
-            TransportCommandHandler::new(transport)?,
-            NonblockingUartRegistry::new(),
-            socket,
-        )?;
+        let socket_server =
+            JsonSocketServer::new(TransportCommandHandler::new(transport)?, socket)?;
         Ok(Self {
             port,
             socket_server,
@@ -89,6 +57,8 @@ impl<'a> SessionHandler<'a> {
     }
 
     pub fn run_loop(&mut self) -> Result<()> {
-        self.socket_server.run_loop()
+        crate::util::runtime::block_on(crate::util::runtime::with_graceful_shutdown(
+            self.socket_server.run_loop(),
+        ))
     }
 }

@@ -2,14 +2,14 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 
 use crate::with_unknown;
 
 with_unknown! {
-    pub enum DifLcCtrlState: u32 {
+    pub enum DifLcCtrlState: u32 [default = Self::StateInvalid] {
         Raw = bindgen::dif::dif_lc_ctrl_state_kDifLcCtrlStateRaw ,
         TestUnlocked0 = bindgen::dif::dif_lc_ctrl_state_kDifLcCtrlStateTestUnlocked0 ,
         TestLocked0 = bindgen::dif::dif_lc_ctrl_state_kDifLcCtrlStateTestLocked0 ,
@@ -385,7 +385,7 @@ impl LcCtrlReg {
         *self as u32
     }
     /// Converts the register's byte offset into a word offset for use with DMI.
-    /// <https://docs.opentitan.org/hw/ip/lc_ctrl/doc/#life-cycle-tap-controller>
+    /// <https://opentitan.org/book/hw/ip/lc_ctrl/doc/theory_of_operation.html#life-cycle-tap-controller>
     pub fn word_offset(&self) -> u32 {
         const BYTES_PER_WORD: u32 = std::mem::size_of::<u32>() as u32;
         assert_eq!(self.byte_offset() % BYTES_PER_WORD, 0);

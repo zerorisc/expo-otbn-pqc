@@ -105,7 +105,7 @@ class flash_ctrl_env_cfg extends cip_base_env_cfg #(
   // With heavy concurrency, derr can be injected where read transaction
   // is issued and outstanding.
   // This can change error expectation of the first transaction.
-  // To handle this cornercase, don't assert derr on outstanding read location.
+  // To handle this corner-case, don't assert derr on outstanding read location.
   int derr_otd[rd_cache_t];
 
   // Integrity ecc err
@@ -346,7 +346,7 @@ class flash_ctrl_env_cfg extends cip_base_env_cfg #(
   endfunction : get_partition_words_num
 
   // Method to do a back-door update of a selected partition memory model to the actual flash data.
-  // Usualy should only be done after flash initialization.
+  // Usually should only be done after flash initialization.
   task update_partition_mem_model(flash_dv_part_e part);
     flash_mem_addr_attrs addr_attr;
     data_4s_t bkdr_rd_data;
@@ -391,7 +391,8 @@ class flash_ctrl_env_cfg extends cip_base_env_cfg #(
   virtual task flash_mem_bkdr_init(flash_dv_part_e part = FlashPartData,
                                    flash_mem_init_e scheme);
 
-    `uvm_info("flash_mem_bkdr_init", $sformatf("scheme: %s", scheme.name), UVM_MEDIUM)
+    `uvm_info("flash_mem_bkdr_init", $sformatf("part %s, scheme: %s", part.name, scheme.name),
+              UVM_MEDIUM)
     case (scheme)
       FlashMemInitSet: begin
         foreach (mem_bkdr_util_h[part][i]) mem_bkdr_util_h[part][i].set_mem();
@@ -1156,7 +1157,7 @@ class flash_ctrl_env_cfg extends cip_base_env_cfg #(
     end
   endfunction // inc_otd_tbl
 
-  // Descrease outstanding table entry.
+  // Decrease outstanding table entry.
   function void dec_otd_tbl(bit bank, addr_t addr, flash_dv_part_e part);
     rd_cache_t ent;
     ent.bank = bank;

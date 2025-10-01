@@ -4,7 +4,7 @@
 
 #include "sw/device/silicon_creator/lib/drivers/ibex.h"
 
-#include "dt/dt_rv_core_ibex.h"
+#include "hw/top/dt/dt_rv_core_ibex.h"
 #include "sw/device/lib/base/abs_mmio.h"
 #include "sw/device/lib/base/hardened.h"
 #include "sw/device/lib/runtime/hart.h"
@@ -89,6 +89,16 @@ void ibex_addr_remap_lockdown(uint32_t index) {
   index *= sizeof(uint32_t);
   sec_mmio_write32(kBase + RV_CORE_IBEX_IBUS_REGWEN_0_REG_OFFSET + index, 0);
   sec_mmio_write32(kBase + RV_CORE_IBEX_DBUS_REGWEN_0_REG_OFFSET + index, 0);
+}
+
+void ibex_enable_nmi(ibex_nmi_source_t nmi_src) {
+  abs_mmio_write32(rv_core_ibex_base() + RV_CORE_IBEX_NMI_ENABLE_REG_OFFSET,
+                   nmi_src);
+}
+
+void ibex_clear_nmi(ibex_nmi_source_t nmi_src) {
+  abs_mmio_write32(rv_core_ibex_base() + RV_CORE_IBEX_NMI_STATE_REG_OFFSET,
+                   nmi_src);
 }
 
 // `extern` declarations to give the inline functions in the corresponding

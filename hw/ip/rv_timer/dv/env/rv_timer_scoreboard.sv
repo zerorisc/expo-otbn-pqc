@@ -221,7 +221,7 @@ class rv_timer_scoreboard extends cip_base_scoreboard #(.CFG_T (rv_timer_env_cfg
 
       // On reads, if do_read_check, is set, then check mirrored_value against item.d_data
       if (!write) begin
-        // exclude read check for timer_val* reg if read happended when timer is enabled
+        // exclude read check for timer_val* reg if read happened when timer is enabled
         if (!uvm_re_match("timer_v_*", csr_name)) begin
           for (int i = 0; i < NUM_HARTS; i++) begin
             if (!uvm_re_match($sformatf("timer_v_*%0d", i), csr_name)) begin
@@ -313,7 +313,10 @@ class rv_timer_scoreboard extends cip_base_scoreboard #(.CFG_T (rv_timer_env_cfg
                   `uvm_info(`gfn, $sformatf("Timer expired check for interrupt"), UVM_MEDIUM)
                   // Update exp val and predict it in read address_channel
                   intr_status_exp[a_i][a_j] = 1'b1;
-                  $display("check_interrupt_pin#1 - intr_status_exp = %p", intr_status_exp);
+                  `uvm_info(`gfn,
+                            $sformatf("check_interrupt_pin#1 - intr_status_exp = %p",
+                                      intr_status_exp),
+                            UVM_MEDIUM)
                   check_interrupt_pin();
                   if (cfg.en_cov) begin
                     int timer_idx = a_i * NUM_TIMERS + a_j;
@@ -336,7 +339,7 @@ class rv_timer_scoreboard extends cip_base_scoreboard #(.CFG_T (rv_timer_env_cfg
               end
             join_any
             en_timers_prev[a_i][a_j] = 1'b0;
-            // kill forked threads if timer disabled or interrupt occured or under reset
+            // kill forked threads if timer disabled or interrupt occurred or under reset
             disable fork;
           end
         join_none

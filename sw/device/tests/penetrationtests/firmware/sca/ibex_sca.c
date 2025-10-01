@@ -32,7 +32,6 @@ static dif_hmac_t hmac;
 static dif_otbn_t otbn;
 
 #define MAX_BATCH_SIZE 256
-#define DEST_REGS_CNT 6
 
 // OTBN symbols used by the combinatorial test.
 OTBN_DECLARE_APP_SYMBOLS(p256_ecdsa_sca);
@@ -135,8 +134,10 @@ static void generate_random(size_t num_iterations, uint32_t values[]) {
 }
 
 status_t handle_ibex_pentest_init(ujson_t *uj) {
-  penetrationtest_cpuctrl_t uj_data;
-  TRY(ujson_deserialize_penetrationtest_cpuctrl_t(uj, &uj_data));
+  penetrationtest_cpuctrl_t uj_cpuctrl_data;
+  TRY(ujson_deserialize_penetrationtest_cpuctrl_t(uj, &uj_cpuctrl_data));
+  penetrationtest_sensor_config_t uj_sensor_data;
+  TRY(ujson_deserialize_penetrationtest_sensor_config_t(uj, &uj_sensor_data));
 
   // Setup trigger and enable peripherals needed for the test.
   pentest_select_trigger_type(kPentestTriggerTypeSw);
@@ -144,16 +145,21 @@ status_t handle_ibex_pentest_init(ujson_t *uj) {
                kPentestPeripheralEntropy | kPentestPeripheralIoDiv4 |
                    kPentestPeripheralOtbn | kPentestPeripheralCsrng |
                    kPentestPeripheralEdn | kPentestPeripheralHmac |
-                   kPentestPeripheralKmac | kPentestPeripheralAes);
+                   kPentestPeripheralKmac | kPentestPeripheralAes,
+               uj_sensor_data.sensor_ctrl_enable,
+               uj_sensor_data.sensor_ctrl_en_fatal);
 
   // Disable the instruction cache and dummy instructions for SCA.
   penetrationtest_device_info_t uj_output;
   TRY(pentest_configure_cpu(
-      uj_data.icache_disable, uj_data.dummy_instr_disable,
-      uj_data.enable_jittery_clock, uj_data.enable_sram_readback,
-      &uj_output.clock_jitter_locked, &uj_output.clock_jitter_en,
-      &uj_output.sram_main_readback_locked, &uj_output.sram_ret_readback_locked,
-      &uj_output.sram_main_readback_en, &uj_output.sram_ret_readback_en));
+      uj_cpuctrl_data.enable_icache, &uj_output.icache_en,
+      uj_cpuctrl_data.enable_dummy_instr, &uj_output.dummy_instr_en,
+      uj_cpuctrl_data.dummy_instr_count, uj_cpuctrl_data.enable_jittery_clock,
+      uj_cpuctrl_data.enable_sram_readback, &uj_output.clock_jitter_locked,
+      &uj_output.clock_jitter_en, &uj_output.sram_main_readback_locked,
+      &uj_output.sram_ret_readback_locked, &uj_output.sram_main_readback_en,
+      &uj_output.sram_ret_readback_en, uj_cpuctrl_data.enable_data_ind_timing,
+      &uj_output.data_ind_timing_en));
 
   // Key manager not initialized for the handle_ibex_sca_key_sideloading test.
   key_manager_init = false;
@@ -173,6 +179,9 @@ status_t handle_ibex_pentest_init(ujson_t *uj) {
   // This is not used, but just set so it receives input,
   TRY(otbn_load_app(kOtbnAppP256Ecdsa));
 
+  // Read rom digest.
+  TRY(pentest_read_rom_digest(uj_output.rom_digest));
+
   // Read device ID and return to host.
   TRY(pentest_read_device_id(uj_output.device_id));
   RESP_OK(ujson_serialize_penetrationtest_device_info_t, uj, &uj_output);
@@ -191,7 +200,7 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
   if (trigger & kCombiOpsTriggerXor) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "xor x13, x5, x12\n"
                  "xor x14, x5, x12\n"
@@ -205,14 +214,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "xor x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[0]));
   }
 
   if (trigger & kCombiOpsTriggerAdd) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "add x13, x5, x12\n"
                  "add x14, x5, x12\n"
@@ -226,14 +235,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "add x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[1]));
   }
 
   if (trigger & kCombiOpsTriggerSub) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "sub x13, x5, x12\n"
                  "sub x14, x5, x12\n"
@@ -247,14 +256,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "sub x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[2]));
   }
 
   if (trigger & kCombiOpsTriggerShift) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "rol x13, x5, x12\n"
                  "rol x14, x5, x12\n"
@@ -268,14 +277,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "rol x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[3]));
   }
 
   if (trigger & kCombiOpsTriggerMul) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "mul x13, x5, x12\n"
                  "mul x14, x5, x12\n"
@@ -289,14 +298,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "mul x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[4]));
   }
 
   if (trigger & kCombiOpsTriggerDiv) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "div x13, x5, x12\n"
                  "div x14, x5, x12\n"
@@ -310,14 +319,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "div x31, x5, x12\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     asm volatile("sw x13, (%0)" ::"r"(&result[5]));
   }
 
   if (trigger & kCombiOpsTriggerLw) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "lw x13, (%0)\n"
                  "lw x14, (%0)\n"
@@ -331,14 +340,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "lw x31, (%0)\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     result[6] = value1;
   }
 
   if (trigger & kCombiOpsTriggerSw) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "sw x5, (%0)\n"
                  "sw x5, (%0)\n"
@@ -352,14 +361,14 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "sw x5, (%0)\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     result[7] = value1;
   }
 
   if (trigger & kCombiOpsTriggerCp) {
     init_registers(value1, value2, 0, 0, 0, 0);
 
-    pentest_set_trigger_high();
+    PENTEST_ASM_TRIGGER_HIGH
     asm volatile(NOP30
                  "sw x5, (%1)\n"
                  "sw x12, (%0)\n"
@@ -373,7 +382,7 @@ static status_t trigger_ibex_sca_combi_operations(uint32_t value1,
                  "sw x12, (%0)\n" NOP30
                  :
                  : "r"(&value1), "r"(&value2));
-    pentest_set_trigger_low();
+    PENTEST_ASM_TRIGGER_LOW
     result[8] = value1;
   }
 
@@ -656,16 +665,14 @@ status_t handle_ibex_sca_register_file_write_batch_random(ujson_t *uj) {
   TRY_CHECK(uj_data.num_iterations < MAX_BATCH_SIZE);
 
   // Generate random values.
-  uint32_t values[MAX_BATCH_SIZE * DEST_REGS_CNT];
-  generate_random(uj_data.num_iterations * DEST_REGS_CNT, values);
+  uint32_t values[MAX_BATCH_SIZE];
+  generate_random(uj_data.num_iterations, values);
 
   // SCA code target.
   for (size_t i = 0; i < uj_data.num_iterations; i++) {
     pentest_set_trigger_high();
-    init_registers(values[i * DEST_REGS_CNT], values[i * DEST_REGS_CNT + 1],
-                   values[i * DEST_REGS_CNT + 2], values[i * DEST_REGS_CNT + 3],
-                   values[i * DEST_REGS_CNT + 4],
-                   values[i * DEST_REGS_CNT + 5]);
+    init_registers(values[i], values[i], values[i], values[i], values[i],
+                   values[i]);
     // Give the trigger time to rise.
     asm volatile(NOP10);
     // Write provided data into register file.
@@ -676,7 +683,7 @@ status_t handle_ibex_sca_register_file_write_batch_random(ujson_t *uj) {
 
   // Write back last value written into the RF to validate generated data.
   ibex_sca_result_t uj_output;
-  uj_output.result = values[uj_data.num_iterations * DEST_REGS_CNT - 1];
+  uj_output.result = values[uj_data.num_iterations - 1];
   RESP_OK(ujson_serialize_ibex_sca_result_t, uj, &uj_output);
   return OK_STATUS();
 }

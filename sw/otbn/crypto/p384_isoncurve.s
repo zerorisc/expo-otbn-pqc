@@ -1,3 +1,7 @@
+/* Copyright zeroRISC Inc. */
+/* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 /* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
@@ -15,6 +19,48 @@
 .equ HARDENED_BOOL_FALSE, 0x1d4
 
  .section .text
+
+/**
+ * Trigger a fault if the FG0.Z flag is 0.
+ *
+ * If the flag is 0, then this routine will trigger an `ILLEGAL_INSN` error and
+ * abort the OTBN program. If the flag is 1, the routine will essentially do
+ * nothing.
+ *
+ * NOTE: Be careful when calling this routine that the FG0.Z flag is not
+ * sensitive; since aborting the program will be quicker than completing it,
+ * the flag's value is likely clearly visible to an attacker through timing.
+ *
+ * @param[in]    w31: all-zero
+ * @param[in]  FG0.Z: boolean indicating (complement of) fault condition
+ *
+ * clobbered registers: x2
+ * clobbered flag groups: none
+ */
+ .globl trigger_fault_if_fg0_not_z
+trigger_fault_if_fg0_not_z:
+  /* Read the FG0.Z flag (position 3).
+       x2 <= FG0.Z */
+  csrrw     x2, FG0, x0
+  andi      x2, x2, 8
+  srli      x2, x2, 3
+
+  /* Subtract 1 from FG0.Z.
+       x2 <= x2 - 1 = FG0.Z ? 0 : 2^32 - 1 */
+  addi      x2, x2, -1
+
+  /* The `bn.lid` instruction causes an `BAD_DATA_ADDR` error if the
+     memory address is out of bounds. Therefore, if FG0.Z is 0, this
+     instruction causes an error, but if FG0.Z is 1 it simply loads the word at
+     address 0 into w31. */
+  li         x3, 31
+  bn.lid     x3, 0(x2)
+
+  /* If we get here, the flag must have been 1. Restore w31 to zero and return.
+       w31 <= 0 */
+  bn.xor     w31, w31, w31
+
+  ret
 
 /**
  * Checks if a point is a valid curve point on curve P-384
@@ -126,6 +172,70 @@ p384_isoncurve:
   ret
 
 /**
+ * Checks if a point is a valid curve point on curve P-384
+ *
+ * This routine checks if a point with given x- and y-coordinate is a valid
+ * curve point on P-384.
+ * The routine checks whether the coordinates are a solution of the
+ * Weierstrass equation y^2 = x^3 + ax + b  mod p.
+ * The routine makes use of the property that the domain parameter 'a' can be
+ * written as a=-3 for the P-384 curve, hence the routine is limited to P-384.
+ *
+ * This routine sets `ok` to false if the check fails and immediately exits the
+ * program. If the check succeeds, `ok` is unmodified.
+ *
+ * The routine runs in constant time.
+ *
+ * Flags: Flags have no meaning beyond the scope of this subroutine.
+ *
+ * @param[in]  [w13, w12]:  domain parameter p (modulus)
+ * @param[in]  x20:         dptr_x, pointer to dmem location containing affine
+ *                                  x-coordinate of input point
+ * @param[in]  x21:         dptr_y, pointer to dmem location containing affine
+ *                                  y-coordinate of input point
+ *
+ * clobbered registers: x2, x3, w0 to w5, w10 to w17
+ * clobbered flag groups: FG0
+ */
+ .globl p384_isoncurve_check
+p384_isoncurve_check:
+  /* Fill gpp registers with pointers to variables */
+  la        x22, rhs
+  la        x23, lhs
+
+  /* Compute both sides of the Weierstrauss equation.
+       dmem[rhs] <= (x^3 + ax + b) mod p
+       dmem[lhs] <= (y^2) mod p */
+  jal       x1, p384_isoncurve
+
+  /* Load both sides of the equation.
+       [w7, w6] <= dmem[rhs]
+       [w5, w4] <= dmem[lhs] */
+  li        x2, 6
+  bn.lid    x2++, 0(x22)
+  bn.lid    x2, 32(x22)
+  li        x2, 4
+  bn.lid    x2++, 0(x23)
+  bn.lid    x2, 32(x23)
+
+  /* Compare the two sides of the equation.
+       FG0.Z <= (y^2) mod p == (x^2 + ax + b) mod p */
+  bn.sub    w0, w4, w6
+  bn.subb   w1, w5, w7
+
+  bn.cmp    w0, w31
+
+  /* Fail if FG0.Z is false. */
+  jal       x1, trigger_fault_if_fg0_not_z
+
+  bn.cmp    w1, w31
+
+  /* Fail if FG0.Z is false. */
+  jal       x1, trigger_fault_if_fg0_not_z
+
+  ret
+
+/**
  * Check if a provided curve point is valid.
  *
  * For a given curve point (x, y), check that:
@@ -205,64 +315,7 @@ p384_check_public_key:
   unimp
 
   _y_valid:
-
-  /* Fill gpp registers with pointers to variables */
-  la        x22, rhs
-  la        x23, lhs
-
-  /* Compute both sides of the Weierstrauss equation.
-       dmem[rhs] <= (x^3 + ax + b) mod p
-       dmem[lhs] <= (y^2) mod p */
-  jal       x1, p384_isoncurve
-
-  /* Load both sides of the equation.
-       [w7, w6] <= dmem[rhs]
-       [w5, w4] <= dmem[lhs] */
-  li        x2, 6
-  bn.lid    x2++, 0(x22)
-  bn.lid    x2, 32(x22)
-  li        x2, 4
-  bn.lid    x2++, 0(x23)
-  bn.lid    x2, 32(x23)
-
-  /* Compare the two sides of the equation.
-       FG0.Z <= (y^2) mod p == (x^2 + ax + b) mod p */
-  bn.sub    w0, w4, w6
-  bn.subb   w1, w5, w7
-
-  bn.cmp    w0, w31
-
-  /* Fail if FG0.Z is false. */
-  csrrs     x2, FG0, x0
-  srli      x2, x2, 3
-  andi      x2, x2, 1
-  bne       x2, x0, _pt_1st_reg_valid
-  jal       x0, p384_invalid_input
-
-  /* Extra unimps in case an attacker tries to skip the jump, since this one is
-     especially critical. */
-  unimp
-  unimp
-  unimp
-
-  _pt_1st_reg_valid:
-
-  bn.cmp    w1, w31
-
-  /* Fail if FG0.Z is false. */
-  csrrs     x2, FG0, x0
-  srli      x2, x2, 3
-  andi      x2, x2, 1
-  bne       x2, x0, _pt_valid
-  jal       x0, p384_invalid_input
-
-  /* Extra unimps in case an attacker tries to skip the jump, since this one is
-     especially critical. */
-  unimp
-  unimp
-  unimp
-
-  _pt_valid:
+  jal       x1, p384_isoncurve_check
 
   ret
 
@@ -283,7 +336,7 @@ p384_invalid_input:
   /* End the program. */
   ecall
 
-.data
+.bss
 
 /* Success code for basic validity checks on the public key and signature.
    Should be HARDENED_BOOL_TRUE or HARDENED_BOOL_FALSE. */

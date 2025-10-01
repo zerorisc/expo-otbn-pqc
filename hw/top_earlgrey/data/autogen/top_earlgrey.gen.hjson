@@ -4,14 +4,11 @@
 //
 // ------------------- W A R N I N G: A U T O - G E N E R A T E D   C O D E !! -------------------//
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
-//
 // util/topgen.py -t hw/top_earlgrey/data/top_earlgrey.hjson \
-//                -o hw/top_earlgrey/ \
-//                --rnd_cnst_seed 1017106219537032642877583828875051302543807092889754935647094601236425074047
+//                -o hw/top_earlgrey/
 {
   name: earlgrey
   type: top
-  rnd_cnst_seed: 1017106219537032642877583828875051302543807092889754935647094601236425074047
   datawidth: "32"
   power:
   {
@@ -559,6 +556,8 @@
     ]
   }
   num_cores: "1"
+  default_plic: rv_plic
+  default_alert_handler: alert_handler
   addr_spaces:
   [
     {
@@ -1845,39 +1844,7 @@
       }
       param_decl: {}
       memory: {}
-      param_list:
-      [
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: otp_ctrl_top_specific_pkg::lfsr_seed_t
-          randcount: 40
-          randtype: data
-          name_top: RndCnstOtpCtrlLfsrSeed
-          default: 0x50c2c82deb
-          randwidth: 40
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: otp_ctrl_top_specific_pkg::lfsr_perm_t
-          randcount: 40
-          randtype: perm
-          name_top: RndCnstOtpCtrlLfsrPerm
-          default: 0x8573e042648a54e4c07e42e770944376231b1c278894d119623156181694
-          randwidth: 240
-        }
-        {
-          name: RndCnstScrmblKeyInit
-          desc: Compile-time random permutation for scrambling key/nonce register reset value
-          type: otp_ctrl_top_specific_pkg::scrmbl_key_init_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstOtpCtrlScrmblKeyInit
-          default: 0xdbb4685f7eb27eb3b35f352752e34f64ce978305bfc3481a2162ea2792b7508f
-          randwidth: 256
-        }
-      ]
+      param_list: []
       inter_signal_list:
       [
         {
@@ -2142,6 +2109,13 @@
           domain: "0"
         }
       }
+      base_addrs:
+      {
+        prim:
+        {
+          hart: 0x40138000
+        }
+      }
       param_decl:
       {
         Width: otp_ctrl_macro_pkg::OtpWidth
@@ -2352,7 +2326,33 @@
           index: -1
         }
         {
-          name: tl
+          name: racl_policies
+          desc:
+            '''
+            Incoming RACL policy vector from a racl_ctrl instance.
+            The policy selection vector (parameter) selects the policy for each register.
+            '''
+          struct: racl_policy_vec
+          package: top_racl_pkg
+          type: uni
+          act: rcv
+          width: 1
+          inst_name: otp_macro
+          index: -1
+        }
+        {
+          name: racl_error
+          desc: RACL error log information of this module.
+          struct: racl_error_log
+          package: top_racl_pkg
+          type: uni
+          act: req
+          width: 1
+          inst_name: otp_macro
+          index: -1
+        }
+        {
+          name: prim_tl
           struct: tl
           package: tlul_pkg
           type: req_rsp
@@ -2361,17 +2361,10 @@
           inst_name: otp_macro
           default: ""
           end_idx: -1
-          top_signame: otp_macro_tl
+          top_signame: otp_macro_prim_tl
           index: -1
         }
       ]
-      base_addrs:
-      {
-        null:
-        {
-          hart: 0x40138000
-        }
-      }
       generate_dif: true
       domain:
       [
@@ -2456,66 +2449,6 @@
           local: "false"
           expose: "true"
           name_top: LcCtrlUseDmiInterface
-        }
-        {
-          name: RndCnstLcKeymgrDivInvalid
-          desc: Diversification value used for all invalid life cycle states.
-          type: lc_ctrl_pkg::lc_keymgr_div_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstLcCtrlLcKeymgrDivInvalid
-          default: 0x1eab067af954dda5491439a9dde63208
-          randwidth: 128
-        }
-        {
-          name: RndCnstLcKeymgrDivTestUnlocked
-          desc: Diversification value used for the TEST_UNLOCKED* life cycle states.
-          type: lc_ctrl_pkg::lc_keymgr_div_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstLcCtrlLcKeymgrDivTestUnlocked
-          default: 0x1fdcf25a4fba528399117069e77c887
-          randwidth: 128
-        }
-        {
-          name: RndCnstLcKeymgrDivDev
-          desc: Diversification value used for the DEV life cycle state.
-          type: lc_ctrl_pkg::lc_keymgr_div_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstLcCtrlLcKeymgrDivDev
-          default: 0xf53dda6fb4ef8758b99027b6aa7468bc
-          randwidth: 128
-        }
-        {
-          name: RndCnstLcKeymgrDivProduction
-          desc: Diversification value used for the PROD/PROD_END life cycle states.
-          type: lc_ctrl_pkg::lc_keymgr_div_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstLcCtrlLcKeymgrDivProduction
-          default: 0xbd8d70368e7cfb11a99675b14624061
-          randwidth: 128
-        }
-        {
-          name: RndCnstLcKeymgrDivRma
-          desc: Diversification value used for the RMA life cycle state.
-          type: lc_ctrl_pkg::lc_keymgr_div_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstLcCtrlLcKeymgrDivRma
-          default: 0x9335a9e2d123834d18744778be5e63c0
-          randwidth: 128
-        }
-        {
-          name: RndCnstInvalidTokens
-          desc: Compile-time random bits used for invalid tokens in the token mux
-          type: lc_ctrl_pkg::lc_token_mux_t
-          randcount: 1024
-          randtype: data
-          name_top: RndCnstLcCtrlInvalidTokens
-          default: 0x87e36838b56b1a45f6fd312f5353fa7b2ce9fc83ddaf1dd8c5a42e2ad24fa02221b6ff5aad7a9c09d5d9fdd1cfcf512835c0cfae2ed0c69fa488685cea9bc1c89bfb7399aef5c6eb5d6e4e23416a0aa6d7ac7ec9c3304470fbe505f9649400ca9864fd4ce49d2cfc6ecc102540ead8734700a5207132689471aa822bc51cdd4d
-          randwidth: 1024
         }
         {
           name: SiliconCreatorId
@@ -2745,7 +2678,35 @@
           index: -1
         }
         {
+          name: lc_hw_debug_clr
+          desc:
+            '''
+            Clear HW debug functionality.
+            This signal is On when `lc_hw_debug_en` turns Off outside a reset of `lc_ctrl`.
+            Flops storing the value of `lc_hw_debug_en` (see below) must be cleared when this signal is On.
+            '''
+          struct: lc_tx
+          package: lc_ctrl_pkg
+          type: uni
+          act: req
+          width: 1
+          default: lc_ctrl_pkg::Off
+          inst_name: lc_ctrl
+          end_idx: -1
+          top_type: broadcast
+          top_signame: lc_ctrl_lc_hw_debug_clr
+          index: -1
+        }
+        {
           name: lc_hw_debug_en
+          desc:
+            '''
+            Enable HW debug functionality; see `HW_DEBUG_EN` in the Theory of Operation doc for details.
+
+            This signal is Off while lc_ctrl is in reset.
+            In order to prevent a JTAG disconnect during non-debug-module (NDM) reset, this signal should be flopped outside the NDM reset domain.
+            Such a flop must be cleared when `lc_hw_debug_clr` is On; see above.
+            '''
           struct: lc_tx
           package: lc_ctrl_pkg
           type: uni
@@ -3089,26 +3050,6 @@
       memory: {}
       param_list:
       [
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: alert_handler_pkg::lfsr_seed_t
-          randcount: 32
-          randtype: data
-          name_top: RndCnstAlertHandlerLfsrSeed
-          default: 0x37ac2d24
-          randwidth: 32
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: alert_handler_pkg::lfsr_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstAlertHandlerLfsrPerm
-          default: 0x83a2b09fb9d7006b1534f2bf7d8eb2112787b10d
-          randwidth: 160
-        }
         {
           name: EscNumSeverities
           desc: Number of escalation severities as regular parameter
@@ -3475,7 +3416,7 @@
       [
         {
           name: Stub
-          desc: Stub out the core of entropy_src logic
+          desc: Stub out the USB device logic, leaving only the register interface
           type: bit
           default: "0"
           local: "false"
@@ -4989,6 +4930,19 @@
       inter_signal_list:
       [
         {
+          name: lc_hw_debug_clr
+          desc: Debug clear signal coming from life cycle controller, used for HW strap qualification.
+          struct: lc_tx
+          package: lc_ctrl_pkg
+          type: uni
+          act: rcv
+          width: 1
+          default: lc_ctrl_pkg::Off
+          inst_name: pinmux_aon
+          top_signame: lc_ctrl_lc_hw_debug_clr
+          index: -1
+        }
+        {
           name: lc_hw_debug_en
           desc: Debug enable qualifier coming from life cycle controller, used for HW strap qualification.
           struct: lc_tx
@@ -5829,46 +5783,6 @@
       param_list:
       [
         {
-          name: RndCnstSramKey
-          desc: Compile-time random reset value for SRAM scrambling key.
-          type: otp_ctrl_pkg::sram_key_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstSramCtrlRetAonSramKey
-          default: 0x46e4fecfda2375a6147421d8cb69d4f3
-          randwidth: 128
-        }
-        {
-          name: RndCnstSramNonce
-          desc: Compile-time random reset value for SRAM scrambling nonce.
-          type: otp_ctrl_pkg::sram_nonce_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstSramCtrlRetAonSramNonce
-          default: 0xa15faf834cad515d76bd37c7bec5f33f
-          randwidth: 128
-        }
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: sram_ctrl_pkg::lfsr_seed_t
-          randcount: 32
-          randtype: data
-          name_top: RndCnstSramCtrlRetAonLfsrSeed
-          default: 0xdca11a72
-          randwidth: 32
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: sram_ctrl_pkg::lfsr_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstSramCtrlRetAonLfsrPerm
-          default: 0x848bcb54640ebabb89f357fcc4a3386c5c73501b
-          randwidth: 160
-        }
-        {
           name: MemSizeRam
           desc: Memory size of the RAM (in bytes).
           type: int
@@ -6161,56 +6075,6 @@
       }
       param_list:
       [
-        {
-          name: RndCnstAddrKey
-          desc: Compile-time random bits for default address key
-          type: flash_ctrl_pkg::flash_key_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstFlashCtrlAddrKey
-          default: 0xcd066336e9b0bdf6a55f0d23bb7dc0d
-          randwidth: 128
-        }
-        {
-          name: RndCnstDataKey
-          desc: Compile-time random bits for default data key
-          type: flash_ctrl_pkg::flash_key_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstFlashCtrlDataKey
-          default: 0xc524d3b0554603562188552794dd2beb
-          randwidth: 128
-        }
-        {
-          name: RndCnstAllSeeds
-          desc: Compile-time random bits for default seeds
-          type: flash_ctrl_top_specific_pkg::all_seeds_t
-          randcount: 512
-          randtype: data
-          name_top: RndCnstFlashCtrlAllSeeds
-          default: 0xf67f318b5a490e55f7d8b8325652a92482cc34468c37bfee731a0ab430181cde15f40d83472dd252e38f2c5e24d201bdb435d5cff95c40a1643cc8f540230522
-          randwidth: 512
-        }
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: flash_ctrl_top_specific_pkg::lfsr_seed_t
-          randcount: 32
-          randtype: data
-          name_top: RndCnstFlashCtrlLfsrSeed
-          default: 0xd33a4ea4
-          randwidth: 32
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: flash_ctrl_top_specific_pkg::lfsr_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstFlashCtrlLfsrPerm
-          default: 0xb16325f54d0ed9e31c04c3eb9d5f88127f41cdd0
-          randwidth: 160
-        }
         {
           name: SecScrambleEn
           desc: Compile-time option to enable flash scrambling
@@ -6670,6 +6534,23 @@
           index: -1
         }
         {
+          name: lc_hw_debug_clr
+          desc:
+            '''
+            Multibit life cycle hardware debug clear signal coming from life cycle controller,
+            asserted when the hardware debug mechanism was enabled and gets disabled.
+            '''
+          struct: lc_tx
+          package: lc_ctrl_pkg
+          type: uni
+          act: rcv
+          width: 1
+          default: lc_ctrl_pkg::Off
+          inst_name: rv_dm
+          top_signame: lc_ctrl_lc_hw_debug_clr
+          index: -1
+        }
+        {
           name: lc_hw_debug_en
           desc:
             '''
@@ -6954,6 +6835,10 @@
         }
       }
       attr: ipgen
+      targets:
+      [
+        rv_core_ibex
+      ]
       clock_connections:
       {
         clk_i: clkmgr_aon_clocks.clk_main_secure
@@ -7132,56 +7017,6 @@
           local: "false"
           expose: "true"
           name_top: SecAesSkipPRNGReseeding
-        }
-        {
-          name: RndCnstClearingLfsrSeed
-          desc: Default seed of the PRNG used for register clearing.
-          type: aes_pkg::clearing_lfsr_seed_t
-          randcount: 64
-          randtype: data
-          name_top: RndCnstAesClearingLfsrSeed
-          default: 0x4922f7dc57cc668c
-          randwidth: 64
-        }
-        {
-          name: RndCnstClearingLfsrPerm
-          desc: Permutation applied to the LFSR of the PRNG used for clearing.
-          type: aes_pkg::clearing_lfsr_perm_t
-          randcount: 64
-          randtype: perm
-          name_top: RndCnstAesClearingLfsrPerm
-          default: 0x5d2732570001b22c5987ad3e90b08f80ae6f3b8babff36ea27b45fd9341af677b50c416d365623747a77a08306526f16
-          randwidth: 384
-        }
-        {
-          name: RndCnstClearingSharePerm
-          desc: Permutation applied to the clearing PRNG output for clearing the second share of registers.
-          type: aes_pkg::clearing_lfsr_perm_t
-          randcount: 64
-          randtype: perm
-          name_top: RndCnstAesClearingSharePerm
-          default: 0x386fa8411f6af130d92e9b5c863cb0c54916b17226009147bf88b694ab9e9dadf513b3606dd7c2d2b63fccc04f495eb9
-          randwidth: 384
-        }
-        {
-          name: RndCnstMaskingLfsrSeed
-          desc: Default seed of the PRNG used for masking.
-          type: aes_pkg::masking_lfsr_seed_t
-          randcount: 288
-          randtype: data
-          name_top: RndCnstAesMaskingLfsrSeed
-          default: 0x4660c443df8e6e3a14e92af0b0266dcd3de77d58929920453cedc4bb4632d2ee9d3b62da
-          randwidth: 288
-        }
-        {
-          name: RndCnstMaskingLfsrPerm
-          desc: Permutation applied to the output of the PRNG used for masking.
-          type: aes_pkg::masking_lfsr_perm_t
-          randcount: 160
-          randtype: perm
-          name_top: RndCnstAesMaskingLfsrPerm
-          default: 0x486579742011b2324800a7a7215902b345b2662581c0c510f680b9d4a1e389c1f6d5f070247307332431d33173620926778039e8c3d4d8f6b843b55897d0e967631747c19692e7e29915e631a8a4c3e2c5d9a4535853c139454496f834077226656166493600961055228755a2153952a442539795988128b3f5c829970379b7b8e816e117110184e4f146a2798506c3a008d4106088746652d0d2f9f4b7f48
-          randwidth: 1280
         }
       ]
       inter_signal_list:
@@ -7434,46 +7269,6 @@
           expose: "true"
           name_top: KmacAppCfg
         }
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random data for PRNG default seed
-          type: kmac_pkg::lfsr_seed_t
-          randcount: 288
-          randtype: data
-          name_top: RndCnstKmacLfsrSeed
-          default: 0x4fe255b13d5003ae3828ee1a34f865c10b37a68df5d1293205f54724a965ab81ca6c3169
-          randwidth: 288
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for PRNG output
-          type: kmac_pkg::lfsr_perm_t
-          randcount: 800
-          randtype: perm
-          name_top: RndCnstKmacLfsrPerm
-          default: 0xa111496869a41cc0bf1badf1c3c4f89d1806dd5434eeb721ab6cb04035b8112ff4494614f0e622acb24f636e878961b92d2026e1fbdae2341255b2288ee7921d6585df741eb12b0b0b1098a4d6125f1e9ab15a59f1b72ee1e9017063e9591888de690e31af9c7b76325a4629cd5651e198cea1068d10041735c00635435bc83ac150bd20c49265abdf4c1c931ddb53198f332d531c355668b6599c60466439d111b02965fe516d33e9cd27d72a889517dde26ab54641c8f700a7ad78fe54611b3408a2c7d5747daa4a2770e1f530ceca6c29108a1b42bdaa5867240aa251a5448001acc4aa0b488361ccb32d4e409538c66884b490486f8336b64c9ee0d05544e517dab42303f71ad883a673fe354f5396edcb84496ba94f42ae09126f91579089d7924bdc35272fd93508542f8e55499775a3476d2c89e2c73d74a756a168b2474882999fac8211c97e2954c6a1046d15372ac57c8fc3d27da991cacc18554571d5c00f8e78c21340ecd121903f94819ec70c5766f0e2174030aa7a902725c050053052adba8aed46528d8192e32eb86746b2e41f69860871ed9baf783540098a87ad3b7e66bbe41eb9dfc904162e98b932db8d8745e987049af3d55da1830986df9b4da738ddbcc24a053404d36a0dc30444c848fb42e2e3387b7406d2a6e1136a470ae480d1bb99beb2094c06260566608e5bb3c0b1b0c08502c81c1b20aaa45d636b6cbc58339197b970ca1ba398106f42481526fe678519a47945a8f6300f7567c9280c216c09c03b6159bc417d434d837e188aa989a2764005e2770b85b14801a9c22ba24647160e0c2aa3961ffa44a7219b12e1f00e98922b185f2bf6555cb96206e5666467f90ae3804afb490c7f65d885ac4ae22589054d4ea561e8b39e11f5e5a80f93c0523c9c43b60213910c49235116da2aca3cc78c75a707711455e0a540947ab9825dc2eefb60c65666641866c105a10a0e82121d95ee93be485688e28db0a707c3994bb5b0f2dda24c4392d911bc108c32bb7910faa070b46ae4196027294579d3934eba69bfc0c405fec67ecee68c5b6683c5c6bc18ed91a1b6324debf21a538e11fc028b6f2316387768e15a15a4a710644a765d45dc5c3668052a8250526988f7321ef5e2e8534c4124d23f42b2d306b686a77cbc3083d7ccd5948326968c02092aad642b4070dcb1282c24e9e24dd6b93a1e266fa3525378eec660aab0c8f7693eb04e37a84f59ef111e7e2ba7504309192ed3a4d67e317305d889260a7d6e6084b039296f49e22d5b09d73bf5ec64a7ba16977164f1da556825e74aa75a2507a58a7e805234cf98f135d53c0118eb7a0f1647e6902e79c898e8438dd33841ae82a5fa655f4fc2d8162fbd6a5ab4718f0a44c31a82020372ef8a4454be78
-          randwidth: 8000
-        }
-        {
-          name: RndCnstBufferLfsrSeed
-          desc: Compile-time random data for PRNG buffer default seed
-          type: kmac_pkg::buffer_lfsr_seed_t
-          randcount: 800
-          randtype: data
-          name_top: RndCnstKmacBufferLfsrSeed
-          default: 0xb6396fce53002a2961ac84bdda1315add2f8a394a094c63c8af070919cd8b168cab6a734a2a92b34ba17c531911e20c1a496592784ac089e72877bdaf9f7954486164b58ea68f9b7f647cdafc1c9a905a7aa52efed17f8efa13e9543502f28c02c460aa8
-          randwidth: 800
-        }
-        {
-          name: RndCnstMsgPerm
-          desc: Compile-time random permutation for LFSR Message output
-          type: kmac_pkg::msg_perm_t
-          randcount: 64
-          randtype: perm
-          name_top: RndCnstKmacMsgPerm
-          default: 0x8cc0f8c760851b07167c7d4a3d3a9910042f637e4d24b960f95691cfa5de9e44a287b22cf4ea3f53c6c1af2b66b9da74
-          randwidth: 384
-        }
       ]
       inter_signal_list:
       [
@@ -7659,16 +7454,6 @@
           name_top: OtbnRegFile
         }
         {
-          name: RndCnstUrndPrngSeed
-          desc: Default seed of the PRNG used for URND.
-          type: otbn_pkg::urnd_prng_seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstOtbnUrndPrngSeed
-          default: 0x88d40ccad7575333e5e48f00bbc1f91e5eea7ad029c213141ee86e77b99bf0a1
-          randwidth: 256
-        }
-        {
           name: SecMuteUrnd
           desc:
             '''
@@ -7695,26 +7480,6 @@
           local: "false"
           expose: "true"
           name_top: SecOtbnSkipUrndReseedAtStart
-        }
-        {
-          name: RndCnstOtbnKey
-          desc: Compile-time random reset value for IMem/DMem scrambling key.
-          type: otp_ctrl_pkg::otbn_key_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstOtbnOtbnKey
-          default: 0xbcd67fb8941c331a44277bc08f711d2d
-          randwidth: 128
-        }
-        {
-          name: RndCnstOtbnNonce
-          desc: Compile-time random reset value for IMem/DMem scrambling nonce.
-          type: otp_ctrl_pkg::otbn_nonce_t
-          randcount: 64
-          randtype: data
-          name_top: RndCnstOtbnOtbnNonce
-          default: 0x33e72bc40a36399d
-          randwidth: 64
         }
       ]
       inter_signal_list:
@@ -7941,146 +7706,6 @@
           expose: "true"
           name_top: KeymgrKmacEnMasking
         }
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: keymgr_pkg::lfsr_seed_t
-          randcount: 64
-          randtype: data
-          name_top: RndCnstKeymgrLfsrSeed
-          default: 0x8364dcd59508d525
-          randwidth: 64
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: keymgr_pkg::lfsr_perm_t
-          randcount: 64
-          randtype: perm
-          name_top: RndCnstKeymgrLfsrPerm
-          default: 0x30dc4f457678d15f06b4a0334e7243865c2c7e9e8553242ebe8efd482dea6c863976269e9ab1fed5c13f396da42e08c1
-          randwidth: 384
-        }
-        {
-          name: RndCnstRandPerm
-          desc: Compile-time random permutation for entropy used in share overriding
-          type: keymgr_pkg::rand_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstKeymgrRandPerm
-          default: 0xa1eddaca974af0044d9e1c6af0b1699295ff74c
-          randwidth: 160
-        }
-        {
-          name: RndCnstRevisionSeed
-          desc: Compile-time random bits for revision seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrRevisionSeed
-          default: 0xcb1b851078c2a5f18eee28d0b562043b7312efad871f92e7527da865d661281f
-          randwidth: 256
-        }
-        {
-          name: RndCnstCreatorIdentitySeed
-          desc: Compile-time random bits for creator identity seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrCreatorIdentitySeed
-          default: 0xe98dfcd72e3c6d150a85d63009596f7966c5c68caedde4ab7c65fb8d59618284
-          randwidth: 256
-        }
-        {
-          name: RndCnstOwnerIntIdentitySeed
-          desc: Compile-time random bits for owner intermediate identity seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrOwnerIntIdentitySeed
-          default: 0x64d7194e4707ada81f8a6db14ca845beee60798289ad4fb0df1768296390152
-          randwidth: 256
-        }
-        {
-          name: RndCnstOwnerIdentitySeed
-          desc: Compile-time random bits for owner identity seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrOwnerIdentitySeed
-          default: 0x700e078ec5a951b627cf2ccd155d84fdaced736e93362c8da83c5f4dd2093e4d
-          randwidth: 256
-        }
-        {
-          name: RndCnstSoftOutputSeed
-          desc: Compile-time random bits for software generation seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrSoftOutputSeed
-          default: 0x2a70dd99dcf4ccac341a2f1a2704f5e21287fa168af251b370d034cda6051526
-          randwidth: 256
-        }
-        {
-          name: RndCnstHardOutputSeed
-          desc: Compile-time random bits for hardware generation seed
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrHardOutputSeed
-          default: 0x62f4d11b3245d5943ea5fd2e4bea016b7911deaf01df742547371445d6e39551
-          randwidth: 256
-        }
-        {
-          name: RndCnstAesSeed
-          desc: Compile-time random bits for generation seed when aes destination selected
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrAesSeed
-          default: 0x45e3074d9ca9e8a4ef06a6f14a5c8fcac0d6396e606a620a9ffb23756bda420a
-          randwidth: 256
-        }
-        {
-          name: RndCnstKmacSeed
-          desc: Compile-time random bits for generation seed when kmac destination selected
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrKmacSeed
-          default: 0x9e7bd1a7c41e3a37b747d3d7b758b37d1d1ca19a079c48d7d4e67100a6aaebe4
-          randwidth: 256
-        }
-        {
-          name: RndCnstOtbnSeed
-          desc: Compile-time random bits for generation seed when otbn destination selected
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrOtbnSeed
-          default: 0x5b6f09aefb72895ec90d876315db9ad8bbe63ecace31278da3acfc873ec5a228
-          randwidth: 256
-        }
-        {
-          name: RndCnstCdi
-          desc: Compile-time random bits for generation seed when no CDI is selected
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrCdi
-          default: 0x29bd781efe2b4b06f4b349e0372b7394d415d937f3578cc1200dd1fb1d0ecf94
-          randwidth: 256
-        }
-        {
-          name: RndCnstNoneSeed
-          desc: Compile-time random bits for generation seed when no destination selected
-          type: keymgr_pkg::seed_t
-          randcount: 256
-          randtype: data
-          name_top: RndCnstKeymgrNoneSeed
-          default: 0x8594bc831c3e0e1f33c998cabd61dac609b5dd0e0c602aef2e932b1fb8fb631d
-          randwidth: 256
-        }
       ]
       inter_signal_list:
       [
@@ -8286,26 +7911,6 @@
       param_list:
       [
         {
-          name: RndCnstCsKeymgrDivNonProduction
-          desc: Compile-time random bits for csrng state group diversification value
-          type: csrng_pkg::cs_keymgr_div_t
-          randcount: 384
-          randtype: data
-          name_top: RndCnstCsrngCsKeymgrDivNonProduction
-          default: 0xd82de6c9adde7bfb79fb9cc4c0b2d1aed6700a44ea3e7e0610a663d52b082b9aef0e426df4866fe88a8baa3b3b2f5e39
-          randwidth: 384
-        }
-        {
-          name: RndCnstCsKeymgrDivProduction
-          desc: Compile-time random bits for csrng state group diversification value
-          type: csrng_pkg::cs_keymgr_div_t
-          randcount: 384
-          randtype: data
-          name_top: RndCnstCsrngCsKeymgrDivProduction
-          default: 0x17a7a7d4b5e53c38b3cedc40946cf3635f0c112f435205ef40d4b50cbd86b4932d75cebe7060738efa2035418082cfe9
-          randwidth: 384
-        }
-        {
           name: SBoxImpl
           desc: Selection of the S-Box implementation. See aes_pkg.sv.
           type: aes_pkg::sbox_impl_e
@@ -8438,20 +8043,61 @@
       param_list:
       [
         {
+          name: RngBusWidth
+          desc:
+            '''
+            Defines the bit-width of the noise source data.
+            Must be between 4 and 256 (inclusive) and divisible by 4.
+            The divisibility by 4 is a prerequisite for the bucket health test.
+            '''
+          type: int
+          default: 4
+          local: "false"
+          expose: "true"
+          name_top: EntropySrcRngBusWidth
+        }
+        {
+          name: RngBusBitSelWidth
+          desc: Explicit parameter defining the width of the RNG bit selection vector (log2(RngBusWidth))
+          type: int
+          default: 2
+          local: "false"
+          expose: "true"
+          name_top: EntropySrcRngBusBitSelWidth
+        }
+        {
+          name: HealthTestWindowWidth
+          desc: Explicit parameter defining the width of the health test window (16 + log2(RngBusWidth))
+          type: int
+          default: 18
+          local: "false"
+          expose: "true"
+          name_top: EntropySrcHealthTestWindowWidth
+        }
+        {
           name: EsFifoDepth
           desc: Number of 384-bit entries in the esfinal FIFO
           type: int
           default: "3"
-          local: "false"
+          local: "true"
           expose: "true"
           name_top: EntropySrcEsFifoDepth
+        }
+        {
+          name: EnCsAesHaltReqIf
+          desc: Enable (1) or disable (0) the CS AES halt request interface
+          type: bit
+          default: "1"
+          local: "true"
+          expose: "true"
+          name_top: EntropySrcEnCsAesHaltReqIf
         }
         {
           name: DistrFifoDepth
           desc: Number of 32-bit entries in the distr FIFO
           type: int unsigned
-          default: "2"
-          local: "false"
+          default: "3"
+          local: "true"
           expose: "true"
           name_top: EntropySrcDistrFifoDepth
         }
@@ -8499,22 +8145,171 @@
           index: -1
         }
         {
-          name: entropy_src_rng
-          struct: entropy_src_rng
-          package: entropy_src_pkg
-          type: req_rsp
+          name: entropy_src_rng_enable
+          desc:
+            '''
+            Signal through which entropy_src enables the noise source.
+            entropy_src will keep this signal high as long as it expects the noise source to operate.
+            This is *not* a flow control signal through which entropy_src would exert backpressure on the noise source; rather this signal stays high while entropy_src is enabled.
+            '''
+          struct: logic
+          type: uni
           act: req
           width: 1
           inst_name: entropy_src
           default: ""
+          package: ""
           external: true
-          top_signame: es_rng
+          top_signame: es_rng_enable
           conn_type: false
           index: -1
         }
         {
-          name: entropy_src_xht
-          struct: entropy_src_xht
+          name: entropy_src_rng_valid
+          desc:
+            '''
+            Acknowledgement signal from the noise source.
+            When '1', it indicates that the `entropy_src_rng_bit` data is valid and ready to be consumed.
+            '''
+          struct: logic
+          type: uni
+          act: rcv
+          width: 1
+          inst_name: entropy_src
+          default: ""
+          package: ""
+          external: true
+          top_signame: es_rng_valid
+          conn_type: false
+          index: -1
+        }
+        {
+          name: entropy_src_rng_bits
+          desc:
+            '''
+            Output data bus carrying the raw entropy bits from the noise source.
+            These bits are valid when `entropy_src_rng_valid` is asserted.
+            The width is determined by `RngBusWidth` parametrization.
+            '''
+          struct: logic
+          type: uni
+          act: rcv
+          width:
+          {
+            name: RngBusWidth
+            desc:
+              '''
+              Defines the bit-width of the noise source data.
+              Must be between 4 and 256 (inclusive) and divisible by 4.
+              The divisibility by 4 is a prerequisite for the bucket health test.
+              '''
+            param_type: int
+            unpacked_dimensions: null
+            default: 4
+            local: false
+            expose: true
+            name_top: EntropySrcRngBusWidth
+          }
+          inst_name: entropy_src
+          default: ""
+          package: ""
+          external: true
+          top_signame: es_rng_bit
+          conn_type: false
+          index: -1
+        }
+        {
+          name: entropy_src_xht_valid
+          desc:
+            '''
+            Valid signal for the external health test interface.
+            When asserted, it indicates that `entropy_src_xht_bits`, `entropy_src_xht_bit_sel`, and `entropy_src_xht_meta` are valid for consumption by the external health test.
+            '''
+          struct: logic
+          type: uni
+          act: req
+          width: 1
+          inst_name: entropy_src
+          index: -1
+        }
+        {
+          name: entropy_src_xht_bits
+          desc:
+            '''
+            Carries the raw entropy data from the entropy source to be consumed by the external health test module.
+            The data on this bus is valid when `entropy_src_xht_valid` is asserted.
+            The width is determined by `RngBusWidth` parametrization.
+            '''
+          struct: logic
+          type: uni
+          act: req
+          width:
+          {
+            name: RngBusWidth
+            desc:
+              '''
+              Defines the bit-width of the noise source data.
+              Must be between 4 and 256 (inclusive) and divisible by 4.
+              The divisibility by 4 is a prerequisite for the bucket health test.
+              '''
+            param_type: int
+            unpacked_dimensions: null
+            default: 4
+            local: false
+            expose: true
+            name_top: EntropySrcRngBusWidth
+          }
+          inst_name: entropy_src
+          index: -1
+        }
+        {
+          name: entropy_src_xht_bit_sel
+          desc:
+            '''
+            Provides bit selection information for the raw entropy data.
+            It specifies which specific bit or subset of bits from `entropy_src_xht_bit` should be used.
+            The width is determined by `RngBusBitSelWidth` parametrization.
+            '''
+          struct: logic
+          type: uni
+          act: req
+          width:
+          {
+            name: RngBusBitSelWidth
+            desc: Explicit parameter defining the width of the RNG bit selection vector (log2(RngBusWidth))
+            param_type: int
+            unpacked_dimensions: null
+            default: 2
+            local: false
+            expose: true
+            name_top: EntropySrcRngBusBitSelWidth
+          }
+          inst_name: entropy_src
+          index: -1
+        }
+        {
+          name: entropy_src_xht_health_test_window
+          desc: Provides the window size of the health in bits.
+          struct: logic
+          type: uni
+          act: req
+          width:
+          {
+            name: HealthTestWindowWidth
+            desc: Explicit parameter defining the width of the health test window (16 + log2(RngBusWidth))
+            param_type: int
+            unpacked_dimensions: null
+            default: 18
+            local: false
+            expose: true
+            name_top: EntropySrcHealthTestWindowWidth
+          }
+          inst_name: entropy_src
+          index: -1
+        }
+        {
+          name: entropy_src_xht_meta
+          struct: entropy_src_xht_meta
           package: entropy_src_pkg
           type: req_rsp
           act: req
@@ -8816,46 +8611,6 @@
       param_list:
       [
         {
-          name: RndCnstSramKey
-          desc: Compile-time random reset value for SRAM scrambling key.
-          type: otp_ctrl_pkg::sram_key_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstSramCtrlMainSramKey
-          default: 0x6e5cc1280fbe2f2e323688bcc7ecbb1a
-          randwidth: 128
-        }
-        {
-          name: RndCnstSramNonce
-          desc: Compile-time random reset value for SRAM scrambling nonce.
-          type: otp_ctrl_pkg::sram_nonce_t
-          randcount: 128
-          randtype: data
-          name_top: RndCnstSramCtrlMainSramNonce
-          default: 0x7db7be4ccaf27d6eb83fd28156d9cb50
-          randwidth: 128
-        }
-        {
-          name: RndCnstLfsrSeed
-          desc: Compile-time random bits for initial LFSR seed
-          type: sram_ctrl_pkg::lfsr_seed_t
-          randcount: 32
-          randtype: data
-          name_top: RndCnstSramCtrlMainLfsrSeed
-          default: 0x75d6af4
-          randwidth: 32
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Compile-time random permutation for LFSR output
-          type: sram_ctrl_pkg::lfsr_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstSramCtrlMainLfsrPerm
-          default: 0xad901d2e6dcc8e0a0b857260cde3fd229f11fae6
-          randwidth: 160
-        }
-        {
           name: MemSizeRam
           desc: Memory size of the RAM (in bytes).
           type: int
@@ -9141,24 +8896,18 @@
           name_top: RomCtrlBootRomInitFile
         }
         {
-          name: RndCnstScrNonce
-          desc: Fixed nonce used for address / data scrambling
-          type: bit [63:0]
-          randcount: 64
-          randtype: data
-          name_top: RndCnstRomCtrlScrNonce
-          default: 0x2e6a22f5ad2e7591
-          randwidth: 64
-        }
-        {
-          name: RndCnstScrKey
-          desc: Randomised constant used as a scrambling key for ROM data
-          type: bit [127:0]
-          randcount: 128
-          randtype: data
-          name_top: RndCnstRomCtrlScrKey
-          default: 0xecad6cca220de3c0051a862508d4ce00
-          randwidth: 128
+          name: FlopToKmac
+          desc:
+            '''
+            Add a flop stage between the output of the ROM and the data that gets
+            sent to KMAC. This may break long paths in a target chip, at the cost of
+            adding chip area.
+            '''
+          type: bit
+          default: 1'b0
+          local: "true"
+          expose: "true"
+          name_top: RomCtrlFlopToKmac
         }
         {
           name: SecDisableScrambling
@@ -9275,9 +9024,9 @@
       type: rv_core_ibex
       template_type: rv_core_ibex
       attr: ipgen
-      ipgen_param:
+      ipgen_params:
       {
-        NumRegions: 2
+        num_regions: 2
       }
       param_decl:
       {
@@ -9359,46 +9108,6 @@
       memory: {}
       param_list:
       [
-        {
-          name: RndCnstLfsrSeed
-          desc: Default seed of the PRNG used for random instructions.
-          type: ibex_pkg::lfsr_seed_t
-          randcount: 32
-          randtype: data
-          name_top: RndCnstRvCoreIbexLfsrSeed
-          default: 0x15f93767
-          randwidth: 32
-        }
-        {
-          name: RndCnstLfsrPerm
-          desc: Permutation applied to the LFSR of the PRNG used for random instructions.
-          type: ibex_pkg::lfsr_perm_t
-          randcount: 32
-          randtype: perm
-          name_top: RndCnstRvCoreIbexLfsrPerm
-          default: 0x439bd600f9899f5f7d258135bb4b145ab8198ae3
-          randwidth: 160
-        }
-        {
-          name: RndCnstIbexKeyDefault
-          desc: Default icache scrambling key
-          type: logic [ibex_pkg::SCRAMBLE_KEY_W-1:0]
-          randcount: 128
-          randtype: data
-          name_top: RndCnstRvCoreIbexIbexKeyDefault
-          default: 0x380023c25c3deaf38d871a3c5213602c
-          randwidth: 128
-        }
-        {
-          name: RndCnstIbexNonceDefault
-          desc: Default icache scrambling nonce
-          type: logic [ibex_pkg::SCRAMBLE_NONCE_W-1:0]
-          randcount: 64
-          randtype: data
-          name_top: RndCnstRvCoreIbexIbexNonceDefault
-          default: 0x32e73d3051db61b7
-          randwidth: 64
-        }
         {
           name: NEscalationSeverities
           desc: Number of escalation severities
@@ -9699,6 +9408,15 @@
           expose: "true"
           name_top: RvCoreIbexCsrMimpId
         }
+        {
+          name: InstructionPipeline
+          desc: Add a pipeline stage in the instruction interface between Ibex and the address translation
+          type: bit
+          default: 1'b0
+          local: "true"
+          expose: "true"
+          name_top: RvCoreIbexInstructionPipeline
+        }
       ]
       inter_signal_list:
       [
@@ -9892,8 +9610,8 @@
           type: uni
           act: rcv
           width: 1
+          default: lc_ctrl_pkg::On
           inst_name: rv_core_ibex
-          default: ""
           top_signame: lc_ctrl_lc_cpu_en
           index: -1
         }
@@ -10407,6 +10125,11 @@
       [
         flash_ctrl.lc_nvm_debug_en
       ]
+      lc_ctrl.lc_hw_debug_clr:
+      [
+        pinmux_aon.lc_hw_debug_clr
+        rv_dm.lc_hw_debug_clr
+      ]
       lc_ctrl.lc_hw_debug_en:
       [
         sram_ctrl_main.lc_hw_debug_en
@@ -10697,9 +10420,9 @@
       [
         peri.tl_otp_ctrl__core
       ]
-      otp_macro.tl:
+      otp_macro.prim_tl:
       [
-        peri.tl_otp_macro
+        peri.tl_otp_macro__prim
       ]
       lc_ctrl.regs_tl:
       [
@@ -10778,7 +10501,9 @@
       flash_ctrl.flash_test_mode_a: flash_test_mode_a
       flash_ctrl.flash_test_voltage_h: flash_test_voltage_h
       flash_ctrl.fla_obs: flash_obs
-      entropy_src.entropy_src_rng: es_rng
+      entropy_src.entropy_src_rng_enable: es_rng_enable
+      entropy_src.entropy_src_rng_valid: es_rng_valid
+      entropy_src.entropy_src_rng_bits: es_rng_bit
       entropy_src.rng_fips: es_rng_fips
       peri.tl_ast: ast_tl
       pinmux_aon.dft_strap_test: dft_strap_test
@@ -11883,7 +11608,7 @@
           clkmgr_aon
           pinmux_aon
           otp_ctrl.core
-          otp_macro
+          otp_macro.prim
           lc_ctrl.regs
           sensor_ctrl_aon
           alert_handler
@@ -12269,7 +11994,7 @@
           req_fifo_pass: true
         }
         {
-          name: otp_macro
+          name: otp_macro.prim
           type: device
           clock: clk_peri_i
           reset: rst_peri_ni
@@ -12704,7 +12429,7 @@
           index: -1
         }
         {
-          name: tl_otp_macro
+          name: tl_otp_macro__prim
           struct: tl
           package: tlul_pkg
           type: req_rsp
@@ -12712,7 +12437,7 @@
           inst_name: peri
           width: 1
           default: ""
-          top_signame: otp_macro_tl
+          top_signame: otp_macro_prim_tl
           index: -1
         }
         {
@@ -15498,6 +15223,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: uart0
       desc: uart0 fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15508,6 +15234,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: uart1
       desc: uart1 fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15518,6 +15245,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: uart2
       desc: uart2 fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15528,6 +15256,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: uart3
       desc: uart3 fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15538,6 +15267,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: gpio
       desc: gpio fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15548,6 +15278,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: spi_device
       desc: spi_device fatal_fault alert
       lpg_name: peri_spi_device_0
@@ -15558,6 +15289,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: i2c0
       desc: i2c0 fatal_fault alert
       lpg_name: peri_i2c0_0
@@ -15568,6 +15300,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: i2c1
       desc: i2c1 fatal_fault alert
       lpg_name: peri_i2c1_0
@@ -15578,6 +15311,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: i2c2
       desc: i2c2 fatal_fault alert
       lpg_name: peri_i2c2_0
@@ -15588,6 +15322,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: pattgen
       desc: pattgen fatal_fault alert
       lpg_name: peri_lc_io_div4_0
@@ -15598,6 +15333,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_timer
       desc: rv_timer fatal_fault alert
       lpg_name: timers_lc_io_div4_0
@@ -15608,6 +15344,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otp_ctrl
       desc: otp_ctrl fatal_macro_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15618,6 +15355,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otp_ctrl
       desc: otp_ctrl fatal_check_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15628,6 +15366,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otp_ctrl
       desc: otp_ctrl fatal_bus_integ_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15638,6 +15377,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otp_ctrl
       desc: otp_ctrl fatal_prim_otp_alert alert
       lpg_name: secure_lc_io_div4_0
@@ -15648,6 +15388,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otp_ctrl
       desc: otp_ctrl recov_prim_otp_alert alert
       lpg_name: secure_lc_io_div4_0
@@ -15658,6 +15399,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: lc_ctrl
       desc: lc_ctrl fatal_prog_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15668,6 +15410,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: lc_ctrl
       desc: lc_ctrl fatal_state_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15678,6 +15421,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: lc_ctrl
       desc: lc_ctrl fatal_bus_integ_error alert
       lpg_name: secure_lc_io_div4_0
@@ -15688,6 +15432,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: spi_host0
       desc: spi_host0 fatal_fault alert
       lpg_name: peri_spi_host0_0
@@ -15698,6 +15443,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: spi_host1
       desc: spi_host1 fatal_fault alert
       lpg_name: peri_spi_host1_0
@@ -15708,6 +15454,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: usbdev
       desc: usbdev fatal_fault alert
       lpg_name: peri_usb_0
@@ -15718,6 +15465,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: pwrmgr_aon
       desc: pwrmgr_aon fatal_fault alert
       lpg_name: powerup_por_io_div4_Aon
@@ -15728,6 +15476,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rstmgr_aon
       desc: rstmgr_aon fatal_fault alert
       lpg_name: powerup_lc_io_div4_Aon
@@ -15738,6 +15487,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rstmgr_aon
       desc: rstmgr_aon fatal_cnsty_fault alert
       lpg_name: powerup_lc_io_div4_Aon
@@ -15748,6 +15498,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: clkmgr_aon
       desc: clkmgr_aon recov_fault alert
       lpg_name: powerup_lc_io_div4_Aon
@@ -15758,6 +15509,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: clkmgr_aon
       desc: clkmgr_aon fatal_fault alert
       lpg_name: powerup_lc_io_div4_Aon
@@ -15768,6 +15520,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: sysrst_ctrl_aon
       desc: sysrst_ctrl_aon fatal_fault alert
       lpg_name: secure_lc_io_div4_Aon
@@ -15778,6 +15531,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: adc_ctrl_aon
       desc: adc_ctrl_aon fatal_fault alert
       lpg_name: peri_lc_io_div4_Aon
@@ -15788,6 +15542,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: pwm_aon
       desc: pwm_aon fatal_fault alert
       lpg_name: peri_lc_io_div4_Aon
@@ -15798,6 +15553,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: pinmux_aon
       desc: pinmux_aon fatal_fault alert
       lpg_name: powerup_lc_io_div4_Aon
@@ -15808,6 +15564,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: aon_timer_aon
       desc: aon_timer_aon fatal_fault alert
       lpg_name: timers_lc_io_div4_Aon
@@ -15818,6 +15575,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: sensor_ctrl_aon
       desc: sensor_ctrl_aon recov_alert alert
       lpg_name: secure_lc_io_div4_Aon
@@ -15828,6 +15586,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: sensor_ctrl_aon
       desc: sensor_ctrl_aon fatal_alert alert
       lpg_name: secure_lc_io_div4_Aon
@@ -15838,6 +15597,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: sram_ctrl_ret_aon
       desc: sram_ctrl_ret_aon fatal_error alert
       lpg_name: infra_lc_io_div4_Aon
@@ -15848,6 +15608,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: flash_ctrl
       desc: flash_ctrl recov_err alert
       lpg_name: infra_lc_0
@@ -15858,6 +15619,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: flash_ctrl
       desc: flash_ctrl fatal_std_err alert
       lpg_name: infra_lc_0
@@ -15868,6 +15630,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: flash_ctrl
       desc: flash_ctrl fatal_err alert
       lpg_name: infra_lc_0
@@ -15878,6 +15641,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: flash_ctrl
       desc: flash_ctrl fatal_prim_flash_alert alert
       lpg_name: infra_lc_0
@@ -15888,6 +15652,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: flash_ctrl
       desc: flash_ctrl recov_prim_flash_alert alert
       lpg_name: infra_lc_0
@@ -15898,6 +15663,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_dm
       desc: rv_dm fatal_fault alert
       lpg_name: infra_sys_0
@@ -15908,6 +15674,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_plic
       desc: rv_plic fatal_fault alert
       lpg_name: secure_lc_0
@@ -15918,6 +15685,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: aes
       desc: aes recov_ctrl_update_err alert
       lpg_name: aes_trans_lc_0
@@ -15928,6 +15696,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: aes
       desc: aes fatal_fault alert
       lpg_name: aes_trans_lc_0
@@ -15938,6 +15707,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: hmac
       desc: hmac fatal_fault alert
       lpg_name: hmac_trans_lc_0
@@ -15948,6 +15718,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: kmac
       desc: kmac recov_operation_err alert
       lpg_name: kmac_trans_lc_0
@@ -15958,6 +15729,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: kmac
       desc: kmac fatal_fault_err alert
       lpg_name: kmac_trans_lc_0
@@ -15968,6 +15740,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otbn
       desc: otbn fatal alert
       lpg_name: otbn_trans_lc_0
@@ -15978,6 +15751,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: otbn
       desc: otbn recov alert
       lpg_name: otbn_trans_lc_0
@@ -15988,6 +15762,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: keymgr
       desc: keymgr recov_operation_err alert
       lpg_name: secure_lc_0
@@ -15998,6 +15773,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: keymgr
       desc: keymgr fatal_fault_err alert
       lpg_name: secure_lc_0
@@ -16008,6 +15784,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: csrng
       desc: csrng recov_alert alert
       lpg_name: secure_lc_0
@@ -16018,6 +15795,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: csrng
       desc: csrng fatal_alert alert
       lpg_name: secure_lc_0
@@ -16028,6 +15806,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: entropy_src
       desc: entropy_src recov_alert alert
       lpg_name: secure_lc_0
@@ -16038,6 +15817,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: entropy_src
       desc: entropy_src fatal_alert alert
       lpg_name: secure_lc_0
@@ -16048,6 +15828,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: edn0
       desc: edn0 recov_alert alert
       lpg_name: secure_lc_0
@@ -16058,6 +15839,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: edn0
       desc: edn0 fatal_alert alert
       lpg_name: secure_lc_0
@@ -16068,6 +15850,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: edn1
       desc: edn1 recov_alert alert
       lpg_name: secure_lc_0
@@ -16078,6 +15861,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: edn1
       desc: edn1 fatal_alert alert
       lpg_name: secure_lc_0
@@ -16088,6 +15872,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: sram_ctrl_main
       desc: sram_ctrl_main fatal_error alert
       lpg_name: infra_lc_0
@@ -16098,6 +15883,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rom_ctrl
       desc: rom_ctrl fatal alert
       lpg_name: infra_lc_0
@@ -16108,6 +15894,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_core_ibex
       desc: rv_core_ibex fatal_sw_err alert
       lpg_name: infra_lc_0
@@ -16118,6 +15905,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_core_ibex
       desc: rv_core_ibex recov_sw_err alert
       lpg_name: infra_lc_0
@@ -16128,6 +15916,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_core_ibex
       desc: rv_core_ibex fatal_hw_err alert
       lpg_name: infra_lc_0
@@ -16138,6 +15927,7 @@
       width: 1
       type: alert
       async: "1"
+      handler: alert_handler
       module_name: rv_core_ibex
       desc: rv_core_ibex recov_hw_err alert
       lpg_name: infra_lc_0
@@ -16156,6 +15946,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_watermark
@@ -16166,6 +15958,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_tx_done
@@ -16176,6 +15970,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_overflow
@@ -16186,6 +15982,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_frame_err
@@ -16196,6 +15994,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_break_err
@@ -16206,6 +16006,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_timeout
@@ -16216,6 +16018,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_rx_parity_err
@@ -16226,6 +16030,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart0_tx_empty
@@ -16236,6 +16042,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_tx_watermark
@@ -16246,6 +16054,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_watermark
@@ -16256,6 +16066,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_tx_done
@@ -16266,6 +16078,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_overflow
@@ -16276,6 +16090,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_frame_err
@@ -16286,6 +16102,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_break_err
@@ -16296,6 +16114,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_timeout
@@ -16306,6 +16126,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_rx_parity_err
@@ -16316,6 +16138,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart1_tx_empty
@@ -16326,6 +16150,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_tx_watermark
@@ -16336,6 +16162,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_watermark
@@ -16346,6 +16174,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_tx_done
@@ -16356,6 +16186,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_overflow
@@ -16366,6 +16198,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_frame_err
@@ -16376,6 +16210,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_break_err
@@ -16386,6 +16222,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_timeout
@@ -16396,6 +16234,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_rx_parity_err
@@ -16406,6 +16246,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart2_tx_empty
@@ -16416,6 +16258,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_tx_watermark
@@ -16426,6 +16270,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_watermark
@@ -16436,6 +16282,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_tx_done
@@ -16446,6 +16294,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_overflow
@@ -16456,6 +16306,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_frame_err
@@ -16466,6 +16318,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_break_err
@@ -16476,6 +16330,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_timeout
@@ -16486,6 +16342,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_rx_parity_err
@@ -16496,6 +16354,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: uart3_tx_empty
@@ -16506,6 +16366,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: gpio_gpio
@@ -16516,6 +16378,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_upload_cmdfifo_not_empty
@@ -16526,6 +16390,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_upload_payload_not_empty
@@ -16536,6 +16402,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_upload_payload_overflow
@@ -16546,6 +16414,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_readbuf_watermark
@@ -16556,6 +16426,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_readbuf_flip
@@ -16566,6 +16438,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_tpm_header_not_empty
@@ -16576,6 +16450,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_tpm_rdfifo_cmd_end
@@ -16586,6 +16462,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_device_tpm_rdfifo_drop
@@ -16596,6 +16474,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_fmt_threshold
@@ -16606,6 +16486,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_rx_threshold
@@ -16616,6 +16498,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_acq_threshold
@@ -16626,6 +16510,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_rx_overflow
@@ -16636,6 +16522,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_controller_halt
@@ -16646,6 +16534,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_scl_interference
@@ -16656,6 +16546,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_sda_interference
@@ -16666,6 +16558,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_stretch_timeout
@@ -16676,6 +16570,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_sda_unstable
@@ -16686,6 +16582,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_cmd_complete
@@ -16696,6 +16594,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_tx_stretch
@@ -16706,6 +16606,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_tx_threshold
@@ -16716,6 +16618,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_acq_stretch
@@ -16726,6 +16630,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_unexp_stop
@@ -16736,6 +16642,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c0_host_timeout
@@ -16746,6 +16654,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_fmt_threshold
@@ -16756,6 +16666,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_rx_threshold
@@ -16766,6 +16678,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_acq_threshold
@@ -16776,6 +16690,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_rx_overflow
@@ -16786,6 +16702,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_controller_halt
@@ -16796,6 +16714,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_scl_interference
@@ -16806,6 +16726,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_sda_interference
@@ -16816,6 +16738,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_stretch_timeout
@@ -16826,6 +16750,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_sda_unstable
@@ -16836,6 +16762,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_cmd_complete
@@ -16846,6 +16774,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_tx_stretch
@@ -16856,6 +16786,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_tx_threshold
@@ -16866,6 +16798,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_acq_stretch
@@ -16876,6 +16810,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_unexp_stop
@@ -16886,6 +16822,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c1_host_timeout
@@ -16896,6 +16834,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_fmt_threshold
@@ -16906,6 +16846,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_rx_threshold
@@ -16916,6 +16858,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_acq_threshold
@@ -16926,6 +16870,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_rx_overflow
@@ -16936,6 +16882,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_controller_halt
@@ -16946,6 +16894,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_scl_interference
@@ -16956,6 +16906,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_sda_interference
@@ -16966,6 +16918,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_stretch_timeout
@@ -16976,6 +16930,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_sda_unstable
@@ -16986,6 +16942,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_cmd_complete
@@ -16996,6 +16954,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_tx_stretch
@@ -17006,6 +16966,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_tx_threshold
@@ -17016,6 +16978,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_acq_stretch
@@ -17026,6 +16990,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_unexp_stop
@@ -17036,6 +17002,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: i2c2_host_timeout
@@ -17046,6 +17014,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: pattgen_done_ch0
@@ -17056,6 +17026,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: pattgen_done_ch1
@@ -17066,6 +17038,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: rv_timer_timer_expired_hart0_timer0
@@ -17076,6 +17050,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: otp_ctrl_otp_operation_done
@@ -17086,6 +17062,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: otp_ctrl_otp_error
@@ -17096,6 +17074,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: alert_handler_classa
@@ -17106,6 +17086,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: alert_handler_classb
@@ -17116,6 +17098,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: alert_handler_classc
@@ -17126,6 +17110,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: alert_handler_classd
@@ -17136,6 +17122,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_host0_error
@@ -17146,6 +17134,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_host0_spi_event
@@ -17156,6 +17146,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_host1_error
@@ -17166,6 +17158,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: spi_host1_spi_event
@@ -17176,6 +17170,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_pkt_received
@@ -17186,6 +17182,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_pkt_sent
@@ -17196,6 +17194,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_disconnected
@@ -17206,6 +17206,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_host_lost
@@ -17216,6 +17218,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_link_reset
@@ -17226,6 +17230,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_link_suspend
@@ -17236,6 +17242,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_link_resume
@@ -17246,6 +17254,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_av_out_empty
@@ -17256,6 +17266,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_rx_full
@@ -17266,6 +17278,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_av_overflow
@@ -17276,6 +17290,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_link_in_err
@@ -17286,6 +17302,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_rx_crc_err
@@ -17296,6 +17314,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_rx_pid_err
@@ -17306,6 +17326,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_rx_bitstuff_err
@@ -17316,6 +17338,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_frame
@@ -17326,6 +17350,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_powered
@@ -17336,6 +17362,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_link_out_err
@@ -17346,6 +17374,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: usbdev_av_setup_empty
@@ -17356,6 +17386,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: pwrmgr_aon_wakeup
@@ -17366,6 +17398,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: sysrst_ctrl_aon_event_detected
@@ -17376,6 +17410,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: adc_ctrl_aon_match_pending
@@ -17386,6 +17422,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: aon_timer_aon_wkup_timer_expired
@@ -17396,6 +17434,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: aon_timer_aon_wdog_timer_bark
@@ -17406,6 +17446,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: sensor_ctrl_aon_io_status_change
@@ -17416,6 +17458,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: sensor_ctrl_aon_init_status_change
@@ -17426,6 +17470,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_prog_empty
@@ -17436,6 +17482,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_prog_lvl
@@ -17446,6 +17494,8 @@
       intr_type: IntrType.Status
       default_val: true
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_rd_full
@@ -17456,6 +17506,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_rd_lvl
@@ -17466,6 +17518,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_op_done
@@ -17476,6 +17530,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: flash_ctrl_corr_err
@@ -17486,6 +17542,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: hmac_hmac_done
@@ -17496,6 +17554,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: hmac_fifo_empty
@@ -17506,6 +17566,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: hmac_hmac_err
@@ -17516,6 +17578,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: kmac_kmac_done
@@ -17526,6 +17590,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: kmac_fifo_empty
@@ -17536,6 +17602,8 @@
       intr_type: IntrType.Status
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: kmac_kmac_err
@@ -17546,6 +17614,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: otbn_done
@@ -17556,6 +17626,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: keymgr_op_done
@@ -17566,6 +17638,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: csrng_cs_cmd_req_done
@@ -17576,6 +17650,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: csrng_cs_entropy_req
@@ -17586,6 +17662,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: csrng_cs_hw_inst_exc
@@ -17596,6 +17674,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: csrng_cs_fatal_err
@@ -17606,6 +17686,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: entropy_src_es_entropy_valid
@@ -17616,6 +17698,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: entropy_src_es_health_test_failed
@@ -17626,6 +17710,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: entropy_src_es_observe_fifo_ready
@@ -17636,6 +17722,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: entropy_src_es_fatal_err
@@ -17646,6 +17734,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: edn0_edn_cmd_req_done
@@ -17656,6 +17746,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: edn0_edn_fatal_err
@@ -17666,6 +17758,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: edn1_edn_cmd_req_done
@@ -17676,6 +17770,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
     {
       name: edn1_edn_fatal_err
@@ -17686,6 +17782,8 @@
       intr_type: IntrType.Event
       default_val: false
       incoming: false
+      plic: rv_plic
+      outgoing: false
     }
   ]
   outgoing_interrupt: {}
@@ -17733,6 +17831,443 @@
     rom_ctrl
     rv_core_ibex
   ]
+  alert_connections:
+  {
+    module_uart0:
+    {
+      tx_expr: alert_tx[0:0]
+      rx_expr: alert_rx[0:0]
+      async_expr: alert_handler_reg_pkg::AsyncOn[0:0]
+      comments:
+      [
+        alert_handler[0]: fatal_fault
+      ]
+    }
+    module_uart1:
+    {
+      tx_expr: alert_tx[1:1]
+      rx_expr: alert_rx[1:1]
+      async_expr: alert_handler_reg_pkg::AsyncOn[1:1]
+      comments:
+      [
+        alert_handler[1]: fatal_fault
+      ]
+    }
+    module_uart2:
+    {
+      tx_expr: alert_tx[2:2]
+      rx_expr: alert_rx[2:2]
+      async_expr: alert_handler_reg_pkg::AsyncOn[2:2]
+      comments:
+      [
+        alert_handler[2]: fatal_fault
+      ]
+    }
+    module_uart3:
+    {
+      tx_expr: alert_tx[3:3]
+      rx_expr: alert_rx[3:3]
+      async_expr: alert_handler_reg_pkg::AsyncOn[3:3]
+      comments:
+      [
+        alert_handler[3]: fatal_fault
+      ]
+    }
+    module_gpio:
+    {
+      tx_expr: alert_tx[4:4]
+      rx_expr: alert_rx[4:4]
+      async_expr: alert_handler_reg_pkg::AsyncOn[4:4]
+      comments:
+      [
+        alert_handler[4]: fatal_fault
+      ]
+    }
+    module_spi_device:
+    {
+      tx_expr: alert_tx[5:5]
+      rx_expr: alert_rx[5:5]
+      async_expr: alert_handler_reg_pkg::AsyncOn[5:5]
+      comments:
+      [
+        alert_handler[5]: fatal_fault
+      ]
+    }
+    module_i2c0:
+    {
+      tx_expr: alert_tx[6:6]
+      rx_expr: alert_rx[6:6]
+      async_expr: alert_handler_reg_pkg::AsyncOn[6:6]
+      comments:
+      [
+        alert_handler[6]: fatal_fault
+      ]
+    }
+    module_i2c1:
+    {
+      tx_expr: alert_tx[7:7]
+      rx_expr: alert_rx[7:7]
+      async_expr: alert_handler_reg_pkg::AsyncOn[7:7]
+      comments:
+      [
+        alert_handler[7]: fatal_fault
+      ]
+    }
+    module_i2c2:
+    {
+      tx_expr: alert_tx[8:8]
+      rx_expr: alert_rx[8:8]
+      async_expr: alert_handler_reg_pkg::AsyncOn[8:8]
+      comments:
+      [
+        alert_handler[8]: fatal_fault
+      ]
+    }
+    module_pattgen:
+    {
+      tx_expr: alert_tx[9:9]
+      rx_expr: alert_rx[9:9]
+      async_expr: alert_handler_reg_pkg::AsyncOn[9:9]
+      comments:
+      [
+        alert_handler[9]: fatal_fault
+      ]
+    }
+    module_rv_timer:
+    {
+      tx_expr: alert_tx[10:10]
+      rx_expr: alert_rx[10:10]
+      async_expr: alert_handler_reg_pkg::AsyncOn[10:10]
+      comments:
+      [
+        alert_handler[10]: fatal_fault
+      ]
+    }
+    module_otp_ctrl:
+    {
+      tx_expr: alert_tx[15:11]
+      rx_expr: alert_rx[15:11]
+      async_expr: alert_handler_reg_pkg::AsyncOn[15:11]
+      comments:
+      [
+        alert_handler[11]: fatal_macro_error
+        alert_handler[12]: fatal_check_error
+        alert_handler[13]: fatal_bus_integ_error
+        alert_handler[14]: fatal_prim_otp_alert
+        alert_handler[15]: recov_prim_otp_alert
+      ]
+    }
+    module_lc_ctrl:
+    {
+      tx_expr: alert_tx[18:16]
+      rx_expr: alert_rx[18:16]
+      async_expr: alert_handler_reg_pkg::AsyncOn[18:16]
+      comments:
+      [
+        alert_handler[16]: fatal_prog_error
+        alert_handler[17]: fatal_state_error
+        alert_handler[18]: fatal_bus_integ_error
+      ]
+    }
+    module_spi_host0:
+    {
+      tx_expr: alert_tx[19:19]
+      rx_expr: alert_rx[19:19]
+      async_expr: alert_handler_reg_pkg::AsyncOn[19:19]
+      comments:
+      [
+        alert_handler[19]: fatal_fault
+      ]
+    }
+    module_spi_host1:
+    {
+      tx_expr: alert_tx[20:20]
+      rx_expr: alert_rx[20:20]
+      async_expr: alert_handler_reg_pkg::AsyncOn[20:20]
+      comments:
+      [
+        alert_handler[20]: fatal_fault
+      ]
+    }
+    module_usbdev:
+    {
+      tx_expr: alert_tx[21:21]
+      rx_expr: alert_rx[21:21]
+      async_expr: alert_handler_reg_pkg::AsyncOn[21:21]
+      comments:
+      [
+        alert_handler[21]: fatal_fault
+      ]
+    }
+    module_pwrmgr_aon:
+    {
+      tx_expr: alert_tx[22:22]
+      rx_expr: alert_rx[22:22]
+      async_expr: alert_handler_reg_pkg::AsyncOn[22:22]
+      comments:
+      [
+        alert_handler[22]: fatal_fault
+      ]
+    }
+    module_rstmgr_aon:
+    {
+      tx_expr: alert_tx[24:23]
+      rx_expr: alert_rx[24:23]
+      async_expr: alert_handler_reg_pkg::AsyncOn[24:23]
+      comments:
+      [
+        alert_handler[23]: fatal_fault
+        alert_handler[24]: fatal_cnsty_fault
+      ]
+    }
+    module_clkmgr_aon:
+    {
+      tx_expr: alert_tx[26:25]
+      rx_expr: alert_rx[26:25]
+      async_expr: alert_handler_reg_pkg::AsyncOn[26:25]
+      comments:
+      [
+        alert_handler[25]: recov_fault
+        alert_handler[26]: fatal_fault
+      ]
+    }
+    module_sysrst_ctrl_aon:
+    {
+      tx_expr: alert_tx[27:27]
+      rx_expr: alert_rx[27:27]
+      async_expr: alert_handler_reg_pkg::AsyncOn[27:27]
+      comments:
+      [
+        alert_handler[27]: fatal_fault
+      ]
+    }
+    module_adc_ctrl_aon:
+    {
+      tx_expr: alert_tx[28:28]
+      rx_expr: alert_rx[28:28]
+      async_expr: alert_handler_reg_pkg::AsyncOn[28:28]
+      comments:
+      [
+        alert_handler[28]: fatal_fault
+      ]
+    }
+    module_pwm_aon:
+    {
+      tx_expr: alert_tx[29:29]
+      rx_expr: alert_rx[29:29]
+      async_expr: alert_handler_reg_pkg::AsyncOn[29:29]
+      comments:
+      [
+        alert_handler[29]: fatal_fault
+      ]
+    }
+    module_pinmux_aon:
+    {
+      tx_expr: alert_tx[30:30]
+      rx_expr: alert_rx[30:30]
+      async_expr: alert_handler_reg_pkg::AsyncOn[30:30]
+      comments:
+      [
+        alert_handler[30]: fatal_fault
+      ]
+    }
+    module_aon_timer_aon:
+    {
+      tx_expr: alert_tx[31:31]
+      rx_expr: alert_rx[31:31]
+      async_expr: alert_handler_reg_pkg::AsyncOn[31:31]
+      comments:
+      [
+        alert_handler[31]: fatal_fault
+      ]
+    }
+    module_sensor_ctrl_aon:
+    {
+      tx_expr: alert_tx[33:32]
+      rx_expr: alert_rx[33:32]
+      async_expr: alert_handler_reg_pkg::AsyncOn[33:32]
+      comments:
+      [
+        alert_handler[32]: recov_alert
+        alert_handler[33]: fatal_alert
+      ]
+    }
+    module_sram_ctrl_ret_aon:
+    {
+      tx_expr: alert_tx[34:34]
+      rx_expr: alert_rx[34:34]
+      async_expr: alert_handler_reg_pkg::AsyncOn[34:34]
+      comments:
+      [
+        alert_handler[34]: fatal_error
+      ]
+    }
+    module_flash_ctrl:
+    {
+      tx_expr: alert_tx[39:35]
+      rx_expr: alert_rx[39:35]
+      async_expr: alert_handler_reg_pkg::AsyncOn[39:35]
+      comments:
+      [
+        alert_handler[35]: recov_err
+        alert_handler[36]: fatal_std_err
+        alert_handler[37]: fatal_err
+        alert_handler[38]: fatal_prim_flash_alert
+        alert_handler[39]: recov_prim_flash_alert
+      ]
+    }
+    module_rv_dm:
+    {
+      tx_expr: alert_tx[40:40]
+      rx_expr: alert_rx[40:40]
+      async_expr: alert_handler_reg_pkg::AsyncOn[40:40]
+      comments:
+      [
+        alert_handler[40]: fatal_fault
+      ]
+    }
+    module_rv_plic:
+    {
+      tx_expr: alert_tx[41:41]
+      rx_expr: alert_rx[41:41]
+      async_expr: alert_handler_reg_pkg::AsyncOn[41:41]
+      comments:
+      [
+        alert_handler[41]: fatal_fault
+      ]
+    }
+    module_aes:
+    {
+      tx_expr: alert_tx[43:42]
+      rx_expr: alert_rx[43:42]
+      async_expr: alert_handler_reg_pkg::AsyncOn[43:42]
+      comments:
+      [
+        alert_handler[42]: recov_ctrl_update_err
+        alert_handler[43]: fatal_fault
+      ]
+    }
+    module_hmac:
+    {
+      tx_expr: alert_tx[44:44]
+      rx_expr: alert_rx[44:44]
+      async_expr: alert_handler_reg_pkg::AsyncOn[44:44]
+      comments:
+      [
+        alert_handler[44]: fatal_fault
+      ]
+    }
+    module_kmac:
+    {
+      tx_expr: alert_tx[46:45]
+      rx_expr: alert_rx[46:45]
+      async_expr: alert_handler_reg_pkg::AsyncOn[46:45]
+      comments:
+      [
+        alert_handler[45]: recov_operation_err
+        alert_handler[46]: fatal_fault_err
+      ]
+    }
+    module_otbn:
+    {
+      tx_expr: alert_tx[48:47]
+      rx_expr: alert_rx[48:47]
+      async_expr: alert_handler_reg_pkg::AsyncOn[48:47]
+      comments:
+      [
+        alert_handler[47]: fatal
+        alert_handler[48]: recov
+      ]
+    }
+    module_keymgr:
+    {
+      tx_expr: alert_tx[50:49]
+      rx_expr: alert_rx[50:49]
+      async_expr: alert_handler_reg_pkg::AsyncOn[50:49]
+      comments:
+      [
+        alert_handler[49]: recov_operation_err
+        alert_handler[50]: fatal_fault_err
+      ]
+    }
+    module_csrng:
+    {
+      tx_expr: alert_tx[52:51]
+      rx_expr: alert_rx[52:51]
+      async_expr: alert_handler_reg_pkg::AsyncOn[52:51]
+      comments:
+      [
+        alert_handler[51]: recov_alert
+        alert_handler[52]: fatal_alert
+      ]
+    }
+    module_entropy_src:
+    {
+      tx_expr: alert_tx[54:53]
+      rx_expr: alert_rx[54:53]
+      async_expr: alert_handler_reg_pkg::AsyncOn[54:53]
+      comments:
+      [
+        alert_handler[53]: recov_alert
+        alert_handler[54]: fatal_alert
+      ]
+    }
+    module_edn0:
+    {
+      tx_expr: alert_tx[56:55]
+      rx_expr: alert_rx[56:55]
+      async_expr: alert_handler_reg_pkg::AsyncOn[56:55]
+      comments:
+      [
+        alert_handler[55]: recov_alert
+        alert_handler[56]: fatal_alert
+      ]
+    }
+    module_edn1:
+    {
+      tx_expr: alert_tx[58:57]
+      rx_expr: alert_rx[58:57]
+      async_expr: alert_handler_reg_pkg::AsyncOn[58:57]
+      comments:
+      [
+        alert_handler[57]: recov_alert
+        alert_handler[58]: fatal_alert
+      ]
+    }
+    module_sram_ctrl_main:
+    {
+      tx_expr: alert_tx[59:59]
+      rx_expr: alert_rx[59:59]
+      async_expr: alert_handler_reg_pkg::AsyncOn[59:59]
+      comments:
+      [
+        alert_handler[59]: fatal_error
+      ]
+    }
+    module_rom_ctrl:
+    {
+      tx_expr: alert_tx[60:60]
+      rx_expr: alert_rx[60:60]
+      async_expr: alert_handler_reg_pkg::AsyncOn[60:60]
+      comments:
+      [
+        alert_handler[60]: fatal
+      ]
+    }
+    module_rv_core_ibex:
+    {
+      tx_expr: alert_tx[64:61]
+      rx_expr: alert_rx[64:61]
+      async_expr: alert_handler_reg_pkg::AsyncOn[64:61]
+      comments:
+      [
+        alert_handler[61]: fatal_sw_err
+        alert_handler[62]: recov_sw_err
+        alert_handler[63]: fatal_hw_err
+        alert_handler[64]: recov_hw_err
+      ]
+    }
+  }
   interrupt_module:
   [
     uart0
@@ -19437,7 +19972,33 @@
         index: -1
       }
       {
-        name: tl
+        name: racl_policies
+        desc:
+          '''
+          Incoming RACL policy vector from a racl_ctrl instance.
+          The policy selection vector (parameter) selects the policy for each register.
+          '''
+        struct: racl_policy_vec
+        package: top_racl_pkg
+        type: uni
+        act: rcv
+        width: 1
+        inst_name: otp_macro
+        index: -1
+      }
+      {
+        name: racl_error
+        desc: RACL error log information of this module.
+        struct: racl_error_log
+        package: top_racl_pkg
+        type: uni
+        act: req
+        width: 1
+        inst_name: otp_macro
+        index: -1
+      }
+      {
+        name: prim_tl
         struct: tl
         package: tlul_pkg
         type: req_rsp
@@ -19446,7 +20007,7 @@
         inst_name: otp_macro
         default: ""
         end_idx: -1
-        top_signame: otp_macro_tl
+        top_signame: otp_macro_prim_tl
         index: -1
       }
       {
@@ -19611,7 +20172,35 @@
         index: -1
       }
       {
+        name: lc_hw_debug_clr
+        desc:
+          '''
+          Clear HW debug functionality.
+          This signal is On when `lc_hw_debug_en` turns Off outside a reset of `lc_ctrl`.
+          Flops storing the value of `lc_hw_debug_en` (see below) must be cleared when this signal is On.
+          '''
+        struct: lc_tx
+        package: lc_ctrl_pkg
+        type: uni
+        act: req
+        width: 1
+        default: lc_ctrl_pkg::Off
+        inst_name: lc_ctrl
+        end_idx: -1
+        top_type: broadcast
+        top_signame: lc_ctrl_lc_hw_debug_clr
+        index: -1
+      }
+      {
         name: lc_hw_debug_en
+        desc:
+          '''
+          Enable HW debug functionality; see `HW_DEBUG_EN` in the Theory of Operation doc for details.
+
+          This signal is Off while lc_ctrl is in reset.
+          In order to prevent a JTAG disconnect during non-debug-module (NDM) reset, this signal should be flopped outside the NDM reset domain.
+          Such a flop must be cleared when `lc_hw_debug_clr` is On; see above.
+          '''
         struct: lc_tx
         package: lc_ctrl_pkg
         type: uni
@@ -21067,6 +21656,19 @@
         index: -1
       }
       {
+        name: lc_hw_debug_clr
+        desc: Debug clear signal coming from life cycle controller, used for HW strap qualification.
+        struct: lc_tx
+        package: lc_ctrl_pkg
+        type: uni
+        act: rcv
+        width: 1
+        default: lc_ctrl_pkg::Off
+        inst_name: pinmux_aon
+        top_signame: lc_ctrl_lc_hw_debug_clr
+        index: -1
+      }
+      {
         name: lc_hw_debug_en
         desc: Debug enable qualifier coming from life cycle controller, used for HW strap qualification.
         struct: lc_tx
@@ -22125,6 +22727,23 @@
         index: -1
       }
       {
+        name: lc_hw_debug_clr
+        desc:
+          '''
+          Multibit life cycle hardware debug clear signal coming from life cycle controller,
+          asserted when the hardware debug mechanism was enabled and gets disabled.
+          '''
+        struct: lc_tx
+        package: lc_ctrl_pkg
+        type: uni
+        act: rcv
+        width: 1
+        default: lc_ctrl_pkg::Off
+        inst_name: rv_dm
+        top_signame: lc_ctrl_lc_hw_debug_clr
+        index: -1
+      }
+      {
         name: lc_hw_debug_en
         desc:
           '''
@@ -23050,22 +23669,171 @@
         index: -1
       }
       {
-        name: entropy_src_rng
-        struct: entropy_src_rng
-        package: entropy_src_pkg
-        type: req_rsp
+        name: entropy_src_rng_enable
+        desc:
+          '''
+          Signal through which entropy_src enables the noise source.
+          entropy_src will keep this signal high as long as it expects the noise source to operate.
+          This is *not* a flow control signal through which entropy_src would exert backpressure on the noise source; rather this signal stays high while entropy_src is enabled.
+          '''
+        struct: logic
+        type: uni
         act: req
         width: 1
         inst_name: entropy_src
         default: ""
+        package: ""
         external: true
-        top_signame: es_rng
+        top_signame: es_rng_enable
         conn_type: false
         index: -1
       }
       {
-        name: entropy_src_xht
-        struct: entropy_src_xht
+        name: entropy_src_rng_valid
+        desc:
+          '''
+          Acknowledgement signal from the noise source.
+          When '1', it indicates that the `entropy_src_rng_bit` data is valid and ready to be consumed.
+          '''
+        struct: logic
+        type: uni
+        act: rcv
+        width: 1
+        inst_name: entropy_src
+        default: ""
+        package: ""
+        external: true
+        top_signame: es_rng_valid
+        conn_type: false
+        index: -1
+      }
+      {
+        name: entropy_src_rng_bits
+        desc:
+          '''
+          Output data bus carrying the raw entropy bits from the noise source.
+          These bits are valid when `entropy_src_rng_valid` is asserted.
+          The width is determined by `RngBusWidth` parametrization.
+          '''
+        struct: logic
+        type: uni
+        act: rcv
+        width:
+        {
+          name: RngBusWidth
+          desc:
+            '''
+            Defines the bit-width of the noise source data.
+            Must be between 4 and 256 (inclusive) and divisible by 4.
+            The divisibility by 4 is a prerequisite for the bucket health test.
+            '''
+          param_type: int
+          unpacked_dimensions: null
+          default: 4
+          local: false
+          expose: true
+          name_top: EntropySrcRngBusWidth
+        }
+        inst_name: entropy_src
+        default: ""
+        package: ""
+        external: true
+        top_signame: es_rng_bit
+        conn_type: false
+        index: -1
+      }
+      {
+        name: entropy_src_xht_valid
+        desc:
+          '''
+          Valid signal for the external health test interface.
+          When asserted, it indicates that `entropy_src_xht_bits`, `entropy_src_xht_bit_sel`, and `entropy_src_xht_meta` are valid for consumption by the external health test.
+          '''
+        struct: logic
+        type: uni
+        act: req
+        width: 1
+        inst_name: entropy_src
+        index: -1
+      }
+      {
+        name: entropy_src_xht_bits
+        desc:
+          '''
+          Carries the raw entropy data from the entropy source to be consumed by the external health test module.
+          The data on this bus is valid when `entropy_src_xht_valid` is asserted.
+          The width is determined by `RngBusWidth` parametrization.
+          '''
+        struct: logic
+        type: uni
+        act: req
+        width:
+        {
+          name: RngBusWidth
+          desc:
+            '''
+            Defines the bit-width of the noise source data.
+            Must be between 4 and 256 (inclusive) and divisible by 4.
+            The divisibility by 4 is a prerequisite for the bucket health test.
+            '''
+          param_type: int
+          unpacked_dimensions: null
+          default: 4
+          local: false
+          expose: true
+          name_top: EntropySrcRngBusWidth
+        }
+        inst_name: entropy_src
+        index: -1
+      }
+      {
+        name: entropy_src_xht_bit_sel
+        desc:
+          '''
+          Provides bit selection information for the raw entropy data.
+          It specifies which specific bit or subset of bits from `entropy_src_xht_bit` should be used.
+          The width is determined by `RngBusBitSelWidth` parametrization.
+          '''
+        struct: logic
+        type: uni
+        act: req
+        width:
+        {
+          name: RngBusBitSelWidth
+          desc: Explicit parameter defining the width of the RNG bit selection vector (log2(RngBusWidth))
+          param_type: int
+          unpacked_dimensions: null
+          default: 2
+          local: false
+          expose: true
+          name_top: EntropySrcRngBusBitSelWidth
+        }
+        inst_name: entropy_src
+        index: -1
+      }
+      {
+        name: entropy_src_xht_health_test_window
+        desc: Provides the window size of the health in bits.
+        struct: logic
+        type: uni
+        act: req
+        width:
+        {
+          name: HealthTestWindowWidth
+          desc: Explicit parameter defining the width of the health test window (16 + log2(RngBusWidth))
+          param_type: int
+          unpacked_dimensions: null
+          default: 18
+          local: false
+          expose: true
+          name_top: EntropySrcHealthTestWindowWidth
+        }
+        inst_name: entropy_src
+        index: -1
+      }
+      {
+        name: entropy_src_xht_meta
+        struct: entropy_src_xht_meta
         package: entropy_src_pkg
         type: req_rsp
         act: req
@@ -23642,8 +24410,8 @@
         type: uni
         act: rcv
         width: 1
+        default: lc_ctrl_pkg::On
         inst_name: rv_core_ibex
-        default: ""
         top_signame: lc_ctrl_lc_cpu_en
         index: -1
       }
@@ -24305,7 +25073,7 @@
         index: -1
       }
       {
-        name: tl_otp_macro
+        name: tl_otp_macro__prim
         struct: tl
         package: tlul_pkg
         type: req_rsp
@@ -24313,7 +25081,7 @@
         inst_name: peri
         width: 1
         default: ""
-        top_signame: otp_macro_tl
+        top_signame: otp_macro_prim_tl
         index: -1
       }
       {
@@ -24870,28 +25638,55 @@
         netname: flash_obs
       }
       {
-        package: entropy_src_pkg
-        struct: entropy_src_rng_req
-        signame: es_rng_req_o
+        package: ""
+        struct: logic
+        signame: es_rng_enable_o
         width: 1
-        type: req_rsp
+        type: uni
         default: ""
         direction: out
         conn_type: false
         index: -1
-        netname: es_rng_req
+        netname: es_rng_enable
       }
       {
-        package: entropy_src_pkg
-        struct: entropy_src_rng_rsp
-        signame: es_rng_rsp_i
+        package: ""
+        struct: logic
+        signame: es_rng_valid_i
         width: 1
-        type: req_rsp
+        type: uni
         default: ""
         direction: in
         conn_type: false
         index: -1
-        netname: es_rng_rsp
+        netname: es_rng_valid
+      }
+      {
+        package: ""
+        struct: logic
+        signame: es_rng_bit_i
+        width:
+        {
+          name: RngBusWidth
+          desc:
+            '''
+            Defines the bit-width of the noise source data.
+            Must be between 4 and 256 (inclusive) and divisible by 4.
+            The divisibility by 4 is a prerequisite for the bucket health test.
+            '''
+          param_type: int
+          unpacked_dimensions: null
+          default: 4
+          local: false
+          expose: true
+          name_top: EntropySrcRngBusWidth
+        }
+        type: uni
+        default: ""
+        direction: in
+        conn_type: false
+        index: -1
+        netname: es_rng_bit
       }
       {
         package: ""
@@ -26060,6 +26855,17 @@
         package: lc_ctrl_pkg
         struct: lc_tx
         signame: lc_ctrl_lc_nvm_debug_en
+        width: 1
+        type: uni
+        end_idx: -1
+        act: req
+        suffix: ""
+        default: lc_ctrl_pkg::Off
+      }
+      {
+        package: lc_ctrl_pkg
+        struct: lc_tx
+        signame: lc_ctrl_lc_hw_debug_clr
         width: 1
         type: uni
         end_idx: -1
@@ -27313,7 +28119,7 @@
       {
         package: tlul_pkg
         struct: tl_h2d
-        signame: otp_macro_tl_req
+        signame: otp_macro_prim_tl_req
         width: 1
         type: req_rsp
         end_idx: -1
@@ -27324,7 +28130,7 @@
       {
         package: tlul_pkg
         struct: tl_d2h
-        signame: otp_macro_tl_rsp
+        signame: otp_macro_prim_tl_rsp
         width: 1
         type: req_rsp
         end_idx: -1

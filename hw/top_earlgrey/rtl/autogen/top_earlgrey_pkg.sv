@@ -6,9 +6,7 @@
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
 //
 // util/topgen.py -t hw/top_earlgrey/data/top_earlgrey.hjson \
-//                -o hw/top_earlgrey/ \
-//                --rnd_cnst_seed \
-//                1017106219537032642877583828875051302543807092889754935647094601236425074047
+//                -o hw/top_earlgrey/
 
 package top_earlgrey_pkg;
   /**
@@ -132,14 +130,14 @@ package top_earlgrey_pkg;
   parameter int unsigned TOP_EARLGREY_OTP_CTRL_CORE_SIZE_BYTES = 32'h1000;
 
   /**
-   * Peripheral base address for otp_macro in top earlgrey.
+   * Peripheral base address for prim device on otp_macro in top earlgrey.
    */
-  parameter int unsigned TOP_EARLGREY_OTP_MACRO_BASE_ADDR = 32'h40138000;
+  parameter int unsigned TOP_EARLGREY_OTP_MACRO_PRIM_BASE_ADDR = 32'h40138000;
 
   /**
-   * Peripheral size in bytes for otp_macro in top earlgrey.
+   * Peripheral size in bytes for prim device on otp_macro in top earlgrey.
    */
-  parameter int unsigned TOP_EARLGREY_OTP_MACRO_SIZE_BYTES = 32'h20;
+  parameter int unsigned TOP_EARLGREY_OTP_MACRO_PRIM_SIZE_BYTES = 32'h20;
 
   /**
    * Peripheral base address for regs device on lc_ctrl in top earlgrey.
@@ -688,6 +686,198 @@ package top_earlgrey_pkg;
     TopEarlgreyAlertIdCount
   } alert_id_e;
 
+  // Enumeration of interrupts
+  typedef enum int unsigned {
+    TopEarlgreyPlicIrqIdNone = 0,
+    TopEarlgreyPlicIrqIdUart0TxWatermark = 1,
+    TopEarlgreyPlicIrqIdUart0RxWatermark = 2,
+    TopEarlgreyPlicIrqIdUart0TxDone = 3,
+    TopEarlgreyPlicIrqIdUart0RxOverflow = 4,
+    TopEarlgreyPlicIrqIdUart0RxFrameErr = 5,
+    TopEarlgreyPlicIrqIdUart0RxBreakErr = 6,
+    TopEarlgreyPlicIrqIdUart0RxTimeout = 7,
+    TopEarlgreyPlicIrqIdUart0RxParityErr = 8,
+    TopEarlgreyPlicIrqIdUart0TxEmpty = 9,
+    TopEarlgreyPlicIrqIdUart1TxWatermark = 10,
+    TopEarlgreyPlicIrqIdUart1RxWatermark = 11,
+    TopEarlgreyPlicIrqIdUart1TxDone = 12,
+    TopEarlgreyPlicIrqIdUart1RxOverflow = 13,
+    TopEarlgreyPlicIrqIdUart1RxFrameErr = 14,
+    TopEarlgreyPlicIrqIdUart1RxBreakErr = 15,
+    TopEarlgreyPlicIrqIdUart1RxTimeout = 16,
+    TopEarlgreyPlicIrqIdUart1RxParityErr = 17,
+    TopEarlgreyPlicIrqIdUart1TxEmpty = 18,
+    TopEarlgreyPlicIrqIdUart2TxWatermark = 19,
+    TopEarlgreyPlicIrqIdUart2RxWatermark = 20,
+    TopEarlgreyPlicIrqIdUart2TxDone = 21,
+    TopEarlgreyPlicIrqIdUart2RxOverflow = 22,
+    TopEarlgreyPlicIrqIdUart2RxFrameErr = 23,
+    TopEarlgreyPlicIrqIdUart2RxBreakErr = 24,
+    TopEarlgreyPlicIrqIdUart2RxTimeout = 25,
+    TopEarlgreyPlicIrqIdUart2RxParityErr = 26,
+    TopEarlgreyPlicIrqIdUart2TxEmpty = 27,
+    TopEarlgreyPlicIrqIdUart3TxWatermark = 28,
+    TopEarlgreyPlicIrqIdUart3RxWatermark = 29,
+    TopEarlgreyPlicIrqIdUart3TxDone = 30,
+    TopEarlgreyPlicIrqIdUart3RxOverflow = 31,
+    TopEarlgreyPlicIrqIdUart3RxFrameErr = 32,
+    TopEarlgreyPlicIrqIdUart3RxBreakErr = 33,
+    TopEarlgreyPlicIrqIdUart3RxTimeout = 34,
+    TopEarlgreyPlicIrqIdUart3RxParityErr = 35,
+    TopEarlgreyPlicIrqIdUart3TxEmpty = 36,
+    TopEarlgreyPlicIrqIdGpioGpio0 = 37,
+    TopEarlgreyPlicIrqIdGpioGpio1 = 38,
+    TopEarlgreyPlicIrqIdGpioGpio2 = 39,
+    TopEarlgreyPlicIrqIdGpioGpio3 = 40,
+    TopEarlgreyPlicIrqIdGpioGpio4 = 41,
+    TopEarlgreyPlicIrqIdGpioGpio5 = 42,
+    TopEarlgreyPlicIrqIdGpioGpio6 = 43,
+    TopEarlgreyPlicIrqIdGpioGpio7 = 44,
+    TopEarlgreyPlicIrqIdGpioGpio8 = 45,
+    TopEarlgreyPlicIrqIdGpioGpio9 = 46,
+    TopEarlgreyPlicIrqIdGpioGpio10 = 47,
+    TopEarlgreyPlicIrqIdGpioGpio11 = 48,
+    TopEarlgreyPlicIrqIdGpioGpio12 = 49,
+    TopEarlgreyPlicIrqIdGpioGpio13 = 50,
+    TopEarlgreyPlicIrqIdGpioGpio14 = 51,
+    TopEarlgreyPlicIrqIdGpioGpio15 = 52,
+    TopEarlgreyPlicIrqIdGpioGpio16 = 53,
+    TopEarlgreyPlicIrqIdGpioGpio17 = 54,
+    TopEarlgreyPlicIrqIdGpioGpio18 = 55,
+    TopEarlgreyPlicIrqIdGpioGpio19 = 56,
+    TopEarlgreyPlicIrqIdGpioGpio20 = 57,
+    TopEarlgreyPlicIrqIdGpioGpio21 = 58,
+    TopEarlgreyPlicIrqIdGpioGpio22 = 59,
+    TopEarlgreyPlicIrqIdGpioGpio23 = 60,
+    TopEarlgreyPlicIrqIdGpioGpio24 = 61,
+    TopEarlgreyPlicIrqIdGpioGpio25 = 62,
+    TopEarlgreyPlicIrqIdGpioGpio26 = 63,
+    TopEarlgreyPlicIrqIdGpioGpio27 = 64,
+    TopEarlgreyPlicIrqIdGpioGpio28 = 65,
+    TopEarlgreyPlicIrqIdGpioGpio29 = 66,
+    TopEarlgreyPlicIrqIdGpioGpio30 = 67,
+    TopEarlgreyPlicIrqIdGpioGpio31 = 68,
+    TopEarlgreyPlicIrqIdSpiDeviceUploadCmdfifoNotEmpty = 69,
+    TopEarlgreyPlicIrqIdSpiDeviceUploadPayloadNotEmpty = 70,
+    TopEarlgreyPlicIrqIdSpiDeviceUploadPayloadOverflow = 71,
+    TopEarlgreyPlicIrqIdSpiDeviceReadbufWatermark = 72,
+    TopEarlgreyPlicIrqIdSpiDeviceReadbufFlip = 73,
+    TopEarlgreyPlicIrqIdSpiDeviceTpmHeaderNotEmpty = 74,
+    TopEarlgreyPlicIrqIdSpiDeviceTpmRdfifoCmdEnd = 75,
+    TopEarlgreyPlicIrqIdSpiDeviceTpmRdfifoDrop = 76,
+    TopEarlgreyPlicIrqIdI2c0FmtThreshold = 77,
+    TopEarlgreyPlicIrqIdI2c0RxThreshold = 78,
+    TopEarlgreyPlicIrqIdI2c0AcqThreshold = 79,
+    TopEarlgreyPlicIrqIdI2c0RxOverflow = 80,
+    TopEarlgreyPlicIrqIdI2c0ControllerHalt = 81,
+    TopEarlgreyPlicIrqIdI2c0SclInterference = 82,
+    TopEarlgreyPlicIrqIdI2c0SdaInterference = 83,
+    TopEarlgreyPlicIrqIdI2c0StretchTimeout = 84,
+    TopEarlgreyPlicIrqIdI2c0SdaUnstable = 85,
+    TopEarlgreyPlicIrqIdI2c0CmdComplete = 86,
+    TopEarlgreyPlicIrqIdI2c0TxStretch = 87,
+    TopEarlgreyPlicIrqIdI2c0TxThreshold = 88,
+    TopEarlgreyPlicIrqIdI2c0AcqStretch = 89,
+    TopEarlgreyPlicIrqIdI2c0UnexpStop = 90,
+    TopEarlgreyPlicIrqIdI2c0HostTimeout = 91,
+    TopEarlgreyPlicIrqIdI2c1FmtThreshold = 92,
+    TopEarlgreyPlicIrqIdI2c1RxThreshold = 93,
+    TopEarlgreyPlicIrqIdI2c1AcqThreshold = 94,
+    TopEarlgreyPlicIrqIdI2c1RxOverflow = 95,
+    TopEarlgreyPlicIrqIdI2c1ControllerHalt = 96,
+    TopEarlgreyPlicIrqIdI2c1SclInterference = 97,
+    TopEarlgreyPlicIrqIdI2c1SdaInterference = 98,
+    TopEarlgreyPlicIrqIdI2c1StretchTimeout = 99,
+    TopEarlgreyPlicIrqIdI2c1SdaUnstable = 100,
+    TopEarlgreyPlicIrqIdI2c1CmdComplete = 101,
+    TopEarlgreyPlicIrqIdI2c1TxStretch = 102,
+    TopEarlgreyPlicIrqIdI2c1TxThreshold = 103,
+    TopEarlgreyPlicIrqIdI2c1AcqStretch = 104,
+    TopEarlgreyPlicIrqIdI2c1UnexpStop = 105,
+    TopEarlgreyPlicIrqIdI2c1HostTimeout = 106,
+    TopEarlgreyPlicIrqIdI2c2FmtThreshold = 107,
+    TopEarlgreyPlicIrqIdI2c2RxThreshold = 108,
+    TopEarlgreyPlicIrqIdI2c2AcqThreshold = 109,
+    TopEarlgreyPlicIrqIdI2c2RxOverflow = 110,
+    TopEarlgreyPlicIrqIdI2c2ControllerHalt = 111,
+    TopEarlgreyPlicIrqIdI2c2SclInterference = 112,
+    TopEarlgreyPlicIrqIdI2c2SdaInterference = 113,
+    TopEarlgreyPlicIrqIdI2c2StretchTimeout = 114,
+    TopEarlgreyPlicIrqIdI2c2SdaUnstable = 115,
+    TopEarlgreyPlicIrqIdI2c2CmdComplete = 116,
+    TopEarlgreyPlicIrqIdI2c2TxStretch = 117,
+    TopEarlgreyPlicIrqIdI2c2TxThreshold = 118,
+    TopEarlgreyPlicIrqIdI2c2AcqStretch = 119,
+    TopEarlgreyPlicIrqIdI2c2UnexpStop = 120,
+    TopEarlgreyPlicIrqIdI2c2HostTimeout = 121,
+    TopEarlgreyPlicIrqIdPattgenDoneCh0 = 122,
+    TopEarlgreyPlicIrqIdPattgenDoneCh1 = 123,
+    TopEarlgreyPlicIrqIdRvTimerTimerExpiredHart0Timer0 = 124,
+    TopEarlgreyPlicIrqIdOtpCtrlOtpOperationDone = 125,
+    TopEarlgreyPlicIrqIdOtpCtrlOtpError = 126,
+    TopEarlgreyPlicIrqIdAlertHandlerClassa = 127,
+    TopEarlgreyPlicIrqIdAlertHandlerClassb = 128,
+    TopEarlgreyPlicIrqIdAlertHandlerClassc = 129,
+    TopEarlgreyPlicIrqIdAlertHandlerClassd = 130,
+    TopEarlgreyPlicIrqIdSpiHost0Error = 131,
+    TopEarlgreyPlicIrqIdSpiHost0SpiEvent = 132,
+    TopEarlgreyPlicIrqIdSpiHost1Error = 133,
+    TopEarlgreyPlicIrqIdSpiHost1SpiEvent = 134,
+    TopEarlgreyPlicIrqIdUsbdevPktReceived = 135,
+    TopEarlgreyPlicIrqIdUsbdevPktSent = 136,
+    TopEarlgreyPlicIrqIdUsbdevDisconnected = 137,
+    TopEarlgreyPlicIrqIdUsbdevHostLost = 138,
+    TopEarlgreyPlicIrqIdUsbdevLinkReset = 139,
+    TopEarlgreyPlicIrqIdUsbdevLinkSuspend = 140,
+    TopEarlgreyPlicIrqIdUsbdevLinkResume = 141,
+    TopEarlgreyPlicIrqIdUsbdevAvOutEmpty = 142,
+    TopEarlgreyPlicIrqIdUsbdevRxFull = 143,
+    TopEarlgreyPlicIrqIdUsbdevAvOverflow = 144,
+    TopEarlgreyPlicIrqIdUsbdevLinkInErr = 145,
+    TopEarlgreyPlicIrqIdUsbdevRxCrcErr = 146,
+    TopEarlgreyPlicIrqIdUsbdevRxPidErr = 147,
+    TopEarlgreyPlicIrqIdUsbdevRxBitstuffErr = 148,
+    TopEarlgreyPlicIrqIdUsbdevFrame = 149,
+    TopEarlgreyPlicIrqIdUsbdevPowered = 150,
+    TopEarlgreyPlicIrqIdUsbdevLinkOutErr = 151,
+    TopEarlgreyPlicIrqIdUsbdevAvSetupEmpty = 152,
+    TopEarlgreyPlicIrqIdPwrmgrAonWakeup = 153,
+    TopEarlgreyPlicIrqIdSysrstCtrlAonEventDetected = 154,
+    TopEarlgreyPlicIrqIdAdcCtrlAonMatchPending = 155,
+    TopEarlgreyPlicIrqIdAonTimerAonWkupTimerExpired = 156,
+    TopEarlgreyPlicIrqIdAonTimerAonWdogTimerBark = 157,
+    TopEarlgreyPlicIrqIdSensorCtrlAonIoStatusChange = 158,
+    TopEarlgreyPlicIrqIdSensorCtrlAonInitStatusChange = 159,
+    TopEarlgreyPlicIrqIdFlashCtrlProgEmpty = 160,
+    TopEarlgreyPlicIrqIdFlashCtrlProgLvl = 161,
+    TopEarlgreyPlicIrqIdFlashCtrlRdFull = 162,
+    TopEarlgreyPlicIrqIdFlashCtrlRdLvl = 163,
+    TopEarlgreyPlicIrqIdFlashCtrlOpDone = 164,
+    TopEarlgreyPlicIrqIdFlashCtrlCorrErr = 165,
+    TopEarlgreyPlicIrqIdHmacHmacDone = 166,
+    TopEarlgreyPlicIrqIdHmacFifoEmpty = 167,
+    TopEarlgreyPlicIrqIdHmacHmacErr = 168,
+    TopEarlgreyPlicIrqIdKmacKmacDone = 169,
+    TopEarlgreyPlicIrqIdKmacFifoEmpty = 170,
+    TopEarlgreyPlicIrqIdKmacKmacErr = 171,
+    TopEarlgreyPlicIrqIdOtbnDone = 172,
+    TopEarlgreyPlicIrqIdKeymgrOpDone = 173,
+    TopEarlgreyPlicIrqIdCsrngCsCmdReqDone = 174,
+    TopEarlgreyPlicIrqIdCsrngCsEntropyReq = 175,
+    TopEarlgreyPlicIrqIdCsrngCsHwInstExc = 176,
+    TopEarlgreyPlicIrqIdCsrngCsFatalErr = 177,
+    TopEarlgreyPlicIrqIdEntropySrcEsEntropyValid = 178,
+    TopEarlgreyPlicIrqIdEntropySrcEsHealthTestFailed = 179,
+    TopEarlgreyPlicIrqIdEntropySrcEsObserveFifoReady = 180,
+    TopEarlgreyPlicIrqIdEntropySrcEsFatalErr = 181,
+    TopEarlgreyPlicIrqIdEdn0EdnCmdReqDone = 182,
+    TopEarlgreyPlicIrqIdEdn0EdnFatalErr = 183,
+    TopEarlgreyPlicIrqIdEdn1EdnCmdReqDone = 184,
+    TopEarlgreyPlicIrqIdEdn1EdnFatalErr = 185,
+    TopEarlgreyPlicIrqIdCount
+  } interrupt_rv_plic_id_e;
+
+
   // Enumeration of IO power domains.
   // Only used in ASIC target.
   typedef enum logic [2:0] {
@@ -996,8 +1186,12 @@ package top_earlgrey_pkg;
     PeripheralCount
   } peripheral_e;
 
+  // MMIO Region
+  //
+  parameter int unsigned TOP_EARLGREY_MMIO_BASE_ADDR = 32'h40000000;
+  parameter int unsigned TOP_EARLGREY_MMIO_SIZE_BYTES = 32'h10000000;
+
   // TODO: Enumeration for PLIC Interrupt source peripheral.
-  // TODO: Enumeration for PLIC Interrupt Ids.
 
 // MACROs for AST analog simulation support
 `ifdef ANALOGSIM

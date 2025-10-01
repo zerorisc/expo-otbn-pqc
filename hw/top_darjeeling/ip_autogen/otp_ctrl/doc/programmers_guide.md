@@ -64,7 +64,7 @@ A typical readout sequence looks as follows:
 
 1. Check whether the DAI is idle by reading the [`STATUS`](registers.md#status) register.
 2. Write the byte address for the access to [`DIRECT_ACCESS_ADDRESS`](registers.md#direct_access_address).
-Note that the address is aligned with the granule, meaning that either 2 or 3 LSBs of the address are ignored, depending on whether the access granule is 32 or 64bit.
+Note that the address is aligned with the access granule, meaning that either 2 or 3 LSBs of the address are ignored, depending on whether the access granule is 32 or 64 bits.
 3. Trigger a read command by writing 0x1 to [`DIRECT_ACCESS_CMD`](registers.md#direct_access_cmd).
 4. Poll the [`STATUS`](registers.md#status) until the DAI state goes back to idle.
 Alternatively, the `otp_operation_done` interrupt can be enabled up to notify the processor once an access has completed.
@@ -83,7 +83,7 @@ A typical programming sequence looks as follows:
 2. If the region to be accessed has a 32bit access granule, place a 32bit chunk of data into [`DIRECT_ACCESS_WDATA_0`](registers.md#direct_access_wdata).
 If the region to be accessed has a 64bit access granule, both the [`DIRECT_ACCESS_WDATA_0`](registers.md#direct_access_wdata) and [`DIRECT_ACCESS_WDATA_1`](registers.md#direct_access_wdata) registers have to be used.
 3. Write the byte address for the access to [`DIRECT_ACCESS_ADDRESS`](registers.md#direct_access_address).
-Note that the address is aligned with the granule, meaning that either 2 or 3 LSBs of the address are ignored, depending on whether the access granule is 32 or 64bit.
+Note that the address is aligned with the access granule, meaning that either 2 or 3 LSBs of the address are ignored, depending on whether the access granule is 32 or 64 bits.
 4. Trigger a write command by writing 0x2 to [`DIRECT_ACCESS_CMD`](registers.md#direct_access_cmd).
 5. Poll the [`STATUS`](registers.md#status) until the DAI state goes back to idle.
 Alternatively, the `otp_operation_done` interrupt can be enabled up to notify the processor once an access has completed.
@@ -96,6 +96,12 @@ Note that SW is responsible for keeping track of already programmed OTP word loc
 **It is imperative that SW does not write the same word location twice**, since this can lead to ECC inconsistencies, thereby potentially rendering the device useless.
 
 ### Digest Calculation Sequence
+
+Each partition is configured to have its digest written either by hardware or by software.
+Depending on this configuration attribute, the digest calculation and writing sequence is different.
+The following subsections describe the programming sequence for each case.
+
+#### Partitions with a Hardware-Written Digest
 
 The hardware digest computation for the hardware and secret partitions can be triggered as follows:
 
@@ -110,6 +116,39 @@ The hardware will set [`DIRECT_ACCESS_REGWEN`](registers.md#direct_access_regwen
 
 It should also be noted that the effect of locking a partition via the digest only takes effect **after** the next system reset.
 To prevent integrity check failures SW must therefore ensure that no more programming operations are issued to the affected partition after initiating the digest calculation sequence.
+
+#### Partitions with a Software-Written Digest
+
+Partitions for which software computes and writes the digest have a separate `DIGEST` entry in the DAI address map.
+Software must write the desired digest value via the DAI to set the digest in the OTP storage and lock the partition.
+This can be done as follows:
+
+1. Compute a 64-bit digest over the relevant parts of the partition, and [program](#programming-sequence) that value via the DAI, using the address of the corresponding `DIGEST` entry in the DAI address map.
+2. [Read](#readout-sequence) the digest back via the DAI and verify it.
+
+After the next full-system reset, the corresponding digest *CSRs* (not DAI addresses!) get populated with the digest value.
+If the partition is digest-locked, it is locked at that point.
+
+### Zeroization Sequence
+
+[Zeroization](theory_of_operation.md#zeroizing-the-otp) is an irreversible operation performed when the contents of the zeroizable partition need to be wiped.
+The table in the [Theory of Operation's Partition Listing and Description](theory_of_operation.md#partition-listing-and-description) section shows the per-partition `zeroizable` attribute.
+Attempting to zeroize a non-zeroizable partition will trigger a non-fatal error.
+All items in a zeroizable partition can be zeroized, including digests and zeroization markers.
+A typical zeroization sequence for a partition will zeroize all items in the partition.
+It is recommended to first zeroize the zeroization marker (the last 64-bit in a partition), followed by zeroizing each item.
+Zeroizing any item proceeds like this:
+
+1. Check whether the DAI is idle by reading the [`STATUS`](registers.md#status) register.
+2. Write the address of the item to be zeroized in the [`DIRECT_ACCESS_ADDRESS`](registers.md#direct_access_address) register.
+Note that zeroization always affects a full access granule (32 or 64 bits).
+3. Trigger a zeroize command by a write to the [`DIRECT_ACCESS_CMD`](registers.md#direct_access_cmd) register setting the `ZEROIZE` bit to 1, all others to 0.
+4. Poll the [`STATUS`](registers.md#status) until the DAI state goes back to idle.
+5. If the status register flags a DAI error, additional handling is required (see [Error handling](#error-handling)).
+6. Read the data from the [`DIRECT_ACCESS_RDATA_0`](registers.md#direct_access_rdata): it contains the number of bits set after the zeroize command, and it could be somewhat smaller than the access granule size due to stuck-at-0 bits.
+
+As with any write, zeroization of buffered partitions won't become effective before a device reset.
+When zeroization is part of a life cycle transition, a reset should wait until the life cycle transition is requested.
 
 ### Software Integrity Handling
 

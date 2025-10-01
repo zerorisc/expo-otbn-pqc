@@ -6,7 +6,7 @@
 
 #include <assert.h>
 
-#include "dt/dt_flash_ctrl.h"
+#include "hw/top/dt/dt_flash_ctrl.h"
 #include "sw/device/lib/base/abs_mmio.h"
 #include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/hardened.h"
@@ -294,6 +294,11 @@ void flash_ctrl_init(void) {
   };
   flash_ctrl_info_cfg_set(&kFlashCtrlInfoPageBootData0, boot_data_cfg);
   flash_ctrl_info_cfg_set(&kFlashCtrlInfoPageBootData1, boot_data_cfg);
+}
+
+void flash_ctrl_disable(void) {
+  // Setting DIS (rw0c) to a value other than 5 will disable flash permanently.
+  abs_mmio_write32(flash_ctrl_core_base() + FLASH_CTRL_DIS_REG_OFFSET, 0);
 }
 
 void flash_ctrl_status_get(flash_ctrl_status_t *status) {
@@ -760,6 +765,7 @@ static const flash_ctrl_info_page_t *kInfoPagesNoOwnerAccess[] = {
     // Bank 1
     &kFlashCtrlInfoPageBootData0,
     &kFlashCtrlInfoPageBootData1,
+    &kFlashCtrlInfoPageCreatorReserved0,
 };
 
 enum {
@@ -805,6 +811,7 @@ void flash_ctrl_cert_info_page_creator_cfg(
 void flash_ctrl_cert_info_page_owner_restrict(
     const flash_ctrl_info_page_t *info_page) {
   SEC_MMIO_ASSERT_WRITE_INCREMENT(kFlashCtrlSecMmioCertInfoPageOwnerRestrict,
-                                  1);
+                                  2);
   flash_ctrl_info_perms_set(info_page, kCertificateInfoPageOwnerAccess);
+  sec_mmio_write32(flash_ctrl_core_base() + info_page->cfg_wen_offset, 0);
 }

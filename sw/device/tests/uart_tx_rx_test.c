@@ -485,7 +485,7 @@ bool test_main(void) {
   mmio_region_t base_addr;
 
   base_addr = mmio_region_from_addr(TOP_EARLGREY_CLKMGR_AON_BASE_ADDR);
-  CHECK_DIF_OK(dif_clkmgr_init(base_addr, &clkmgr));
+  CHECK_DIF_OK(dif_clkmgr_init_from_dt(kDtClkmgrAon, &clkmgr));
 
   base_addr = mmio_region_from_addr(TOP_EARLGREY_PINMUX_AON_BASE_ADDR);
   CHECK_DIF_OK(dif_pinmux_init(base_addr, &pinmux));
@@ -516,7 +516,8 @@ bool test_main(void) {
   if (kUartIdx == 0 && kDeviceType != kDeviceSimDV) {
     CHECK_STATUS_OK(
         uart_testutils_select_pinmux(&pinmux, 1, kUartPinmuxChannelConsole));
-    ottf_console_configure_uart(TOP_EARLGREY_UART1_BASE_ADDR);
+    ottf_console_configure_uart(ottf_console_get(),
+                                TOP_EARLGREY_UART1_BASE_ADDR);
   }
 
   CHECK_STATUS_OK(

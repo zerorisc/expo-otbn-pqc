@@ -11,7 +11,7 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -87,7 +87,6 @@ impl OpenOcd {
         cmd.arg("-c")
             .arg("tcl_port 0; telnet_port disabled; gdb_port disabled; noinit;");
 
-        log::info!("CWD: {:?}", std::env::current_dir());
         log::info!("Spawning OpenOCD: {cmd:?}");
 
         cmd.stdin(Stdio::null())
@@ -276,7 +275,7 @@ impl JtagChain for OpenOcdJtagChain {
         };
         self.openocd.execute(target)?;
 
-        // Capture outputs during initialization to see if error has occured during the process.
+        // Capture outputs during initialization to see if error has occurred during the process.
         let resp = self.openocd.execute("capture init")?;
         if resp.contains("JTAG scan chain interrogation failed") {
             bail!(OpenOcdError::InitializeFailure(resp));

@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "dt/dt_api.h"  // Generated
 #include "hw/ip/aes/model/aes_modes.h"
+#include "hw/top/dt/dt_api.h"  // Generated
 #include "sw/device/lib/base/math.h"
 #include "sw/device/lib/base/multibits.h"
 #include "sw/device/lib/dif/dif_adc_ctrl.h"
@@ -27,6 +27,7 @@
 #include "sw/device/lib/dif/dif_uart.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/testing/aes_testutils.h"
+#include "sw/device/lib/testing/alert_handler_testutils.h"
 #include "sw/device/lib/testing/entropy_testutils.h"
 #include "sw/device/lib/testing/hmac_testutils.h"
 #include "sw/device/lib/testing/i2c_testutils.h"
@@ -58,40 +59,38 @@ OTTF_DEFINE_TEST_CONFIG(.enable_concurrency = true,
 /**
  * Peripheral DIF Handles.
  */
-static dif_pinmux_t pinmux;
-static dif_gpio_t gpio;
 static dif_adc_ctrl_t adc_ctrl;
-static dif_entropy_src_t entropy_src;
+static dif_aes_t aes;
+static dif_alert_handler_t alert_handler;
 static dif_csrng_t csrng;
 static dif_edn_t edn_0;
 static dif_edn_t edn_1;
-static dif_aes_t aes;
+static dif_entropy_src_t entropy_src;
+static dif_flash_ctrl_state_t flash_ctrl;
+static dif_gpio_t gpio;
 static dif_hmac_t hmac;
-static dif_kmac_t kmac;
-static dif_otbn_t otbn;
 static dif_i2c_t i2c_0;
 static dif_i2c_t i2c_1;
 static dif_i2c_t i2c_2;
+static dif_kmac_t kmac;
+static dif_otbn_t otbn;
+static dif_pattgen_t pattgen;
+static dif_pinmux_t pinmux;
+static dif_pwm_t pwm;
+static dif_rstmgr_t rstmgr;
+static dif_rv_plic_t rv_plic;
 static dif_spi_device_handle_t spi_device;
 static dif_spi_host_t spi_host_0;
 static dif_spi_host_t spi_host_1;
 static dif_uart_t uart_1;
 static dif_uart_t uart_2;
 static dif_uart_t uart_3;
-static dif_pattgen_t pattgen;
-static dif_pwm_t pwm;
-static dif_flash_ctrl_state_t flash_ctrl;
-static dif_rv_plic_t rv_plic;
 
 static const dif_i2c_t *i2c_handles[] = {&i2c_0, &i2c_1, &i2c_2};
 static const dif_uart_t *uart_handles[] = {&uart_1, &uart_2, &uart_3};
 static dif_kmac_operation_state_t kmac_operation_state;
 static const dif_pattgen_channel_t pattgen_channels[] = {kDifPattgenChannel0,
                                                          kDifPattgenChannel1};
-static const dif_pwm_channel_t pwm_channels[PWM_PARAM_N_OUTPUTS] = {
-    kDifPwmChannel0, kDifPwmChannel1, kDifPwmChannel2,
-    kDifPwmChannel3, kDifPwmChannel4, kDifPwmChannel5,
-};
 
 /**
  * Test configuration parameters.
@@ -318,6 +317,8 @@ static void log_entropy_src_alert_failures(void) {
         LOG_INFO("High Fails (Mailbox): %d", counts.high_fails[i]);
         LOG_INFO("Low Fails (Mailbox): %d", counts.low_fails[i]);
         break;
+      default:
+        break;
     }
   }
 }
@@ -352,6 +353,9 @@ static void init_peripheral_handles(void) {
       mmio_region_from_addr(TOP_EARLGREY_ADC_CTRL_AON_BASE_ADDR), &adc_ctrl));
   CHECK_DIF_OK(
       dif_aes_init(mmio_region_from_addr(TOP_EARLGREY_AES_BASE_ADDR), &aes));
+  CHECK_DIF_OK(dif_alert_handler_init(
+      mmio_region_from_addr(TOP_EARLGREY_ALERT_HANDLER_BASE_ADDR),
+      &alert_handler));
   CHECK_DIF_OK(dif_csrng_init(
       mmio_region_from_addr(TOP_EARLGREY_CSRNG_BASE_ADDR), &csrng));
   CHECK_DIF_OK(
@@ -393,6 +397,8 @@ static void init_peripheral_handles(void) {
       mmio_region_from_addr(TOP_EARLGREY_PATTGEN_BASE_ADDR), &pattgen));
   CHECK_DIF_OK(dif_pwm_init(
       mmio_region_from_addr(TOP_EARLGREY_PWM_AON_BASE_ADDR), &pwm));
+  CHECK_DIF_OK(dif_rstmgr_init(
+      mmio_region_from_addr(TOP_EARLGREY_RSTMGR_AON_BASE_ADDR), &rstmgr));
   CHECK_DIF_OK(dif_flash_ctrl_init_state(
       &flash_ctrl,
       mmio_region_from_addr(TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR)));
@@ -1002,11 +1008,11 @@ void configure_pwm(void) {
                                   .clock_divisor = kPwmClockDivisor,
                                   .beats_per_pulse_cycle = kPwmBeatsPerCycle,
                               }));
-  CHECK_DIF_OK(dif_pwm_channel_set_enabled(
+  CHECK_DIF_OK(dif_pwm_channels_set_enabled(
       &pwm, (1u << PWM_PARAM_N_OUTPUTS) - 1, kDifToggleDisabled));
   for (size_t i = 0; i < PWM_PARAM_N_OUTPUTS; ++i) {
     CHECK_DIF_OK(
-        dif_pwm_configure_channel(&pwm, pwm_channels[i],
+        dif_pwm_configure_channel(&pwm, i,
                                   (dif_pwm_channel_config_t){
                                       .duty_cycle_a = kPwmOnBeats,
                                       .duty_cycle_b = 0,  // unused
@@ -1020,7 +1026,7 @@ void configure_pwm(void) {
 
   // Enable all the PWM channels. The outputs will start toggling
   // after the phase counter is enabled (i.e, PWM_CFG_REG.CNTR_EN = 1).
-  CHECK_DIF_OK(dif_pwm_channel_set_enabled(
+  CHECK_DIF_OK(dif_pwm_channels_set_enabled(
       &pwm,
       /*channels*/ (1u << PWM_PARAM_N_OUTPUTS) - 1, kDifToggleEnabled));
 }
@@ -1449,6 +1455,15 @@ bool test_main(void) {
   // Initialize and configure all IPs.
   // ***************************************************************************
   init_peripheral_handles();
+
+  if (kDeviceType == kDeviceSilicon || kDeviceType == kDeviceFpgaCw310 ||
+      kDeviceType == kDeviceFpgaCw340) {
+    CHECK_STATUS_OK(alert_handler_testutils_status_log(&alert_handler));
+    CHECK_STATUS_OK(alert_handler_testutils_dump_log(&rstmgr));
+    CHECK_STATUS_OK(
+        alert_handler_testutils_dump_enable(&alert_handler, &rstmgr));
+  }
+
   configure_pinmux();
   // To be compatible with the configs in chip_if.sv,
   // apply the additional pinmux settings.

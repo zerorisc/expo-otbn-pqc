@@ -832,7 +832,7 @@ that the external clock is 96MHz.</td>
 <td>Flash observe bus for debug</td>
 </tr>
 <tr class="even">
-<td>otp_bos_i</td>
+<td>otp_obs_i</td>
 <td>I</td>
 <td>8</td>
 <td>async</td>
@@ -1107,7 +1107,7 @@ AST consumes entropy for defensive purposes. However, AST does not
 consume its raw entropy directly. Instead, AST receives entropy from the
 [<u>Entropy Distribution Network
 (EDN)</u>](../../../ip/edn/README.md). Note
-that entropy_ack and entropy_i are packed into enropy_rsp_i in the
+that entropy_ack and entropy_i are packed into entropy_rsp_i in the
 interface. Also note that once entropy_req_o is set, it will remain set
 until ack or until reset.
 

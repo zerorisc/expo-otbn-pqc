@@ -88,6 +88,7 @@ module lc_ctrl_fsm
   // Life cycle broadcast outputs.
   output lc_tx_t                lc_dft_en_o,
   output lc_tx_t                lc_nvm_debug_en_o,
+  output lc_tx_t                lc_hw_debug_clr_o,
   output lc_tx_t                lc_hw_debug_en_o,
   output lc_tx_t                lc_cpu_en_o,
   output lc_tx_t                lc_creator_seed_sw_rw_en_o,
@@ -547,12 +548,12 @@ module lc_ctrl_fsm
 
 
       EscalateSt: begin
-        // During an escalation it is okay to de-assert token_hash_req without receivng ACK.
+        // During an escalation it is okay to de-assert token_hash_req without receiving ACK.
         token_hash_req_chk_o = 1'b0;
       end
 
       InvalidSt: begin
-        // During an escalation it is okay to de-assert token_hash_req without receivng ACK.
+        // During an escalation it is okay to de-assert token_hash_req without receiving ACK.
         token_hash_req_chk_o = 1'b0;
         state_invalid_error_o = 1'b1;
       end
@@ -803,6 +804,7 @@ module lc_ctrl_fsm
     .lc_raw_test_rma_o,
     .lc_dft_en_o,
     .lc_nvm_debug_en_o,
+    .lc_hw_debug_clr_o,
     .lc_hw_debug_en_o,
     .lc_cpu_en_o,
     .lc_creator_seed_sw_rw_en_o,

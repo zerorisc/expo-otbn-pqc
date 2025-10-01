@@ -11,6 +11,7 @@ filesets:
       - lowrisc:ip:otp_ctrl_pkg
       - ${instance_vlnv("lowrisc:ip:otp_ctrl_macro_pkg")}
       - ${instance_vlnv("lowrisc:ip:otp_ctrl_top_specific_pkg")}
+      - lowrisc:virtual_constants:rnd_cnst_pkg
       - lowrisc:ip:otp_macro_pkg
       - lowrisc:ip:tlul
       - lowrisc:prim:all
@@ -24,6 +25,7 @@ filesets:
       - lowrisc:prim:secded
       - lowrisc:prim:edn_req
       - lowrisc:prim:sec_anchor
+      - lowrisc:prim:sum_tree
       # TODO(#27347): prim_pkg is deprecated
       - lowrisc:prim:prim_pkg
       - ${instance_vlnv("lowrisc:ip:pwrmgr_pkg")}
@@ -105,3 +107,6 @@ targets:
     default_tool: icarus
     parameters:
       - SYNTHESIS=true
+
+mapping:
+  "lowrisc:virtual_constants:rnd_cnst_pkg": "lowrisc:${topname}_constants:dev_rnd_cnst_pkg"

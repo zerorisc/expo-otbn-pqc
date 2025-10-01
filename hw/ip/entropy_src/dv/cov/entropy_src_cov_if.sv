@@ -701,11 +701,11 @@ interface entropy_src_cov_if
   // test_type: Can be repcnt_ht, or repcnts_ht
   // "Score": This is an abstraction of the number of repeated bits that allows us to
   //          compare coverage of the REPCNTS & REPCNT health tests with the same CG.
-  //          REPCNTS test values are scaled up by a factor of RNG_BUS_WIDTH to
+  //          REPCNTS test values are scaled up by a factor of `RNG_BUS_WIDTH to
   //          allow for meaningful comparison in the same set of bins.
   //
   //          Since each _symbol_ repetition is about as coincidentally likely as
-  //          RNG_BUS_WIDTH individual line repetitions, the range thresholds for the
+  //          `RNG_BUS_WIDTH individual line repetitions, the range thresholds for the
   //          symbols the _symbol_ test are lower by the same fraction.  This means
   //          that counting pass/fail-cross-count events is hard to compare between
   //          the two tests unless the repcnts test scores is scaled to use the same
@@ -746,7 +746,7 @@ interface entropy_src_cov_if
     // bits, though they do permit false positive rates in the range of 2^(-20) - 2^(-40)
     // are acceptable.
     //
-    // For ideal RNG inputs and this range corrensponds to events in the
+    // For ideal RNG inputs and this range corresponds to events in the
     // "medhigh" bin below for the single-line repcnt test, or the "low"
     // bin for the repcnts (4-bit symbol) test.
     //
@@ -808,7 +808,7 @@ interface entropy_src_cov_if
   // "Deep" covergroup definition to confirm that the threshold performance has been
   // properly tested for a practical range of thresholds for all windowed tests.
   //
-  // Covering a range of thesholds for the windowed tests is challenging as the
+  // Covering a range of thresholds for the windowed tests is challenging as the
   // results of the test values are generally expected to be centered around the average
   // value.  Many threshold values will require directed tests to obtain a pass or fail value,
   // if they are even testable at all.
@@ -821,7 +821,7 @@ interface entropy_src_cov_if
   // an ideal stream of RNG inputs.
   //
   // The least aggressive threshold bin (> 6 sigma) more accurately corresponds to the functional
-  // mode of operation, with a low rate of false postives, which will require some directed
+  // mode of operation, with a low rate of false positives, which will require some directed
   // tests to trigger a HT failure.
   //
   // The definition of these practical ranges depends on the size of the windows
@@ -1094,8 +1094,8 @@ interface entropy_src_cov_if
     bit [15:0] score;
     bit [31:0] symbol_score;
 
-    symbol_score = (32'(raw_score) * RNG_BUS_WIDTH > 32'hffff) ?
-                   32'hffff : 32'(raw_score) * RNG_BUS_WIDTH;
+    symbol_score = (32'(raw_score) * `RNG_BUS_WIDTH > 32'hffff) ?
+                   32'hffff : 32'(raw_score) * `RNG_BUS_WIDTH;
     score = (test_type == repcnts_ht) ? symbol_score[15:0] : raw_score;
 
     cont_ht_cg_inst.sample(test_type, fips_mode, rng_bit_enable, rng_bit_select, score, fail);

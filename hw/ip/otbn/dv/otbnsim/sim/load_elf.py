@@ -92,5 +92,6 @@ def load_elf(sim: OTBNSim, path: str, dump_rtl_sim: bool = False) -> Optional[in
     sim.load_program(imem_insns)
     sim.loop_warps = loop_warps
     sim.load_data(dmem_bytes, has_validity=False)
+    sim.symbols = symbols
 
     return exp_end

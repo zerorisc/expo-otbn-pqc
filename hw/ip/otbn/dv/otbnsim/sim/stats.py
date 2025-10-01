@@ -4,8 +4,8 @@
 # Modified by Authors of "Towards ML-KEM & ML-DSA on OpenTitan" (https://eprint.iacr.org/2024/1192).
 # Copyright "Towards ML-KEM & ML-DSA on OpenTitan" Authors.
 
-from collections import Counter, defaultdict
-from typing import Dict, List, Optional, Tuple
+from collections import Counter, defaultdict, namedtuple
+from typing import Dict, Iterator, List, Optional
 import re
 
 from elftools.dwarf.dwarfinfo import DWARFInfo  # type: ignore
@@ -33,6 +33,9 @@ class ExecutionStats:
         # Histogram indexed by the length of the (extended) basic block.
         self.basic_block_histo: Counter[int] = Counter()
         self.ext_basic_block_histo: Counter[int] = Counter()
+
+        # Coverage map indexed by pc.
+        self.coverage: Counter[int] = Counter()
 
         self._current_basic_block_len = 0
         self._current_ext_basic_block_len = 0
@@ -74,6 +77,7 @@ class ExecutionStats:
 
         '''
         pc = state_bc.pc
+        self.coverage[pc] += 1
 
         is_jump = isinstance(insn, JAL) or isinstance(insn, JALR)
         is_branch = isinstance(insn, BEQ) or isinstance(insn, BNE)
@@ -154,31 +158,44 @@ class ExecutionStats:
             self._current_ext_basic_block_len = 0
 
 
-def _dwarf_decode_file_line(dwarf_info: DWARFInfo,
-                            address: int) -> Optional[Tuple[str, int]]:
-    # Go over all the line programs in the DWARF information, looking for
-    # one that describes the given address.
+SourceLine = namedtuple('SourceLine', ['addr', 'path', 'lineno'])
+
+
+def _dwarf_iter_file_line(dwarf_info: DWARFInfo,
+                          full_path: bool = False) -> Iterator[Optional[SourceLine]]:
+    # Go over all the line programs in the DWARF information.
     for CU in dwarf_info.iter_CUs():
         # First, look at line programs to find the file/line for the address
         lineprog = dwarf_info.line_program_for_CU(CU)
-        prevstate = None
         for entry in lineprog.get_entries():
             # We're interested in those entries where a new state is assigned
             if entry.state is None:
                 continue
-            if entry.state.end_sequence:
-                # if the line number sequence ends, clear prevstate.
-                prevstate = None
+            state = entry.state
+
+            if state.end_sequence:
+                yield None
                 continue
-            # Looking for a range of addresses in two consecutive states that
-            # contain the required address.
-            if ((prevstate and
-                 prevstate.address <= address < entry.state.address)):
-                raw_name = lineprog['file_entry'][prevstate.file - 1].name
-                filename = raw_name.decode('utf-8')
-                line = prevstate.line
-                return filename, line
-            prevstate = entry.state
+
+            file_ent = lineprog['file_entry'][state.file - 1]
+            raw_path = file_ent.name
+            dir_index = file_ent.dir_index
+            if full_path and len(lineprog['include_directory']) > 0 and dir_index > 0:
+                dir = lineprog['include_directory'][dir_index - 1]
+                raw_path = dir + b'/' + raw_path
+            path = raw_path.decode('utf-8')
+            yield SourceLine(state.address, path, state.line)
+
+
+def _dwarf_decode_file_line(dwarf_info: DWARFInfo, address: int) -> Optional[SourceLine]:
+    # Go over all the line programs in the DWARF information, looking for
+    # one that describes the given address.
+    lines = list(_dwarf_iter_file_line(dwarf_info, full_path=False))
+    for before, after in zip(lines, lines[1:]):
+        if before is None or after is None:
+            continue
+        if before.addr <= address < after.addr:
+            return before
     return None
 
 
@@ -231,7 +248,7 @@ class ExecutionStatAnalyzer:
         if symbol_name:
             add_info.append(f"{symbol_name}")
         if file_line:
-            add_info.append(f"at {file_line[0]}:{file_line[1]}")
+            add_info.append(f"at {file_line.path}:{file_line.lineno}")
 
         str = f"{address:#x}"
         if add_info:
@@ -433,6 +450,27 @@ class ExecutionStatAnalyzer:
             out += f"avg: {loop_iterations_avg:.02f}\n"
 
         return out
+
+    def dump_lcov_coverage(self) -> str:
+        if not self._elf_file.has_dwarf_info():
+            return ''
+        dwarf_info = self._elf_file.get_dwarf_info()
+
+        hits_by_path: defaultdict[str, Dict[int, int]] = defaultdict(dict)
+        for info in _dwarf_iter_file_line(dwarf_info, full_path=True):
+            if info is None:
+                continue
+            hit = self._stats.coverage.get(info.addr, 0)
+            hits_by_path[info.path][info.lineno] = hit
+
+        out = []
+        for path, hits in hits_by_path.items():
+            out.append(f'SF:{path}')
+            for line, hit in hits.items():
+                out.append(f'DA:{line},{hit}')
+            out.append('end_of_record')
+
+        return '\n'.join(out) + '\n'
 
     def _dump_func_cycles(self) -> str:
         accumulated = dict()

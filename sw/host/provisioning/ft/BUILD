@@ -21,11 +21,15 @@ package(default_visibility = ["//visibility:public"])
             "//sw/host/provisioning/ujson_lib",
             "//sw/host/provisioning/util_lib",
             "@crate_index//:anyhow",
+            "@crate_index//:arrayvec",
+            "@crate_index//:base64ct",
             "@crate_index//:clap",
             "@crate_index//:elliptic-curve",
+            "@crate_index//:hex",
             "@crate_index//:humantime",
             "@crate_index//:log",
             "@crate_index//:p256",
+            "@crate_index//:serde_json",
             "@lowrisc_serde_annotate//serde_annotate",
         ],
     )
@@ -34,7 +38,6 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "ft_all",
-    testonly = True,
     srcs = [
         ":ft_{}".format(sku)
         for sku in EARLGREY_SKUS.keys()

@@ -48,8 +48,9 @@ def _transform(ctx, exec_env, name, elf, binary, signed_bin, disassembly, mapfil
             name = name,
             src = elf,
             suffix = "39.scr.vmem",
-            rom_scramble_config = exec_env.rom_scramble_config,
             rom_scramble_tool = ctx.executable.rom_scramble_tool,
+            top_gen_hjson = exec_env.top_gen_hjson,
+            top_secret_cfg = exec_env.top_secret_cfg,
         )
 
         # The englishbreakfast verilator model does not understand ROM

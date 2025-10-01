@@ -1,3 +1,7 @@
+# Copyright zeroRISC Inc.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
@@ -30,6 +34,21 @@ otbn_library(
     name = "ed25519_scalar",
     srcs = [
         "ed25519_scalar.s",
+    ],
+)
+
+otbn_binary(
+    name = "run_ed25519",
+    srcs = [
+        "run_ed25519.s",
+    ],
+    deps = [
+        ":ed25519",
+        ":ed25519_scalar",
+        ":field25519",
+        ":sha512_compact",
+        ":sha512_interface",
+        ":sha512_padding",
     ],
 )
 
@@ -104,6 +123,13 @@ otbn_library(
 )
 
 otbn_library(
+    name = "p256_isoncurve_proj",
+    srcs = [
+        "p256_isoncurve_proj.s",
+    ],
+)
+
+otbn_library(
     name = "p256_sign",
     srcs = [
         "p256_sign.s",
@@ -125,6 +151,7 @@ otbn_binary(
     deps = [
         ":p256_base",
         ":p256_isoncurve",
+        ":p256_isoncurve_proj",
         ":p256_shared_key",
         ":p256_sign",
         ":p256_verify",
@@ -156,6 +183,13 @@ otbn_library(
     name = "p384_isoncurve",
     srcs = [
         "p384_isoncurve.s",
+    ],
+)
+
+otbn_library(
+    name = "p384_isoncurve_proj",
+    srcs = [
+        "p384_isoncurve_proj.s",
     ],
 )
 
@@ -338,6 +372,7 @@ otbn_binary(
     ],
     deps = [
         ":p256_base",
+        ":p256_isoncurve",
     ],
 )
 
@@ -348,6 +383,7 @@ otbn_binary(
     ],
     deps = [
         ":p256_base",
+        ":p256_isoncurve",
     ],
 )
 
@@ -359,6 +395,7 @@ otbn_binary(
     deps = [
         ":p384_base",
         ":p384_internal_mult",
+        ":p384_isoncurve",
         ":p384_modinv",
         ":p384_sign",
     ],
@@ -376,6 +413,7 @@ otbn_binary(
         ":p384_base_mult",
         ":p384_internal_mult",
         ":p384_isoncurve",
+        ":p384_isoncurve_proj",
         ":p384_keygen",
         ":p384_keygen_from_seed",
         ":p384_modinv",
@@ -406,6 +444,20 @@ otbn_library(
     name = "sha512",
     srcs = [
         "sha512.s",
+    ],
+)
+
+otbn_library(
+    name = "sha512_interface",
+    srcs = [
+        "sha512_interface.s",
+    ],
+)
+
+otbn_library(
+    name = "sha512_padding",
+    srcs = [
+        "sha512_padding.s",
     ],
 )
 

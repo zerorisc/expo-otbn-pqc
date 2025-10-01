@@ -15,7 +15,6 @@ use crate::io::emu::Emulator;
 use crate::io::gpio::{GpioBitbanging, GpioMonitoring, GpioPin};
 use crate::io::i2c::Bus;
 use crate::io::jtag::{JtagChain, JtagParams};
-use crate::io::nonblocking_help::{NoNonblockingHelp, NonblockingHelp};
 use crate::io::spi::Target;
 use crate::io::uart::Uart;
 
@@ -27,7 +26,6 @@ pub mod hyperdebug;
 pub mod ioexpander;
 pub mod proxy;
 pub mod ti50emulator;
-pub mod ultradebug;
 pub mod verilator;
 
 // Export custom error types
@@ -159,23 +157,16 @@ pub trait Transport {
 
     /// As long as the returned `MaintainConnection` object is kept by the caller, this driver may
     /// assume that no other `opentitantool` processes attempt to access the same debugger device.
-    /// This allows for optimzations such as keeping USB handles open across function invocations.
+    /// This allows for optimizations such as keeping USB handles open across function invocations.
     fn maintain_connection(&self) -> Result<Rc<dyn MaintainConnection>> {
         // For implementations that have not implemented any optimizations, return a no-op object.
         Ok(Rc::new(()))
-    }
-
-    /// Before nonblocking operations can be used on `Uart` or other traits, this
-    /// `NonblockingHelp` object must be invoked, in order to get the `Transport` implementation a
-    /// chance to register its internal event sources with the main event loop.
-    fn nonblocking_help(&self) -> Result<Rc<dyn NonblockingHelp>> {
-        Ok(Rc::new(NoNonblockingHelp))
     }
 }
 
 /// As long as this object is kept alive, the `Transport` driver may assume that no other
 /// `opentitantool` processes attempt to access the same debugger device.  This allows for
-/// optimzations such as keeping USB handles open across function invocations.
+/// optimizations such as keeping USB handles open across function invocations.
 pub trait MaintainConnection {}
 
 /// No-op implmentation of the trait, for use by `Transport` implementations that do not do

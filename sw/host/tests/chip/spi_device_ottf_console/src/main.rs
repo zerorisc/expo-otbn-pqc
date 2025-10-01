@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use regex::Regex;
 use std::fs;
@@ -48,7 +48,7 @@ fn spi_device_console_test(opts: &Opts, transport: &TransportWrapper) -> Result<
     let mut stdout = std::io::stdout();
     let spi = transport.spi(&opts.console_spi)?;
 
-    let spi_console_device = SpiConsoleDevice::new(&*spi)?;
+    let spi_console_device = SpiConsoleDevice::new(&*spi, None)?;
     let _ = UartConsole::wait_for(&spi_console_device, r"Running [^\r\n]*", opts.timeout)?;
 
     /* Load the ELF binary and get the expect data.*/

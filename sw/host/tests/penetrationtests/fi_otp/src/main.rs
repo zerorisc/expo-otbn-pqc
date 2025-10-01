@@ -41,7 +41,14 @@ struct FiOtpTestCase {
     // Input only needed for the "Init" subcommand.
     #[serde(default)]
     input: String,
+    #[serde(default)]
+    sensors: String,
+    #[serde(default)]
+    alerts: String,
+    #[serde(default)]
     expected_output: Vec<String>,
+    #[serde(default)]
+    flaky_expected_output: Vec<String>,
 }
 
 fn filter_response(response: serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
@@ -51,12 +58,11 @@ fn filter_response(response: serde_json::Value) -> serde_json::Map<String, serde
     let mut map: serde_json::Map<String, serde_json::Value> = response_common_filtered.clone();
     // Remove these entries as the test just returns the OTP content, which could
     // be different for different configurations.
-    map.remove("hw_cfg_comp");
-    map.remove("hw_cfg_fi");
-    map.remove("owner_sw_cfg_comp");
-    map.remove("owner_sw_cfg_fi");
-    map.remove("vendor_test_comp");
-    map.remove("vendor_test_fi");
+    map.remove("partition_ref");
+    map.remove("partition_fi");
+    // Remove otp_status_codes as there could be an error already without injectin
+    // any faults.
+    map.remove("otp_status_codes");
 
     map
 }
@@ -85,6 +91,18 @@ fn run_fi_otp_testcase(
         input.send(uart)?;
     }
 
+    // Check if we need to send sensor info.
+    if !test_case.sensors.is_empty() {
+        let sensors: serde_json::Value = serde_json::from_str(test_case.sensors.as_str()).unwrap();
+        sensors.send(uart)?;
+    }
+
+    // Check if we need to send alert info.
+    if !test_case.alerts.is_empty() {
+        let alerts: serde_json::Value = serde_json::from_str(test_case.alerts.as_str()).unwrap();
+        alerts.send(uart)?;
+    }
+
     // Check test outputs
     if !test_case.expected_output.is_empty() {
         for exp_output in test_case.expected_output.iter() {
@@ -102,7 +120,7 @@ fn run_fi_otp_testcase(
                 // Check received with expected output.
                 if output_expected != output_received {
                     log::info!(
-                        "FAILED {} test #{}: expected = '{}', actual = '{}'",
+                        "FAILED {} test #{}: expected = '{}', actual = '{}'\n",
                         test_case.command,
                         test_case.test_case_id,
                         exp_output,
@@ -110,6 +128,35 @@ fn run_fi_otp_testcase(
                     );
                     *fail_counter += 1;
                 }
+            }
+        }
+    }
+
+    // Check flaky test outputs
+    if !test_case.flaky_expected_output.is_empty() {
+        for exp_output in test_case.flaky_expected_output.iter() {
+            // Get test output & filter.
+            let output = serde_json::Value::recv(uart, opts.timeout, false)?;
+            // Only check non empty JSON responses.
+            if output.as_object().is_some() {
+                let output_received = filter_response(output.clone());
+
+                // Filter expected output.
+                let exp_output: serde_json::Value =
+                    serde_json::from_str(exp_output.as_str()).unwrap();
+                let output_expected = filter_response(exp_output.clone());
+
+                // Check received with expected output.
+                if output_expected != output_received {
+                    log::info!(
+                        "Flaky result of {} test #{}: expected = '{}', actual = '{}'\n",
+                        test_case.command,
+                        test_case.test_case_id,
+                        exp_output,
+                        output
+                    );
+                }
+                // Do not let the flaky test influence the fail counter.
             }
         }
     }

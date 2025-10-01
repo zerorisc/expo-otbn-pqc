@@ -6,9 +6,7 @@
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
 //
 // util/topgen.py -t hw/top_englishbreakfast/data/top_englishbreakfast.hjson \
-//                -o hw/top_englishbreakfast/ \
-//                --rnd_cnst_seed \
-//                47496257290787239787852990649372780135330843464066774986444696694703339830170
+//                -o hw/top_englishbreakfast/
 
 package top_englishbreakfast_pkg;
   /**
@@ -272,6 +270,194 @@ package top_englishbreakfast_pkg;
   parameter int unsigned TOP_ENGLISHBREAKFAST_ROM_SIZE_BYTES = 32'h8000;
 
 
+  // Number of englishbreakfast outgoing alerts
+  parameter int unsigned NOutgoingAlertsEnglishbreakfast = 28;
+
+  // Number of LPGs for outgoing alert group englishbreakfast
+  parameter int unsigned NOutgoingLpgsEnglishbreakfast = 13;
+
+  // Enumeration of englishbreakfast outgoing alert modules
+  typedef enum int unsigned {
+    TopEnglishbreakfastAlertPeripheralUart0 = 0,
+    TopEnglishbreakfastAlertPeripheralUart1 = 1,
+    TopEnglishbreakfastAlertPeripheralGpio = 2,
+    TopEnglishbreakfastAlertPeripheralSpiDevice = 3,
+    TopEnglishbreakfastAlertPeripheralSpiHost0 = 4,
+    TopEnglishbreakfastAlertPeripheralRvTimer = 5,
+    TopEnglishbreakfastAlertPeripheralUsbdev = 6,
+    TopEnglishbreakfastAlertPeripheralPwrmgrAon = 7,
+    TopEnglishbreakfastAlertPeripheralRstmgrAon = 8,
+    TopEnglishbreakfastAlertPeripheralClkmgrAon = 9,
+    TopEnglishbreakfastAlertPeripheralPinmuxAon = 10,
+    TopEnglishbreakfastAlertPeripheralAonTimerAon = 11,
+    TopEnglishbreakfastAlertPeripheralFlashCtrl = 12,
+    TopEnglishbreakfastAlertPeripheralRvPlic = 13,
+    TopEnglishbreakfastAlertPeripheralAes = 14,
+    TopEnglishbreakfastAlertPeripheralSramCtrlMain = 15,
+    TopEnglishbreakfastAlertPeripheralRomCtrl = 16,
+    TopEnglishbreakfastAlertPeripheralRvCoreIbex = 17,
+    TopEnglishbreakfastOutgoingAlertEnglishbreakfastPeripheralCount
+  } outgoing_alert_englishbreakfast_peripheral_e;
+
+  // Enumeration of englishbreakfast outgoing alerts
+  typedef enum int unsigned {
+    TopEnglishbreakfastAlertIdUart0FatalFault = 0,
+    TopEnglishbreakfastAlertIdUart1FatalFault = 1,
+    TopEnglishbreakfastAlertIdGpioFatalFault = 2,
+    TopEnglishbreakfastAlertIdSpiDeviceFatalFault = 3,
+    TopEnglishbreakfastAlertIdSpiHost0FatalFault = 4,
+    TopEnglishbreakfastAlertIdRvTimerFatalFault = 5,
+    TopEnglishbreakfastAlertIdUsbdevFatalFault = 6,
+    TopEnglishbreakfastAlertIdPwrmgrAonFatalFault = 7,
+    TopEnglishbreakfastAlertIdRstmgrAonFatalFault = 8,
+    TopEnglishbreakfastAlertIdRstmgrAonFatalCnstyFault = 9,
+    TopEnglishbreakfastAlertIdClkmgrAonRecovFault = 10,
+    TopEnglishbreakfastAlertIdClkmgrAonFatalFault = 11,
+    TopEnglishbreakfastAlertIdPinmuxAonFatalFault = 12,
+    TopEnglishbreakfastAlertIdAonTimerAonFatalFault = 13,
+    TopEnglishbreakfastAlertIdFlashCtrlRecovErr = 14,
+    TopEnglishbreakfastAlertIdFlashCtrlFatalStdErr = 15,
+    TopEnglishbreakfastAlertIdFlashCtrlFatalErr = 16,
+    TopEnglishbreakfastAlertIdFlashCtrlFatalPrimFlashAlert = 17,
+    TopEnglishbreakfastAlertIdFlashCtrlRecovPrimFlashAlert = 18,
+    TopEnglishbreakfastAlertIdRvPlicFatalFault = 19,
+    TopEnglishbreakfastAlertIdAesRecovCtrlUpdateErr = 20,
+    TopEnglishbreakfastAlertIdAesFatalFault = 21,
+    TopEnglishbreakfastAlertIdSramCtrlMainFatalError = 22,
+    TopEnglishbreakfastAlertIdRomCtrlFatal = 23,
+    TopEnglishbreakfastAlertIdRvCoreIbexFatalSwErr = 24,
+    TopEnglishbreakfastAlertIdRvCoreIbexRecovSwErr = 25,
+    TopEnglishbreakfastAlertIdRvCoreIbexFatalHwErr = 26,
+    TopEnglishbreakfastAlertIdRvCoreIbexRecovHwErr = 27,
+    TopEnglishbreakfastOutgoingAlertEnglishbreakfastIdCount
+  } outgoing_alert_englishbreakfast_id_e;
+
+  // Enumeration of englishbreakfast outgoing alerts AsyncOn configuration
+  parameter logic [NOutgoingAlertsEnglishbreakfast-1:0] AsyncOnOutgoingAlertEnglishbreakfast = {
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1,
+    1'b1
+  };
+
+  // Enumeration of interrupts
+  typedef enum int unsigned {
+    TopEnglishbreakfastPlicIrqIdNone = 0,
+    TopEnglishbreakfastPlicIrqIdUart0TxWatermark = 1,
+    TopEnglishbreakfastPlicIrqIdUart0RxWatermark = 2,
+    TopEnglishbreakfastPlicIrqIdUart0TxDone = 3,
+    TopEnglishbreakfastPlicIrqIdUart0RxOverflow = 4,
+    TopEnglishbreakfastPlicIrqIdUart0RxFrameErr = 5,
+    TopEnglishbreakfastPlicIrqIdUart0RxBreakErr = 6,
+    TopEnglishbreakfastPlicIrqIdUart0RxTimeout = 7,
+    TopEnglishbreakfastPlicIrqIdUart0RxParityErr = 8,
+    TopEnglishbreakfastPlicIrqIdUart0TxEmpty = 9,
+    TopEnglishbreakfastPlicIrqIdUart1TxWatermark = 10,
+    TopEnglishbreakfastPlicIrqIdUart1RxWatermark = 11,
+    TopEnglishbreakfastPlicIrqIdUart1TxDone = 12,
+    TopEnglishbreakfastPlicIrqIdUart1RxOverflow = 13,
+    TopEnglishbreakfastPlicIrqIdUart1RxFrameErr = 14,
+    TopEnglishbreakfastPlicIrqIdUart1RxBreakErr = 15,
+    TopEnglishbreakfastPlicIrqIdUart1RxTimeout = 16,
+    TopEnglishbreakfastPlicIrqIdUart1RxParityErr = 17,
+    TopEnglishbreakfastPlicIrqIdUart1TxEmpty = 18,
+    TopEnglishbreakfastPlicIrqIdGpioGpio0 = 19,
+    TopEnglishbreakfastPlicIrqIdGpioGpio1 = 20,
+    TopEnglishbreakfastPlicIrqIdGpioGpio2 = 21,
+    TopEnglishbreakfastPlicIrqIdGpioGpio3 = 22,
+    TopEnglishbreakfastPlicIrqIdGpioGpio4 = 23,
+    TopEnglishbreakfastPlicIrqIdGpioGpio5 = 24,
+    TopEnglishbreakfastPlicIrqIdGpioGpio6 = 25,
+    TopEnglishbreakfastPlicIrqIdGpioGpio7 = 26,
+    TopEnglishbreakfastPlicIrqIdGpioGpio8 = 27,
+    TopEnglishbreakfastPlicIrqIdGpioGpio9 = 28,
+    TopEnglishbreakfastPlicIrqIdGpioGpio10 = 29,
+    TopEnglishbreakfastPlicIrqIdGpioGpio11 = 30,
+    TopEnglishbreakfastPlicIrqIdGpioGpio12 = 31,
+    TopEnglishbreakfastPlicIrqIdGpioGpio13 = 32,
+    TopEnglishbreakfastPlicIrqIdGpioGpio14 = 33,
+    TopEnglishbreakfastPlicIrqIdGpioGpio15 = 34,
+    TopEnglishbreakfastPlicIrqIdGpioGpio16 = 35,
+    TopEnglishbreakfastPlicIrqIdGpioGpio17 = 36,
+    TopEnglishbreakfastPlicIrqIdGpioGpio18 = 37,
+    TopEnglishbreakfastPlicIrqIdGpioGpio19 = 38,
+    TopEnglishbreakfastPlicIrqIdGpioGpio20 = 39,
+    TopEnglishbreakfastPlicIrqIdGpioGpio21 = 40,
+    TopEnglishbreakfastPlicIrqIdGpioGpio22 = 41,
+    TopEnglishbreakfastPlicIrqIdGpioGpio23 = 42,
+    TopEnglishbreakfastPlicIrqIdGpioGpio24 = 43,
+    TopEnglishbreakfastPlicIrqIdGpioGpio25 = 44,
+    TopEnglishbreakfastPlicIrqIdGpioGpio26 = 45,
+    TopEnglishbreakfastPlicIrqIdGpioGpio27 = 46,
+    TopEnglishbreakfastPlicIrqIdGpioGpio28 = 47,
+    TopEnglishbreakfastPlicIrqIdGpioGpio29 = 48,
+    TopEnglishbreakfastPlicIrqIdGpioGpio30 = 49,
+    TopEnglishbreakfastPlicIrqIdGpioGpio31 = 50,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceUploadCmdfifoNotEmpty = 51,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceUploadPayloadNotEmpty = 52,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceUploadPayloadOverflow = 53,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceReadbufWatermark = 54,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceReadbufFlip = 55,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceTpmHeaderNotEmpty = 56,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceTpmRdfifoCmdEnd = 57,
+    TopEnglishbreakfastPlicIrqIdSpiDeviceTpmRdfifoDrop = 58,
+    TopEnglishbreakfastPlicIrqIdSpiHost0Error = 59,
+    TopEnglishbreakfastPlicIrqIdSpiHost0SpiEvent = 60,
+    TopEnglishbreakfastPlicIrqIdUsbdevPktReceived = 61,
+    TopEnglishbreakfastPlicIrqIdUsbdevPktSent = 62,
+    TopEnglishbreakfastPlicIrqIdUsbdevDisconnected = 63,
+    TopEnglishbreakfastPlicIrqIdUsbdevHostLost = 64,
+    TopEnglishbreakfastPlicIrqIdUsbdevLinkReset = 65,
+    TopEnglishbreakfastPlicIrqIdUsbdevLinkSuspend = 66,
+    TopEnglishbreakfastPlicIrqIdUsbdevLinkResume = 67,
+    TopEnglishbreakfastPlicIrqIdUsbdevAvOutEmpty = 68,
+    TopEnglishbreakfastPlicIrqIdUsbdevRxFull = 69,
+    TopEnglishbreakfastPlicIrqIdUsbdevAvOverflow = 70,
+    TopEnglishbreakfastPlicIrqIdUsbdevLinkInErr = 71,
+    TopEnglishbreakfastPlicIrqIdUsbdevRxCrcErr = 72,
+    TopEnglishbreakfastPlicIrqIdUsbdevRxPidErr = 73,
+    TopEnglishbreakfastPlicIrqIdUsbdevRxBitstuffErr = 74,
+    TopEnglishbreakfastPlicIrqIdUsbdevFrame = 75,
+    TopEnglishbreakfastPlicIrqIdUsbdevPowered = 76,
+    TopEnglishbreakfastPlicIrqIdUsbdevLinkOutErr = 77,
+    TopEnglishbreakfastPlicIrqIdUsbdevAvSetupEmpty = 78,
+    TopEnglishbreakfastPlicIrqIdPwrmgrAonWakeup = 79,
+    TopEnglishbreakfastPlicIrqIdAonTimerAonWkupTimerExpired = 80,
+    TopEnglishbreakfastPlicIrqIdAonTimerAonWdogTimerBark = 81,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlProgEmpty = 82,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlProgLvl = 83,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlRdFull = 84,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlRdLvl = 85,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlOpDone = 86,
+    TopEnglishbreakfastPlicIrqIdFlashCtrlCorrErr = 87,
+    TopEnglishbreakfastPlicIrqIdCount
+  } interrupt_rv_plic_id_e;
+
+
   // Enumeration of IO power domains.
   // Only used in ASIC target.
   typedef enum logic [2:0] {
@@ -491,8 +677,12 @@ package top_englishbreakfast_pkg;
     PeripheralCount
   } peripheral_e;
 
+  // MMIO Region
+  //
+  parameter int unsigned TOP_ENGLISHBREAKFAST_MMIO_BASE_ADDR = 32'h40000000;
+  parameter int unsigned TOP_ENGLISHBREAKFAST_MMIO_SIZE_BYTES = 32'h10000000;
+
   // TODO: Enumeration for PLIC Interrupt source peripheral.
-  // TODO: Enumeration for PLIC Interrupt Ids.
 
 // MACROs for AST analog simulation support
 `ifdef ANALOGSIM

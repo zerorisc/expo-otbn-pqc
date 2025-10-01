@@ -16,8 +16,10 @@ from elftools.elf.elffile import ELFFile  # type: ignore
 from elftools.elf.sections import SymbolTableSection  # type: ignore
 
 from shared.check import CheckResult
+from shared.elf import read_elf
 from shared.reg_dump import parse_reg_dump
 from shared.dmem_dump import parse_dmem_exp, parse_actual_dmem
+from shared.testcase import OtbnTestCase
 
 # Names of special registers
 ERR_BITS = 'ERR_BITS'
@@ -87,21 +89,42 @@ def main() -> int:
                         help=('File containing expected dmem values. '
                               'Addresses that are not listed are allowed to '
                               'have any value.'))
+    parser.add_argument('--testcase',
+                        metavar='FILE',
+                        type=argparse.FileType('r'),
+                        help='Path to a testcase hjson file.')
     parser.add_argument('elf',
                         help='Path to the .elf file for the OTBN program.')
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
 
+    if args.testcase and (args.expected_dmem or args.expected_regs):
+        parser.error("Cannot specify --testcase together with --expected_dmem or --expected_regs.")
+
+    _, _, symbols = read_elf(args.elf)
+
     # Parse expected values.
     result = CheckResult()
+
+    cmd_flags = []
+
+    testcase = None
+    if args.testcase:
+        testcase = OtbnTestCase.from_hjson(args.testcase.read(), symbols)
+        cmd_flags.extend([
+            "--testcase",
+            args.testcase.name,
+        ])
 
     with tempfile.NamedTemporaryFile() as regs_file, tempfile.NamedTemporaryFile() as dmem_file:
         cmd = [
             args.simulator,
+            *cmd_flags,
             "--dump-regs",
             regs_file.name,
             "--dump-dmem",
             dmem_file.name,
+            "--",
             args.elf,
         ]
         # Run the simulation and produce a register and dmem dump.
@@ -109,17 +132,28 @@ def main() -> int:
             cmd, check=True, universal_newlines=True
         )
 
-        if args.expected_dmem is not None:
-            dmem_file.seek(0)
-            actual_dmem = parse_actual_dmem(dmem_file.read())
-            expected_dmem = parse_dmem_exp(args.expected_dmem.read())
-
+        dmem_file.seek(0)
+        actual_dmem = parse_actual_dmem(dmem_file.read())
         actual_regs = parse_reg_dump(regs_file.read().decode('utf-8'))
 
     expected_err = 0
+    expected_regs = {}
     if args.expected_regs is not None:
         expected_regs = parse_reg_dump(args.expected_regs.read())
-        expected_err = expected_regs.get(ERR_BITS, 0)
+
+    expected_dmem = {}
+    if args.expected_dmem is not None:
+        expected_dmem = parse_dmem_exp(args.expected_dmem.read())
+
+    if testcase:
+        expected_dmem = testcase.output.dmem
+        expected_regs = testcase.output.regs
+
+    expected_err = expected_regs.get(ERR_BITS, 0)
+
+    if testcase and testcase.entrypoint and not expected_err:
+        # expect call stack error since we overwrite the entrypoint.
+        expected_err = 0x00000004
 
     # Special handling for the ERR_BITS register.
     actual_err = actual_regs[ERR_BITS]
@@ -137,19 +171,18 @@ def main() -> int:
                        f"  {STOP_PC}\t= {stop_pc:#010x}")
 
     else:
-        if args.expected_regs is not None:
-            for reg, expected_value in expected_regs.items():
-                actual_value = actual_regs.get(reg, None)
-                if actual_value != expected_value:
-                    if reg.startswith("w"):
-                        expected_str = f"{expected_value:#066x}"
-                        actual_str = f"{actual_value:#066x}"
-                    else:
-                        expected_str = f"{expected_value:#010x}"
-                        actual_str = f"{actual_value:#010x}"
-                    result.err(f"Mismatch for register {reg}:\n"
-                               f"  Expected: {expected_str}\n"
-                               f"  Actual:   {actual_str}")
+        for reg, expected_value in expected_regs.items():
+            actual_value = actual_regs.get(reg, None)
+            if actual_value != expected_value:
+                if reg.startswith("w"):
+                    expected_str = f"{expected_value:#066x}"
+                    actual_str = f"{actual_value:#066x}"
+                else:
+                    expected_str = f"{expected_value:#010x}"
+                    actual_str = f"{actual_value:#010x}"
+                result.err(f"Mismatch for register {reg}:\n"
+                           f"  Expected: {expected_str}\n"
+                           f"  Actual:   {actual_str}")
 
         if args.expected_dmem is not None:
             elf_file = ELFFile(open(args.elf, 'rb'))

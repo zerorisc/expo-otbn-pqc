@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+`include "prim_assert.sv"
+
 /**
  * ExtWLEN (312b) Wide Register File (WDRs)
  *
@@ -50,7 +52,7 @@ module otbn_rf_bignum_ff
       .out_o(wr_data_blanked)
     );
 
-    // Split registers into halves for clear seperation for the enable terms
+    // Split registers into halves for clear separation for the enable terms
     always_ff @(posedge clk_i) begin
       if (rf_predec_bignum_i.rf_we[i] & we_onehot[i][0]) begin
         rf[i][0+:ExtWLEN/2] <= wr_data_blanked[0+:ExtWLEN/2];

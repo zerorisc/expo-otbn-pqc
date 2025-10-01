@@ -10,7 +10,9 @@ module soc_dbg_ctrl
   import soc_dbg_ctrl_pkg::*;
   import soc_dbg_ctrl_reg_pkg::*;
 #(
-  parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}}
+  parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}},
+  // Number of cycles a differential skew is tolerated on the alert signal
+  parameter int unsigned AlertSkewCycles = 1
 ) (
   input logic                                       clk_i,
   input logic                                       rst_ni,
@@ -52,20 +54,20 @@ module soc_dbg_ctrl
   logic policy_shadowed_storage_err, policy_shadowed_update_err;
   logic [NumAlerts-1:0] alert_test, alert;
 
-  assign alert_test = {
-    core_reg2hw.alert_test.fatal_fault.q &
-    core_reg2hw.alert_test.fatal_fault.qe,
-    core_reg2hw.alert_test.recov_ctrl_update_err.q &
-    core_reg2hw.alert_test.recov_ctrl_update_err.qe
-  };
   assign alert[0] = core_tl_intg_err | jtag_tl_intg_err | shadowed_storage_err |
                     policy_shadowed_storage_err | halt_fsm_err;
   assign alert[1] = shadowed_update_err | policy_shadowed_update_err;
+
+  assign alert_test[0] = core_reg2hw.alert_test.fatal_fault.q &
+                         core_reg2hw.alert_test.fatal_fault.qe;
+  assign alert_test[1] = core_reg2hw.alert_test.recov_ctrl_update_err.q &
+                         core_reg2hw.alert_test.recov_ctrl_update_err.qe;
 
   localparam logic [NumAlerts-1:0] IsFatal = {1'b0, 1'b1};
   for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
     prim_alert_sender #(
       .AsyncOn(AlertAsyncOn[i]),
+      .SkewCycles(AlertSkewCycles),
       .IsFatal(IsFatal[i])
     ) u_prim_alert_sender (
       .clk_i,

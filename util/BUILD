@@ -13,6 +13,7 @@ filegroup(
     name = "doc_files",
     srcs = glob(["**/*.md"]) + [
         "//util/design:doc_files",
+        "//util/dtgen:doc_files",
         "//util/dvsim:doc_files",
         "//util/fpvgen:doc_files",
         "//util/i2csvg:doc_files",
@@ -64,6 +65,7 @@ py_binary(
         "//util/reggen:gen_selfdoc",
         "//util/reggen:gen_tock",
         "//util/reggen:ip_block",
+        "//util/reggen:systemrdl_exporter",
         "//util/reggen:version",
         requirement("tabulate"),
     ],
@@ -91,6 +93,7 @@ py_binary(
     ],
     deps = [
         "//util/dtgen:helper",
+        "//util/dtgen:ipgen_ext",
         "//util/ipgen",
         "//util/reggen:ip_block",
         "//util/reggen:version",
@@ -107,14 +110,6 @@ py_binary(
         "//util/topgen",
         requirement("mako"),
         requirement("hjson"),
-    ],
-)
-
-py_test(
-    name = "generate_compilation_db_test",
-    srcs = [
-        "generate_compilation_db.py",
-        "generate_compilation_db_test.py",
     ],
 )
 
@@ -175,4 +170,9 @@ py_binary(
     name = "mdbook_toolversion",
     srcs = ["mdbook_toolversion.py"],
     deps = ["//hw:check_tool_requirements"],
+)
+
+py_binary(
+    name = "gen_stamped_tarball",
+    srcs = ["gen_stamped_tarball.py"],
 )

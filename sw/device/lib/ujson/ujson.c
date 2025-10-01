@@ -17,8 +17,9 @@
 static bool is_space(int c) { return c == ' ' || (c >= '\t' && c < '\t' + 5); }
 
 ujson_t ujson_init(void *context, status_t (*getc)(void *),
-                   status_t (*putbuf)(void *, const char *, size_t)) {
-  ujson_t u = UJSON_INIT(context, getc, putbuf);
+                   status_t (*putbuf)(void *, const char *, size_t),
+                   status_t (*flushbuf)(void *)) {
+  ujson_t u = UJSON_INIT(context, getc, putbuf, flushbuf);
   return u;
 }
 
@@ -30,6 +31,16 @@ status_t ujson_putbuf(ujson_t *uj, const char *buf, size_t len) {
   crc32_add(&uj->crc32, buf, len);
   return uj->putbuf(uj->io_context, buf, len);
 }
+
+static size_t ujson_putbuf_sink(ujson_t *uj, const char *buf, size_t len) {
+  status_t result = ujson_putbuf(uj, buf, len);
+  if (!status_ok(result)) {
+    return 0;
+  }
+  return (size_t)result.value;
+}
+
+status_t ujson_flushbuf(ujson_t *uj) { return uj->flushbuf(uj->io_context); }
 
 status_t ujson_getc(ujson_t *uj) {
   int16_t buffer = uj->buffer;
@@ -413,7 +424,7 @@ status_t ujson_deserialize_status_t(ujson_t *uj, status_t *value) {
 status_t ujson_serialize_status_t(ujson_t *uj, const status_t *value) {
   buffer_sink_t out = {
       .data = uj,
-      .sink = (size_t(*)(void *, const char *, size_t))ujson_putbuf,
+      .sink = (sink_func_ptr)ujson_putbuf_sink,
   };
   base_fprintf(out, "%!r", *value);
   return OK_STATUS();

@@ -3,15 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unittests for device_id.py module."""
 
-import binascii
 import unittest
 
 import hjson
 from device_id import DeviceId, DeviceIdentificationNumber
 from sku_config import SkuConfig
-from util import bytes_to_int, format_hex
+from util import bcd_encode, bytes_to_int, format_hex
 
-_SIVAL_SKU_CONFIG = "sw/host/provisioning/orchestrator/configs/skus/sival.hjson"
+_SIVAL_SKU_CONFIG = "sw/host/provisioning/orchestrator/configs/skus/emulation.hjson"
 
 
 class TestDeviceId(unittest.TestCase):
@@ -58,7 +57,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=1)))
 
     def test_din_week_field(self):
-        expected_field = 49
+        expected_field = bcd_encode(49)
         actual_field = (self.device_id.to_int() >> 36) & 0xff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -66,7 +65,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=2)))
 
     def test_din_lot_field(self):
-        expected_field = 343
+        expected_field = bcd_encode(343)
         actual_field = (self.device_id.to_int() >> 44) & 0xfff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -74,7 +73,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=3)))
 
     def test_din_wafer_field(self):
-        expected_field = 72
+        expected_field = bcd_encode(72)
         actual_field = (self.device_id.to_int() >> 56) & 0xff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -82,7 +81,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=2)))
 
     def test_din_wafer_x_coord_field(self):
-        expected_field = 635
+        expected_field = bcd_encode(635)
         actual_field = (self.device_id.to_int() >> 64) & 0xfff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -90,7 +89,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=3)))
 
     def test_din_wafer_y_coord_field(self):
-        expected_field = 242
+        expected_field = bcd_encode(242)
         actual_field = (self.device_id.to_int() >> 76) & 0xfff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -105,10 +104,8 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(actual_field, width=2),
                 format_hex(expected_field, width=2)))
 
-    def test_crc32_field(self):
-        expected_field = binascii.crc32(
-            ((self.din.to_int() << 32) | 0x00024001).to_bytes(
-                length=12, byteorder="little"))
+    def test_uid_reserved_field(self):
+        expected_field = 0
         actual_field = (self.device_id.to_int() >> 96) & 0xffffffff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -132,7 +129,7 @@ class TestDeviceId(unittest.TestCase):
                 format_hex(expected_field, width=4)))
 
     def test_sku_id_field(self):
-        expected_field = bytes_to_int("AVIS".encode("utf-8"))
+        expected_field = bytes_to_int("LUME".encode("utf-8"))
         actual_field = (self.device_id.to_int() >> 160) & 0xffffffff
         self.assertEqual(
             actual_field, expected_field, "actual: {}, expected: {}.".format(
@@ -149,6 +146,19 @@ class TestDeviceId(unittest.TestCase):
 
     def test_pretty_print(self):
         self.device_id.pretty_print()
+
+    def test_from_hexstr(self):
+        # Simulate getting a different base ID from CP stage.
+        din = DeviceIdentificationNumber(year=5,
+                                         week=12,
+                                         lot=398,
+                                         wafer=12,
+                                         wafer_x_coord=200,
+                                         wafer_y_coord=100)
+        expected = DeviceId(sku_config=self.sku_config, din=din)
+        hexstr = expected.to_hexstr()
+        actual = DeviceId.from_hexstr(hexstr)
+        self.assertEqual(expected.to_int(), actual.to_int())
 
 
 if __name__ == '__main__':

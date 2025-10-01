@@ -115,7 +115,7 @@ task pattgen_scoreboard::process_tl_access(tl_seq_item   item,
 
     // process the csr req
     // for write, update local variable and fifo at address phase
-    // for read, update predication at address phase and compare at data phase
+    // for read, update prediction at address phase and compare at data phase
     case (csr.get_name())
       "size": begin
         reg_value = ral.size.get_mirrored_value();
@@ -274,7 +274,7 @@ function void pattgen_scoreboard::generate_exp_items(uint channel, bit error_inj
       pattgen_item exp_item;
       exp_item = pattgen_item::type_id::create("exp_item");
       // see the specification document, the effective values of prediv, len, and reps
-      // are incremented from the coresponding register values
+      // are incremented from the corresponding register values
       for (uint r = 0; r <= channel_cfg[channel].reps; r++) begin
         for (uint l = 0; l <= channel_cfg[channel].len; l++) begin
           exp_item.data_q.push_back(channel_cfg[channel].data[l]);

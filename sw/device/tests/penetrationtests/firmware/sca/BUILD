@@ -25,6 +25,97 @@ cc_library(
 )
 
 cc_library(
+    name = "cryptolib_sca_sym",
+    srcs = ["cryptolib_sca_sym.c"],
+    hdrs = ["cryptolib_sca_sym.h"],
+    deps = [
+        "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/dif:rv_core_ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/lib/ujson",
+        "//sw/device/sca/lib:prng",
+        "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
+        "//sw/device/tests/penetrationtests/firmware/sca:cryptolib_sca_sym_impl",
+        "//sw/device/tests/penetrationtests/json:cryptolib_sca_sym_commands",
+    ],
+)
+
+cc_library(
+    name = "cryptolib_sca_asym",
+    srcs = ["cryptolib_sca_asym.c"],
+    hdrs = ["cryptolib_sca_asym.h"],
+    deps = [
+        "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/dif:rv_core_ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/lib/ujson",
+        "//sw/device/sca/lib:prng",
+        "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
+        "//sw/device/tests/penetrationtests/firmware/sca:cryptolib_sca_asym_impl",
+        "//sw/device/tests/penetrationtests/json:cryptolib_sca_asym_commands",
+    ],
+)
+
+cc_library(
+    name = "cryptolib_sca_asym_impl",
+    srcs = ["cryptolib_sca_asym_impl.c"],
+    hdrs = [
+        "cryptolib_sca_asym_impl.h",
+        "//sw/device/tests/penetrationtests/firmware/lib:cryptolib_asym.h",
+    ],
+    deps = [
+        "//sw/device/lib/base:math",
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/crypto/impl:ecc_p256",
+        "//sw/device/lib/crypto/impl:ecc_p384",
+        "//sw/device/lib/crypto/impl:integrity",
+        "//sw/device/lib/crypto/impl:key_transport",
+        "//sw/device/lib/crypto/impl:keyblob",
+        "//sw/device/lib/crypto/impl:rsa",
+        "//sw/device/lib/crypto/impl:sha2",
+        "//sw/device/lib/crypto/include:crypto_hdrs",
+        "//sw/device/lib/crypto/include:datatypes",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing/test_framework:check",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
+        "//sw/device/tests/penetrationtests/json:cryptolib_sca_asym_commands",
+    ],
+)
+
+cc_library(
+    name = "cryptolib_sca_sym_impl",
+    srcs = ["cryptolib_sca_sym_impl.c"],
+    hdrs = [
+        "cryptolib_sca_sym_impl.h",
+        "//sw/device/tests/penetrationtests/firmware/lib:cryptolib_sym.h",
+    ],
+    deps = [
+        "//sw/device/lib/base:memory",
+        "//sw/device/lib/base:status",
+        "//sw/device/lib/crypto/impl:aes",
+        "//sw/device/lib/crypto/impl:aes_gcm",
+        "//sw/device/lib/crypto/impl:drbg",
+        "//sw/device/lib/crypto/impl:hmac",
+        "//sw/device/lib/crypto/impl:integrity",
+        "//sw/device/lib/crypto/impl:keyblob",
+        "//sw/device/lib/crypto/include:crypto_hdrs",
+        "//sw/device/lib/crypto/include:datatypes",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing/test_framework:ujson_ottf",
+        "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
+        "//sw/device/tests/penetrationtests/json:cryptolib_sca_sym_commands",
+    ],
+)
+
+cc_library(
     name = "ecc256_keygen_sca",
     srcs = ["ecc256_keygen_sca.c"],
     hdrs = ["ecc256_keygen_sca.h"],
@@ -65,24 +156,6 @@ cc_library(
         "//sw/device/sca/lib:prng",
         "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
         "//sw/device/tests/penetrationtests/json:edn_sca_commands",
-    ],
-)
-
-cc_library(
-    name = "extclk_sca_fi",
-    srcs = ["extclk_sca_fi.c"],
-    hdrs = ["extclk_sca_fi.h"],
-    deps = [
-        "//sw/device/lib/base:memory",
-        "//sw/device/lib/base:multibits",
-        "//sw/device/lib/base:status",
-        "//sw/device/lib/dif:clkmgr",
-        "//sw/device/lib/runtime:ibex",
-        "//sw/device/lib/runtime:log",
-        "//sw/device/lib/testing/test_framework:check",
-        "//sw/device/lib/testing/test_framework:ujson_ottf",
-        "//sw/device/lib/ujson",
-        "//sw/device/tests/penetrationtests/json:extclk_sca_fi_commands",
     ],
 )
 
@@ -163,6 +236,7 @@ cc_library(
         "//sw/device/sca/lib:prng",
         "//sw/device/tests/penetrationtests/firmware/lib:pentest_lib",
         "//sw/device/tests/penetrationtests/firmware/sca/otbn:otbn_insn_carry_flag",
+        "//sw/device/tests/penetrationtests/firmware/sca/otbn:otbn_insn_combi_ops",
         "//sw/device/tests/penetrationtests/firmware/sca/otbn:otbn_key_sideload_sca",
         "//sw/device/tests/penetrationtests/json:otbn_sca_commands",
         "//sw/otbn/crypto:p256_ecdsa_sca",
@@ -172,13 +246,12 @@ cc_library(
 
 cc_library(
     name = "prng_sca",
-    srcs = ["prng_sca.c"],
-    hdrs = ["prng_sca.h"],
+    srcs = ["rng_sca.c"],
+    hdrs = ["rng_sca.h"],
     deps = [
         "//sw/device/lib/base:memory",
         "//sw/device/lib/base:status",
         "//sw/device/lib/runtime:log",
-        "//sw/device/lib/testing/test_framework:ujson_ottf",
         "//sw/device/lib/ujson",
         "//sw/device/sca/lib:prng",
         "//sw/device/tests/penetrationtests/json:prng_sca_commands",

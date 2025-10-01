@@ -18,8 +18,8 @@ package otp_ctrl_part_pkg;
   // Scrambling Constants and Types //
   ////////////////////////////////////
 
-  parameter int NumScrmblKeys = ${len(otp_mmap["scrambling"]["keys"])};
-  parameter int NumDigestSets = ${len(otp_mmap["scrambling"]["digests"])};
+  parameter int NumScrmblKeys = ${otp_mmap["scrambling"]["num_keys"]};
+  parameter int NumDigestSets = ${otp_mmap["scrambling"]["num_digests"]};
 
   parameter int ScrmblKeySelWidth = vbits(NumScrmblKeys);
   parameter int DigestSetSelWidth = vbits(NumDigestSets);
@@ -48,29 +48,6 @@ package otp_ctrl_part_pkg;
 % endfor
   } digest_sel_e;
 
-  // SEC_CM: SECRET.MEM.SCRAMBLE
-  parameter key_array_t RndCnstKey = {
-% for key in otp_mmap["scrambling"]["keys"][::-1]:
-    ${"{0:}'h{1:0X}".format(otp_mmap["scrambling"]["key_size"] * 8, key["value"])}${"" if loop.last else ","}
-% endfor
-  };
-
-  // SEC_CM: PART.MEM.DIGEST
-  // Note: digest set 0 is used for computing the partition digests. Constants at
-  // higher indices are used to compute the scrambling keys.
-  parameter digest_const_array_t RndCnstDigestConst = {
-% for dig in otp_mmap["scrambling"]["digests"][::-1]:
-    ${"{0:}'h{1:0X}".format(otp_mmap["scrambling"]["cnst_size"] * 8, dig["cnst_value"])}${"" if loop.last else ","}
-% endfor
-  };
-
-  parameter digest_iv_array_t RndCnstDigestIV = {
-% for dig in otp_mmap["scrambling"]["digests"][::-1]:
-    ${"{0:}'h{1:0X}".format(otp_mmap["scrambling"]["iv_size"] * 8, dig["iv_value"])}${"" if loop.last else ","}
-% endfor
-  };
-
-
   /////////////////////////////////////
   // Typedefs for Partition Metadata //
   /////////////////////////////////////
@@ -97,6 +74,7 @@ package otp_ctrl_part_pkg;
     logic integrity;        // Whether the partition is integrity protected
     logic iskeymgr_creator; // Whether the partition has any creator key material
     logic iskeymgr_owner;   // Whether the partition has any owner key material
+    logic zeroizable;       // Whether the partition can be zeroized
   } part_info_t;
 
   parameter part_info_t PartInfoDefault = '{
@@ -111,7 +89,8 @@ package otp_ctrl_part_pkg;
       read_lock:        1'b0,
       integrity:        1'b0,
       iskeymgr_creator: 1'b0,
-      iskeymgr_owner:   1'b0
+      iskeymgr_owner:   1'b0,
+      zeroizable:       1'b0
   };
 
   ////////////////////////
@@ -133,7 +112,8 @@ package otp_ctrl_part_pkg;
       read_lock:        1'b${"1" if part["read_lock"].lower() == "digest" else "0"},
       integrity:        1'b${"1" if part["integrity"] else "0"},
       iskeymgr_creator: 1'b${"1" if part["iskeymgr_creator"] else "0"},
-      iskeymgr_owner:   1'b${"1" if part["iskeymgr_owner"] else "0"}
+      iskeymgr_owner:   1'b${"1" if part["iskeymgr_owner"] else "0"},
+      zeroizable:       1'b${"1" if part["zeroizable"] else "0"}
     }${"" if loop.last else ","}
 % endfor
   };
@@ -158,38 +138,26 @@ package otp_ctrl_part_pkg;
   % if part["bkout_type"]:
   typedef struct packed {<% offset = part['offset'] + part['size'] %>
     % for item in part["items"][::-1]:
-      % if offset != item['offset'] + item['size']:
+      ## Skip digest and zeroization marker
+      % if not item['isdigest'] and not item['iszer']:
+        ## Deal with unallocated items
+        % if offset != item['offset'] + item['size']:
     logic [${(offset - item['size'] - item['offset']) * 8 - 1}:0] unallocated;<% offset = item['offset'] + item['size'] %>
-      % endif
+        % endif
 <%
   if item['ismubi']:
     item_type = 'prim_mubi_pkg::mubi' + str(item["size"]*8) + '_t'
   else:
     item_type = 'logic [' + str(int(item["size"])*8-1) + ':0]'
 %>\
-    ${item_type} ${item["name"].lower()};<% offset -= item['size'] %>
+    ${item_type} ${item["name"].lower()};
+      % endif
+<% offset -= item['size'] %>\
     % endfor
   } otp_${part["name"].lower()}_data_t;
-
-  // default value used for intermodule
-  parameter otp_${part["name"].lower()}_data_t OTP_${part["name"].upper()}_DATA_DEFAULT = '{<% offset = part['offset'] + part['size'] %>
-  % for k, item in enumerate(part["items"][::-1]):
-    % if offset != item['offset'] + item['size']:
-    unallocated: ${"{}'h{:0X}".format((offset - item['size'] - item['offset']) * 8, 0)}<% offset = item['offset'] + item['size'] %>,
-    % endif
-<%
-  if item['ismubi']:
-    item_cast_pre = "prim_mubi_pkg::mubi" + str(item["size"]*8) + "_t'("
-    item_cast_post = ")"
-  else:
-    item_cast_pre = ""
-    item_cast_post = ""
-%>\
-    ${item["name"].lower()}: ${item_cast_pre}${"{}'h{:0X}".format(item["size"] * 8, item["inv_default"])}${item_cast_post}${"," if k < len(part["items"])-1 else ""}<% offset -= item['size'] %>
-  % endfor
-  };
   % endif
 % endfor
+
   typedef struct packed {
     // This reuses the same encoding as the life cycle signals for indicating valid status.
     lc_ctrl_pkg::lc_tx_t valid;
@@ -199,37 +167,6 @@ package otp_ctrl_part_pkg;
   % endif
 % endfor
   } otp_broadcast_t;
-
-  // default value for intermodule
-<%
-  k = 0
-  num_bkout = 0
-  for part in otp_mmap["partitions"]:
-    if part["bkout_type"]:
-      num_bkout += 1
-%>\
-  parameter otp_broadcast_t OTP_BROADCAST_DEFAULT = '{
-    valid: lc_ctrl_pkg::Off,
-% for part in otp_mmap["partitions"][::-1]:
-  % if part["bkout_type"]:
-    ${part["name"].lower()}_data: OTP_${part["name"].upper()}_DATA_DEFAULT${"" if k == num_bkout-1 else ","}
-<% k+=1 %>\
-  % endif
-% endfor
-  };
-
-<% offset =  int(otp_mmap["partitions"][-1]["offset"]) + int(otp_mmap["partitions"][-1]["size"]) %>
-  // OTP invalid partition default for buffered partitions.
-  parameter logic [${offset * 8 - 1}:0] PartInvDefault = ${offset * 8}'({
-  % for k, part in enumerate(otp_mmap["partitions"][::-1]):
-    ${int(part["size"])*8}'({
-    % for item in part["items"][::-1]:
-      % if offset != item['offset'] + item['size']:
-      ${"{}'h{:0X}".format((offset - item['size'] - item['offset']) * 8, 0)}, // unallocated space<% offset = item['offset'] + item['size'] %>
-      % endif
-      ${"{}'h{:0X}".format(item["size"] * 8, item["inv_default"])}${("\n    })," if k < len(otp_mmap["partitions"])-1 else "\n    })});") if loop.last else ","}<% offset -= item['size'] %>
-    % endfor
-  % endfor
 
   ///////////////////////////////////////////////
   // Parameterized Assignment Helper Functions //
@@ -272,9 +209,12 @@ package otp_ctrl_part_pkg;
     return part_access_pre;
   endfunction : named_part_access_pre
 
+  // Create the broadcast data from specific partitions excluding digests since they
+  // are of no use for consumers of this data.
+<% offset = int(otp_mmap["partitions"][-1]["offset"]) + int(otp_mmap["partitions"][-1]["size"]) %>\
   function automatic otp_broadcast_t named_broadcast_assign(
       logic [NumPart-1:0] part_init_done,
-      logic [$bits(PartInvDefault)/8-1:0][7:0] part_buf_data);
+      logic [${offset-1}:0][7:0] part_buf_data);
     otp_broadcast_t otp_broadcast;
     logic valid, unused;
     unused = 1'b0;
@@ -286,7 +226,22 @@ package otp_ctrl_part_pkg;
 %>\
   % if part["bkout_type"]:
     valid &= part_init_done[${part_name_camel}Idx];
-    otp_broadcast.${part["name"].lower()}_data = otp_${part["name"].lower()}_data_t'(part_buf_data[${part_name_camel}Offset +: ${part_name_camel}Size]);
+<%
+has_unused_chunk = False
+part_regular_size = part_name_camel + "Size"
+if (part["hw_digest"] or part["sw_digest"]) and part["zeroizable"]:
+  has_unused_chunk = True
+  skip_size = 16
+  part_regular_size = f"({part_regular_size} - {skip_size})"
+elif part["hw_digest"] or part["sw_digest"] or part["zeroizable"]:
+  has_unused_chunk = True
+  skip_size = 8
+  part_regular_size = f"({part_regular_size} - {skip_size})"
+%>\
+    otp_broadcast.${part["name"].lower()}_data = otp_${part["name"].lower()}_data_t'(part_buf_data[${part_name_camel}Offset +: ${part_regular_size}]);
+    % if has_unused_chunk:
+    unused ^= ^part_buf_data[${part_name_camel}Offset + ${part_regular_size} +: ${skip_size}];
+    % endif
   % else:
     unused ^= ^{part_init_done[${part_name_camel}Idx],
                 part_buf_data[${part_name_camel}Offset +: ${part_name_camel}Size]};
@@ -298,7 +253,8 @@ package otp_ctrl_part_pkg;
 
   function automatic otp_keymgr_key_t named_keymgr_key_assign(
       logic [NumPart-1:0][ScrmblBlockWidth-1:0] part_digest,
-      logic [$bits(PartInvDefault)/8-1:0][7:0] part_buf_data,
+      logic [${offset-1}:0][7:0] part_buf_data,
+      logic [${offset*8-1}:0] part_inv_default,
       lc_ctrl_pkg::lc_tx_t lc_seed_hw_rd_en);
     otp_keymgr_key_t otp_keymgr_key;
     logic valid, unused;
@@ -325,7 +281,7 @@ package otp_ctrl_part_pkg;
           part_buf_data[${item_name_camel}Offset +: ${item_name_camel}Size];
     end else begin
       otp_keymgr_key.${item["name"].lower()} =
-          PartInvDefault[${item_name_camel}Offset*8 +: ${item_name_camel}Size*8];
+          part_inv_default[${item_name_camel}Offset*8 +: ${item_name_camel}Size*8];
     end
       % else:
         % if not item["isdigest"]:

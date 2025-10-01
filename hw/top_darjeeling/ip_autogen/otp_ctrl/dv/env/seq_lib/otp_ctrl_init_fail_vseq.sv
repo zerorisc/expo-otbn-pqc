@@ -1,4 +1,5 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -17,7 +18,7 @@
 // - Status register reflect the correct error
 // - Otp_ctrl's power init output stays 0
 // This sequence will check the following items if OTP init failed with correctable error:
-// - Otp_initialtion passed with power init output changes to 1
+// - Otp_initialization passed with power init output changes to 1
 // - Otp status and interrupt reflect the correct error message
 
 class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
@@ -31,8 +32,8 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
 
   // If num_to_lock_digests is larger than num_dai_op, that means there won't be OTP init check
   // error, so this sequence will trigger ECC error instead.
-  // We set 25% possibility that OTP init check fails due to writing OTP after digest is locked.
-  constraint lock_digest_c {num_to_lock_digests < num_dai_op * 4;}
+  // We set 50% possibility that OTP init check fails due to writing OTP after digest is locked.
+  constraint lock_digest_c {num_to_lock_digests < num_dai_op * 2;}
   constraint num_iterations_c {num_dai_op inside {[20:100]};}
   constraint ecc_otp_err_c {
     $countones(ecc_otp_err) dist {OtpNoEccErr     :/ 2,
@@ -72,7 +73,7 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
       // If write sw partitions, check tlul window
       if (is_sw_part(dai_addr)) begin
         uvm_reg_addr_t tlul_addr = cfg.ral.get_addr_from_offset(get_sw_window_offset(dai_addr));
-        tl_access(.addr(tlul_addr), .write(0), .data(tlul_val), .blocking(1), .check_rsp(0));
+        tl_access(.addr(tlul_addr), .write(0), .data(tlul_val), .blocking(1), .check_err_rsp(0));
       end
 
       if (i == num_to_lock_digests) begin
@@ -92,7 +93,7 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
       `uvm_info(`gfn, $sformatf("OTP_init check failure with init error = %0h", init_chk_err),
                 UVM_LOW)
       foreach(init_chk_err[i]) begin
-  if (cfg.stop_transaction_generators()) break;
+        if (cfg.stop_transaction_generators()) break;
         if (init_chk_err[i]) exp_status |= 1'b1 << i;
       end
 
@@ -112,7 +113,7 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
           addr = PART_OTP_DIGEST_ADDRS[i] << 2;
         end else begin
           // During OTP init, non SW partitions read all value
-          addr = $urandom_range(PartInfo[i].offset, PartInfo[i].offset + PartInfo[i].size - 1);
+          addr = PartInfo[i].offset + $urandom_range(0, PartInfo[i].size - 1);
         end
 
         void'(backdoor_inject_ecc_err(addr, ecc_otp_err));
@@ -132,7 +133,7 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
       end else if ($urandom_range(0, 1)) begin
 
         // Randomly force ECC reg in sw partitions to create a check failure.
-        // Totaly three sw partitions, and each bit indexes a partition.
+        // Totally three sw partitions, and each bit indexes a partition.
         bit [NumPartUnbuf-1:0] sw_check_fail = $urandom_range(1, (1'b1<<NumPartUnbuf)-1);
         cfg.otp_ctrl_vif.force_sw_check_fail(sw_check_fail);
         `uvm_info(`gfn, $sformatf("OTP_init SW ECC check failure with index %0h", sw_check_fail),
@@ -185,10 +186,9 @@ class otp_ctrl_init_fail_vseq extends otp_ctrl_smoke_vseq;
 
     cfg.otp_ctrl_vif.drive_pwr_otp_init(1);
 
-    // Wait until OTP_INIT process the error
-    `DV_SPINWAIT_EXIT(wait(cfg.m_alert_agent_cfgs[alert_name].vif.alert_tx_final.alert_p);,
-                      cfg.clk_rst_vif.wait_clks(5000);,
-                      $sformatf("Timeout waiting for alert %0s", alert_name))
+    // Wait until OTP has finished initialization.
+    `DV_WAIT(cfg.otp_ctrl_vif.pwr_otp_done_o == 1'b1,
+             "Timed-out waiting for otp to finish initialization")
     check_fatal_alert_nonblocking(alert_name);
 
     // If fatal_macro_error, will trigger fatal_check_error alert due to internal escalation.

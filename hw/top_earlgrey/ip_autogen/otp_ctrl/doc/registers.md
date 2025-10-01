@@ -3,65 +3,65 @@
 <!-- BEGIN CMDGEN util/regtool.py -d ./hw/top_earlgrey/ip_autogen/otp_ctrl/data/otp_ctrl.hjson -->
 ## Summary
 
-| Name                                                                                   | Offset   |   Length | Description                                                                                         |
-|:---------------------------------------------------------------------------------------|:---------|---------:|:----------------------------------------------------------------------------------------------------|
-| otp_ctrl.[`INTR_STATE`](#intr_state)                                                   | 0x0      |        4 | Interrupt State Register                                                                            |
-| otp_ctrl.[`INTR_ENABLE`](#intr_enable)                                                 | 0x4      |        4 | Interrupt Enable Register                                                                           |
-| otp_ctrl.[`INTR_TEST`](#intr_test)                                                     | 0x8      |        4 | Interrupt Test Register                                                                             |
-| otp_ctrl.[`ALERT_TEST`](#alert_test)                                                   | 0xc      |        4 | Alert Test Register                                                                                 |
-| otp_ctrl.[`STATUS`](#status)                                                           | 0x10     |        4 | OTP status register.                                                                                |
-| otp_ctrl.[`ERR_CODE_0`](#err_code)                                                     | 0x14     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_1`](#err_code)                                                     | 0x18     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_2`](#err_code)                                                     | 0x1c     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_3`](#err_code)                                                     | 0x20     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_4`](#err_code)                                                     | 0x24     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_5`](#err_code)                                                     | 0x28     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_6`](#err_code)                                                     | 0x2c     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_7`](#err_code)                                                     | 0x30     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_8`](#err_code)                                                     | 0x34     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_9`](#err_code)                                                     | 0x38     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_10`](#err_code)                                                    | 0x3c     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_11`](#err_code)                                                    | 0x40     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`ERR_CODE_12`](#err_code)                                                    | 0x44     |        4 | This register holds information about error conditions that occurred in the agents                  |
-| otp_ctrl.[`DIRECT_ACCESS_REGWEN`](#direct_access_regwen)                               | 0x48     |        4 | Register write enable for all direct access interface registers.                                    |
-| otp_ctrl.[`DIRECT_ACCESS_CMD`](#direct_access_cmd)                                     | 0x4c     |        4 | Command register for direct accesses.                                                               |
-| otp_ctrl.[`DIRECT_ACCESS_ADDRESS`](#direct_access_address)                             | 0x50     |        4 | Address register for direct accesses.                                                               |
-| otp_ctrl.[`DIRECT_ACCESS_WDATA_0`](#direct_access_wdata)                               | 0x54     |        4 | Write data for direct accesses.                                                                     |
-| otp_ctrl.[`DIRECT_ACCESS_WDATA_1`](#direct_access_wdata)                               | 0x58     |        4 | Write data for direct accesses.                                                                     |
-| otp_ctrl.[`DIRECT_ACCESS_RDATA_0`](#direct_access_rdata)                               | 0x5c     |        4 | Read data for direct accesses.                                                                      |
-| otp_ctrl.[`DIRECT_ACCESS_RDATA_1`](#direct_access_rdata)                               | 0x60     |        4 | Read data for direct accesses.                                                                      |
-| otp_ctrl.[`CHECK_TRIGGER_REGWEN`](#check_trigger_regwen)                               | 0x64     |        4 | Register write enable for !!CHECK_TRIGGER.                                                          |
-| otp_ctrl.[`CHECK_TRIGGER`](#check_trigger)                                             | 0x68     |        4 | Command register for direct accesses.                                                               |
-| otp_ctrl.[`CHECK_REGWEN`](#check_regwen)                                               | 0x6c     |        4 | Register write enable for !!INTEGRITY_CHECK_PERIOD and !!CONSISTENCY_CHECK_PERIOD.                  |
-| otp_ctrl.[`CHECK_TIMEOUT`](#check_timeout)                                             | 0x70     |        4 | Timeout value for the integrity and consistency checks.                                             |
-| otp_ctrl.[`INTEGRITY_CHECK_PERIOD`](#integrity_check_period)                           | 0x74     |        4 | This value specifies the maximum period that can be generated pseudo-randomly.                      |
-| otp_ctrl.[`CONSISTENCY_CHECK_PERIOD`](#consistency_check_period)                       | 0x78     |        4 | This value specifies the maximum period that can be generated pseudo-randomly.                      |
-| otp_ctrl.[`VENDOR_TEST_READ_LOCK`](#vendor_test_read_lock)                             | 0x7c     |        4 | Runtime read lock for the VENDOR_TEST partition.                                                    |
-| otp_ctrl.[`CREATOR_SW_CFG_READ_LOCK`](#creator_sw_cfg_read_lock)                       | 0x80     |        4 | Runtime read lock for the CREATOR_SW_CFG partition.                                                 |
-| otp_ctrl.[`OWNER_SW_CFG_READ_LOCK`](#owner_sw_cfg_read_lock)                           | 0x84     |        4 | Runtime read lock for the OWNER_SW_CFG partition.                                                   |
-| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_READ_LOCK`](#rot_creator_auth_codesign_read_lock) | 0x88     |        4 | Runtime read lock for the ROT_CREATOR_AUTH_CODESIGN partition.                                      |
-| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_READ_LOCK`](#rot_creator_auth_state_read_lock)       | 0x8c     |        4 | Runtime read lock for the ROT_CREATOR_AUTH_STATE partition.                                         |
-| otp_ctrl.[`VENDOR_TEST_DIGEST_0`](#vendor_test_digest)                                 | 0x90     |        4 | Integrity digest for the VENDOR_TEST partition.                                                     |
-| otp_ctrl.[`VENDOR_TEST_DIGEST_1`](#vendor_test_digest)                                 | 0x94     |        4 | Integrity digest for the VENDOR_TEST partition.                                                     |
-| otp_ctrl.[`CREATOR_SW_CFG_DIGEST_0`](#creator_sw_cfg_digest)                           | 0x98     |        4 | Integrity digest for the CREATOR_SW_CFG partition.                                                  |
-| otp_ctrl.[`CREATOR_SW_CFG_DIGEST_1`](#creator_sw_cfg_digest)                           | 0x9c     |        4 | Integrity digest for the CREATOR_SW_CFG partition.                                                  |
-| otp_ctrl.[`OWNER_SW_CFG_DIGEST_0`](#owner_sw_cfg_digest)                               | 0xa0     |        4 | Integrity digest for the OWNER_SW_CFG partition.                                                    |
-| otp_ctrl.[`OWNER_SW_CFG_DIGEST_1`](#owner_sw_cfg_digest)                               | 0xa4     |        4 | Integrity digest for the OWNER_SW_CFG partition.                                                    |
-| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_DIGEST_0`](#rot_creator_auth_codesign_digest)     | 0xa8     |        4 | Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.                                       |
-| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_DIGEST_1`](#rot_creator_auth_codesign_digest)     | 0xac     |        4 | Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.                                       |
-| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_DIGEST_0`](#rot_creator_auth_state_digest)           | 0xb0     |        4 | Integrity digest for the ROT_CREATOR_AUTH_STATE partition.                                          |
-| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_DIGEST_1`](#rot_creator_auth_state_digest)           | 0xb4     |        4 | Integrity digest for the ROT_CREATOR_AUTH_STATE partition.                                          |
-| otp_ctrl.[`HW_CFG0_DIGEST_0`](#hw_cfg0_digest)                                         | 0xb8     |        4 | Integrity digest for the HW_CFG0 partition.                                                         |
-| otp_ctrl.[`HW_CFG0_DIGEST_1`](#hw_cfg0_digest)                                         | 0xbc     |        4 | Integrity digest for the HW_CFG0 partition.                                                         |
-| otp_ctrl.[`HW_CFG1_DIGEST_0`](#hw_cfg1_digest)                                         | 0xc0     |        4 | Integrity digest for the HW_CFG1 partition.                                                         |
-| otp_ctrl.[`HW_CFG1_DIGEST_1`](#hw_cfg1_digest)                                         | 0xc4     |        4 | Integrity digest for the HW_CFG1 partition.                                                         |
-| otp_ctrl.[`SECRET0_DIGEST_0`](#secret0_digest)                                         | 0xc8     |        4 | Integrity digest for the SECRET0 partition.                                                         |
-| otp_ctrl.[`SECRET0_DIGEST_1`](#secret0_digest)                                         | 0xcc     |        4 | Integrity digest for the SECRET0 partition.                                                         |
-| otp_ctrl.[`SECRET1_DIGEST_0`](#secret1_digest)                                         | 0xd0     |        4 | Integrity digest for the SECRET1 partition.                                                         |
-| otp_ctrl.[`SECRET1_DIGEST_1`](#secret1_digest)                                         | 0xd4     |        4 | Integrity digest for the SECRET1 partition.                                                         |
-| otp_ctrl.[`SECRET2_DIGEST_0`](#secret2_digest)                                         | 0xd8     |        4 | Integrity digest for the SECRET2 partition.                                                         |
-| otp_ctrl.[`SECRET2_DIGEST_1`](#secret2_digest)                                         | 0xdc     |        4 | Integrity digest for the SECRET2 partition.                                                         |
-| otp_ctrl.[`SW_CFG_WINDOW`](#sw_cfg_window)                                             | 0x800    |     2048 | Any read to this window directly maps to the corresponding offset in the creator and owner software |
+| Name                                                                                   | Offset   |   Length | Description                                                                                                                                |
+|:---------------------------------------------------------------------------------------|:---------|---------:|:-------------------------------------------------------------------------------------------------------------------------------------------|
+| otp_ctrl.[`INTR_STATE`](#intr_state)                                                   | 0x0      |        4 | Interrupt State Register                                                                                                                   |
+| otp_ctrl.[`INTR_ENABLE`](#intr_enable)                                                 | 0x4      |        4 | Interrupt Enable Register                                                                                                                  |
+| otp_ctrl.[`INTR_TEST`](#intr_test)                                                     | 0x8      |        4 | Interrupt Test Register                                                                                                                    |
+| otp_ctrl.[`ALERT_TEST`](#alert_test)                                                   | 0xc      |        4 | Alert Test Register                                                                                                                        |
+| otp_ctrl.[`STATUS`](#status)                                                           | 0x10     |        4 | OTP status register.                                                                                                                       |
+| otp_ctrl.[`ERR_CODE_0`](#err_code)                                                     | 0x14     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_1`](#err_code)                                                     | 0x18     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_2`](#err_code)                                                     | 0x1c     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_3`](#err_code)                                                     | 0x20     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_4`](#err_code)                                                     | 0x24     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_5`](#err_code)                                                     | 0x28     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_6`](#err_code)                                                     | 0x2c     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_7`](#err_code)                                                     | 0x30     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_8`](#err_code)                                                     | 0x34     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_9`](#err_code)                                                     | 0x38     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_10`](#err_code)                                                    | 0x3c     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_11`](#err_code)                                                    | 0x40     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`ERR_CODE_12`](#err_code)                                                    | 0x44     |        4 | This register holds information about error conditions that occurred in the agents                                                         |
+| otp_ctrl.[`DIRECT_ACCESS_REGWEN`](#direct_access_regwen)                               | 0x48     |        4 | Register write enable for all direct access interface registers.                                                                           |
+| otp_ctrl.[`DIRECT_ACCESS_CMD`](#direct_access_cmd)                                     | 0x4c     |        4 | Command register for direct accesses.                                                                                                      |
+| otp_ctrl.[`DIRECT_ACCESS_ADDRESS`](#direct_access_address)                             | 0x50     |        4 | Address register for direct accesses.                                                                                                      |
+| otp_ctrl.[`DIRECT_ACCESS_WDATA_0`](#direct_access_wdata)                               | 0x54     |        4 | Write data for direct accesses.                                                                                                            |
+| otp_ctrl.[`DIRECT_ACCESS_WDATA_1`](#direct_access_wdata)                               | 0x58     |        4 | Write data for direct accesses.                                                                                                            |
+| otp_ctrl.[`DIRECT_ACCESS_RDATA_0`](#direct_access_rdata)                               | 0x5c     |        4 | Read data for direct accesses.                                                                                                             |
+| otp_ctrl.[`DIRECT_ACCESS_RDATA_1`](#direct_access_rdata)                               | 0x60     |        4 | Read data for direct accesses.                                                                                                             |
+| otp_ctrl.[`CHECK_TRIGGER_REGWEN`](#check_trigger_regwen)                               | 0x64     |        4 | Register write enable for [`CHECK_TRIGGER.`](#check_trigger)                                                                               |
+| otp_ctrl.[`CHECK_TRIGGER`](#check_trigger)                                             | 0x68     |        4 | Command register for direct accesses.                                                                                                      |
+| otp_ctrl.[`CHECK_REGWEN`](#check_regwen)                                               | 0x6c     |        4 | Register write enable for [`INTEGRITY_CHECK_PERIOD`](#integrity_check_period) and [`CONSISTENCY_CHECK_PERIOD.`](#consistency_check_period) |
+| otp_ctrl.[`CHECK_TIMEOUT`](#check_timeout)                                             | 0x70     |        4 | Timeout value for the integrity and consistency checks.                                                                                    |
+| otp_ctrl.[`INTEGRITY_CHECK_PERIOD`](#integrity_check_period)                           | 0x74     |        4 | This value specifies the maximum period that can be generated pseudo-randomly.                                                             |
+| otp_ctrl.[`CONSISTENCY_CHECK_PERIOD`](#consistency_check_period)                       | 0x78     |        4 | This value specifies the maximum period that can be generated pseudo-randomly.                                                             |
+| otp_ctrl.[`VENDOR_TEST_READ_LOCK`](#vendor_test_read_lock)                             | 0x7c     |        4 | Runtime read lock for the VENDOR_TEST partition.                                                                                           |
+| otp_ctrl.[`CREATOR_SW_CFG_READ_LOCK`](#creator_sw_cfg_read_lock)                       | 0x80     |        4 | Runtime read lock for the CREATOR_SW_CFG partition.                                                                                        |
+| otp_ctrl.[`OWNER_SW_CFG_READ_LOCK`](#owner_sw_cfg_read_lock)                           | 0x84     |        4 | Runtime read lock for the OWNER_SW_CFG partition.                                                                                          |
+| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_READ_LOCK`](#rot_creator_auth_codesign_read_lock) | 0x88     |        4 | Runtime read lock for the ROT_CREATOR_AUTH_CODESIGN partition.                                                                             |
+| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_READ_LOCK`](#rot_creator_auth_state_read_lock)       | 0x8c     |        4 | Runtime read lock for the ROT_CREATOR_AUTH_STATE partition.                                                                                |
+| otp_ctrl.[`VENDOR_TEST_DIGEST_0`](#vendor_test_digest)                                 | 0x90     |        4 | Integrity digest for the VENDOR_TEST partition.                                                                                            |
+| otp_ctrl.[`VENDOR_TEST_DIGEST_1`](#vendor_test_digest)                                 | 0x94     |        4 | Integrity digest for the VENDOR_TEST partition.                                                                                            |
+| otp_ctrl.[`CREATOR_SW_CFG_DIGEST_0`](#creator_sw_cfg_digest)                           | 0x98     |        4 | Integrity digest for the CREATOR_SW_CFG partition.                                                                                         |
+| otp_ctrl.[`CREATOR_SW_CFG_DIGEST_1`](#creator_sw_cfg_digest)                           | 0x9c     |        4 | Integrity digest for the CREATOR_SW_CFG partition.                                                                                         |
+| otp_ctrl.[`OWNER_SW_CFG_DIGEST_0`](#owner_sw_cfg_digest)                               | 0xa0     |        4 | Integrity digest for the OWNER_SW_CFG partition.                                                                                           |
+| otp_ctrl.[`OWNER_SW_CFG_DIGEST_1`](#owner_sw_cfg_digest)                               | 0xa4     |        4 | Integrity digest for the OWNER_SW_CFG partition.                                                                                           |
+| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_DIGEST_0`](#rot_creator_auth_codesign_digest)     | 0xa8     |        4 | Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.                                                                              |
+| otp_ctrl.[`ROT_CREATOR_AUTH_CODESIGN_DIGEST_1`](#rot_creator_auth_codesign_digest)     | 0xac     |        4 | Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.                                                                              |
+| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_DIGEST_0`](#rot_creator_auth_state_digest)           | 0xb0     |        4 | Integrity digest for the ROT_CREATOR_AUTH_STATE partition.                                                                                 |
+| otp_ctrl.[`ROT_CREATOR_AUTH_STATE_DIGEST_1`](#rot_creator_auth_state_digest)           | 0xb4     |        4 | Integrity digest for the ROT_CREATOR_AUTH_STATE partition.                                                                                 |
+| otp_ctrl.[`HW_CFG0_DIGEST_0`](#hw_cfg0_digest)                                         | 0xb8     |        4 | Integrity digest for the HW_CFG0 partition.                                                                                                |
+| otp_ctrl.[`HW_CFG0_DIGEST_1`](#hw_cfg0_digest)                                         | 0xbc     |        4 | Integrity digest for the HW_CFG0 partition.                                                                                                |
+| otp_ctrl.[`HW_CFG1_DIGEST_0`](#hw_cfg1_digest)                                         | 0xc0     |        4 | Integrity digest for the HW_CFG1 partition.                                                                                                |
+| otp_ctrl.[`HW_CFG1_DIGEST_1`](#hw_cfg1_digest)                                         | 0xc4     |        4 | Integrity digest for the HW_CFG1 partition.                                                                                                |
+| otp_ctrl.[`SECRET0_DIGEST_0`](#secret0_digest)                                         | 0xc8     |        4 | Integrity digest for the SECRET0 partition.                                                                                                |
+| otp_ctrl.[`SECRET0_DIGEST_1`](#secret0_digest)                                         | 0xcc     |        4 | Integrity digest for the SECRET0 partition.                                                                                                |
+| otp_ctrl.[`SECRET1_DIGEST_0`](#secret1_digest)                                         | 0xd0     |        4 | Integrity digest for the SECRET1 partition.                                                                                                |
+| otp_ctrl.[`SECRET1_DIGEST_1`](#secret1_digest)                                         | 0xd4     |        4 | Integrity digest for the SECRET1 partition.                                                                                                |
+| otp_ctrl.[`SECRET2_DIGEST_0`](#secret2_digest)                                         | 0xd8     |        4 | Integrity digest for the SECRET2 partition.                                                                                                |
+| otp_ctrl.[`SECRET2_DIGEST_1`](#secret2_digest)                                         | 0xdc     |        4 | Integrity digest for the SECRET2 partition.                                                                                                |
+| otp_ctrl.[`SW_CFG_WINDOW`](#sw_cfg_window)                                             | 0x800    |     2048 | Any read to this window directly maps to the corresponding offset in the creator and owner software                                        |
 
 ## INTR_STATE
 Interrupt State Register
@@ -220,7 +220,7 @@ fatal_check_error alert.
 |:--------|:------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0x0     | NO_ERROR                | No error condition has occurred.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 0x1     | MACRO_ERROR             | Returned if the OTP macro command was invalid or did not complete successfully due to a macro malfunction. This error should never occur during normal operation and is not recoverable. This error triggers an fatal_macro_error alert.                                                                                                                                                                                                                                                                                                                                                                             |
-| 0x2     | MACRO_ECC_CORR_ERROR    | A correctable ECC error has occured during an OTP read operation. The corresponding controller automatically recovers from this error when issuing a new command.                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 0x2     | MACRO_ECC_CORR_ERROR    | A correctable ECC error has occurred during an OTP read operation. The corresponding controller automatically recovers from this error when issuing a new command.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 0x3     | MACRO_ECC_UNCORR_ERROR  | An uncorrectable ECC error has occurred during an OTP read operation. This error should never occur during normal operation and is not recoverable. If this error is present this may be a sign that the device is malfunctioning. This error triggers an fatal_macro_error alert.                                                                                                                                                                                                                                                                                                                                   |
 | 0x4     | MACRO_WRITE_BLANK_ERROR | This error is returned if a programming operation attempted to clear a bit that has previously been programmed to 1. The corresponding controller automatically recovers from this error when issuing a new command. Note however that the affected OTP word may be left in an inconsistent state if this error occurs. This can cause several issues when the word is accessed again (either as part of a regular read operation, as part of the readout at boot, or as part of a background check). It is important that SW ensures that each word is only written once, since this can render the device useless. |
 | 0x5     | ACCESS_ERROR            | This error indicates that a locked memory region has been accessed. The corresponding controller automatically recovers from this error when issuing a new command.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -258,21 +258,22 @@ will also be set to 0 in such a case.
 Command register for direct accesses.
 - Offset: `0x4c`
 - Reset default: `0x0`
-- Reset mask: `0x7`
+- Reset mask: `0xf`
 - Register enable: [`DIRECT_ACCESS_REGWEN`](#direct_access_regwen)
 
 ### Fields
 
 ```wavejson
-{"reg": [{"name": "RD", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"name": "WR", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"name": "DIGEST", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"bits": 29}], "config": {"lanes": 1, "fontsize": 10, "vspace": 80}}
+{"reg": [{"name": "RD", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"name": "WR", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"name": "DIGEST", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"name": "ZEROIZE", "bits": 1, "attr": ["r0w1c"], "rotate": -90}, {"bits": 28}], "config": {"lanes": 1, "fontsize": 10, "vspace": 90}}
 ```
 
-|  Bits  |  Type  |  Reset  | Name   | Description                                                                                                                                                                                                                                                                                |
-|:------:|:------:|:-------:|:-------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|  31:3  |        |         |        | Reserved                                                                                                                                                                                                                                                                                   |
-|   2    | r0w1c  |   0x0   | DIGEST | Initiates the digest calculation and locking sequence for the partition specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address)                                                                                                                                                    |
-|   1    | r0w1c  |   0x0   | WR     | Initiates a programming sequence that writes the data in [`DIRECT_ACCESS_WDATA_0`](#direct_access_wdata_0) and [`DIRECT_ACCESS_WDATA_1`](#direct_access_wdata_1) (for 64bit partitions) to the location specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address)                    |
-|   0    | r0w1c  |   0x0   | RD     | Initiates a readout sequence that reads the location specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address) The command places the data read into [`DIRECT_ACCESS_RDATA_0`](#direct_access_rdata_0) and [`DIRECT_ACCESS_RDATA_1`](#direct_access_rdata_1) (for 64bit partitions). |
+|  Bits  |  Type  |  Reset  | Name    | Description                                                                                                                                                                                                                                                                                |
+|:------:|:------:|:-------:|:--------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|  31:4  |        |         |         | Reserved                                                                                                                                                                                                                                                                                   |
+|   3    | r0w1c  |   0x0   | ZEROIZE | Initiates the zeroization sequence of location specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address) The command places the resulting count of bits set into [`DIRECT_ACCESS_RDATA_0`](#direct_access_rdata_0) if the execution is successful.                                   |
+|   2    | r0w1c  |   0x0   | DIGEST  | Initiates the digest calculation and locking sequence for the partition specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address)                                                                                                                                                    |
+|   1    | r0w1c  |   0x0   | WR      | Initiates a programming sequence that writes the data in [`DIRECT_ACCESS_WDATA_0`](#direct_access_wdata_0) and [`DIRECT_ACCESS_WDATA_1`](#direct_access_wdata_1) (for 64bit partitions) to the location specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address)                    |
+|   0    | r0w1c  |   0x0   | RD      | Initiates a readout sequence that reads the location specified by [`DIRECT_ACCESS_ADDRESS.`](#direct_access_address) The command places the data read into [`DIRECT_ACCESS_RDATA_0`](#direct_access_rdata_0) and [`DIRECT_ACCESS_RDATA_1`](#direct_access_rdata_1) (for 64bit partitions). |
 
 ## DIRECT_ACCESS_ADDRESS
 Address register for direct accesses.
@@ -584,7 +585,7 @@ Runtime read lock for the ROT_CREATOR_AUTH_STATE partition.
 
 ## VENDOR_TEST_DIGEST
 Integrity digest for the VENDOR_TEST partition.
-The integrity digest is 0 by default. Software must write this
+The integrity digest is 0 by default. Software must write a non-zero
 digest value via the direct access interface in order to lock the partition.
 After a reset, write access to the VENDOR_TEST partition is locked and
 the digest becomes visible in this CSR.
@@ -611,7 +612,7 @@ the digest becomes visible in this CSR.
 
 ## CREATOR_SW_CFG_DIGEST
 Integrity digest for the CREATOR_SW_CFG partition.
-The integrity digest is 0 by default. Software must write this
+The integrity digest is 0 by default. Software must write a non-zero
 digest value via the direct access interface in order to lock the partition.
 After a reset, write access to the CREATOR_SW_CFG partition is locked and
 the digest becomes visible in this CSR.
@@ -638,7 +639,7 @@ the digest becomes visible in this CSR.
 
 ## OWNER_SW_CFG_DIGEST
 Integrity digest for the OWNER_SW_CFG partition.
-The integrity digest is 0 by default. Software must write this
+The integrity digest is 0 by default. Software must write a non-zero
 digest value via the direct access interface in order to lock the partition.
 After a reset, write access to the OWNER_SW_CFG partition is locked and
 the digest becomes visible in this CSR.
@@ -665,7 +666,7 @@ the digest becomes visible in this CSR.
 
 ## ROT_CREATOR_AUTH_CODESIGN_DIGEST
 Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.
-The integrity digest is 0 by default. Software must write this
+The integrity digest is 0 by default. Software must write a non-zero
 digest value via the direct access interface in order to lock the partition.
 After a reset, write access to the ROT_CREATOR_AUTH_CODESIGN partition is locked and
 the digest becomes visible in this CSR.
@@ -692,7 +693,7 @@ the digest becomes visible in this CSR.
 
 ## ROT_CREATOR_AUTH_STATE_DIGEST
 Integrity digest for the ROT_CREATOR_AUTH_STATE partition.
-The integrity digest is 0 by default. Software must write this
+The integrity digest is 0 by default. Software must write a non-zero
 digest value via the direct access interface in order to lock the partition.
 After a reset, write access to the ROT_CREATOR_AUTH_STATE partition is locked and
 the digest becomes visible in this CSR.

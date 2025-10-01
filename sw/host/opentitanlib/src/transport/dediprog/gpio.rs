@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ impl DediprogPin {
         })
     }
 
-    /// Given an ultradebug pin name, return its pin number.
+    /// Given a dediprog pin name, return its pin number.
     pub fn pin_name_to_number(pinname: &str) -> Result<u8> {
         // If the pinname is an integer, use it; otherwise try to see if it
         // is a symbolic name of a pin.

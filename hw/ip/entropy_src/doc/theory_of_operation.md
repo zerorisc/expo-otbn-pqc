@@ -27,9 +27,9 @@ Health testing will still be performed on boot-time mode entropy, but the window
 Once the initial boot-time mode phase has completed, the ENTROPY_SRC block can be switched to FIPS/CC compliant mode (for simplicity referred to as FIPS mode) by setting the `FIPS_ENABLE` field in the [`CONF`](registers.md#conf) register to `kMultiBitBool4True`.
 In this mode, once the raw entropy has been health checked, it will be passed into a conditioner block.
 This block will compress the bits such that the entropy bits/physical bits, or min-entropy value, should be improved over the raw data source min-entropy value.
-The compression operation will compress every [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) x 4 tested bits into 384 full-entropy bits.
-By default, 2048 tested bits are used.
-Note that a seed is only produced if the last [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) x 4 tested bits have passed the health tests.
+The compression operation will compress every [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) tested symbols into 384 full-entropy bits.
+By default, 512 tested symbols are used.
+Note that a seed is only produced if the last [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) tested symbols have passed the health tests.
 If a health test fails, the conditioner block continues absorbing the next window unless [`ALERT_SUMMARY_FAIL_COUNTS`](registers.md#alert_summary_fail_counts) reaches the configured [`ALERT_THRESHOLD`](registers.md#alert_threshold).
 Once the threshold is reached, the ENTROPY_SRC block stops serving entropy and signals a recoverable alert.
 Firmware then needs to disable/re-enable the block to restart operation.
@@ -40,8 +40,8 @@ When `RNG_FIPS` field in the [`CONF`](registers.md#conf) register is set to `kMu
 
 ### Startup Health Testing
 
-Note that after enabling the ENTROPY_SRC block, the health tests need to pass for two subsequent windows of [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) x 4 tested bits (startup health testing).
-By default, 1024 samples of 4 bits (4096 1-bit samples when running in single-channel mode), i.e., 4096 tested bits, are used for producing the startup seed.
+Note that after enabling the ENTROPY_SRC block, the health tests need to pass for two subsequent windows of [`HEALTH_TEST_WINDOWS.FIPS_WINDOW`](registers.md#health_test_windows--fips_window) tested symbols (startup health testing).
+By default, 1024 tested symbols of RngBusWidth bits (1024 1-bit symbols when running in single-channel mode) are used for producing the startup seed.
 If a health test fails, the startup health testing starts over and the conditioner block continues absorbing the next window.
 If the health tests don't pass for two subsequent windows, the ENTROPY_SRC block stops operating and signals a recoverable alert.
 Firmware then needs to disable/re-enable the block to restart operation including the startup health testing.
@@ -145,8 +145,8 @@ However, if the ENTROPY_SRC block experiences internal back pressure, health tes
   Note that this may also happen in [Firmware Override: Observe mode](programmers_guide.md#firmware_override_-_observe).
   Firmware should thus explicitly check the [`RECOV_ALERT_STS.POSTHT_ENTROPY_DROP_ALERT`](registers.md#recov_alert_sts--postht_entropy_drop_alert) bit to ensure the bits retrieved from the Observe FIFO are indeed contiguous.
 
-The reduce the probability of dropping post-health test entropy bits, the **Distribution FIFO** can be used.
-This FIFO has pass-through mode enabled meaning it doesn't add latency to hardware pipeline.
+To reduce the probability of dropping post-health test entropy bits, the **Distribution FIFO** can be used.
+This FIFO has pass-through mode enabled meaning it doesn't add latency to the hardware pipeline.
 It has a width of 32 bits.
 Its depth is configurable via compile-time Verilog parameter and should match the expected level of conditioner back pressure.
 The level of conditioner back pressure depends on the following factors:
@@ -222,6 +222,10 @@ The following waveform shows an example of what the PTRNG timing looks like.
    {name: 'rng_b'           , wave: 'x.|..3...|..4...|..5.....', data: ['es0','es1','es2']},
 ]}
 ```
+
+Whenever the `rng_enable` signal is asserted, the ENTROPY_SRC accepts every `rng_b` value marked by an asserted `rng_valid` bit.
+`rng_b` values get ignored whenever the `rng_valid` bit is de-asserted.
+The maximum rate at which the ENTROPY_SRC can operate is one `rng_b` value (i.e. a symbol) every two clock cycles.
 
 ### Repetition Count Test
 The following waveform shows how a sampling of a data pattern will be tested by the Repetition Count test.
@@ -355,15 +359,15 @@ In this example, the RNG lines are scored individually (i.e., [`CONF.THRESHOLD_S
 Vendor-specific tests are supported through an external health test interface (xht).
 This is the same interface that is used for the internal health tests.
 Below is a description of this interface:
-- entropy_bit: 4-bit wide bus of entropy to be tested.
-- entropy_bit_valid: indication of when the entropy is valid.
+- entropy_bit: the 4- to 256-bit wide bus of entropy to be tested.
+- entropy_valid: indication of when the entropy is valid.
 - rng_bit_en: indication whether running in single-channel or multi-channel mode.
-- rng_bit_sel: 2-bit signal to indicate the selected channel when running in single-channel mode.
+- rng_bit_sel: ceil(log2(entropy_bit)) wide signal to indicate the selected channel when running in single-channel mode.
 - clear: signal to clear counters, and is register driven.
 - active: signal to indicate when the test should run, and is register driven.
 - thresh_hi: field to indicate what high threshold the test should use, and is register driven.
 - thresh_lo: field to indicate what low threshold the test should use, and is register driven.
-- health_test_window: 18-bit signal indicating the length of the health test window in symbols.
+- health_test_window: 16 + ceil(log2(entropy_bit)) -bit signal indicating the length of the health test window in symbols.
 - window_wrap_pulse: field to indicate the end of the current window.
 - threshold_scope: field to indicate whether the thresholds are intended to be applied to all entropy lines collectively or on a line-by-line basis, to be read from a register.
 - test_cnt_hi: 16-bit generic test count high result, to be read from a register.

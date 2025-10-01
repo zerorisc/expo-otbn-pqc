@@ -18,7 +18,7 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "doc_files",
-    srcs = glob(["**/*.md"]),
+    srcs = glob(["**/*.md"]) + ["//sw/device/lib/base/freestanding:doc_files"],
 )
 
 dual_cc_library(
@@ -161,7 +161,7 @@ cc_test(
 alias(
     name = "math_builtins",
     actual = select({
-        "//sw/device:measure_coverage_on_target": "//sw/device:nothing",
+        "//rules/coverage:enabled": "//sw/device:nothing",
         "//conditions:default": ":math_polyfills",
     }),
     visibility = ["//visibility:private"],

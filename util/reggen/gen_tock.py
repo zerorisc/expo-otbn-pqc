@@ -32,7 +32,7 @@ def indent(s: str, amount: int = 4) -> str:
     """Indents a multi-line string considering the depth of bracketing.
 
     This function assumes the input string is un-indented.  It will not
-    unindent an inapprorpiately indented string.
+    unindent an inappropriately indented string.
     """
     result = []
     indent = 0
@@ -300,12 +300,12 @@ def gen_const_multireg(regout: TextIO, fieldout: TextIO,
                        rnames: Set[str], existing_defines: Set[str],
                        access_type: Set[str],
                        highest_address: Set[int]) -> None:
-    reg = multireg.regs[0]
+    reg = multireg.cregs[0]
     possibly_gen_filler(regout, highest_address, reg.offset)
     rname = reg.name.upper()
     if rname.endswith("_0"):
         rname = rname[:-2]
-    rlen = len(multireg.regs)
+    rlen = len(multireg.cregs)
     genout(regout, format_comment(first_line(reg.desc)))
     a = access(reg)
     access_type.add(a)

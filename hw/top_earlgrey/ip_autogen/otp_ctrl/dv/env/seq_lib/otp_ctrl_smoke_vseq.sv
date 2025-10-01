@@ -1,9 +1,10 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 // smoke test vseq to walk through DAI states and request keys
 `define PART_CONTENT_RANGE(i) \
-    {[PartInfo[``i``].offset : (PartInfo[``i``].offset + PartInfo[``i``].size - DIGEST_SIZE - 1)]}
+    {[PART_BASE_ADDRS[``i``]: PART_OTP_SPECIALS_OFFSETS[``i``] - 1]}
 
 class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
   `uvm_object_utils(otp_ctrl_smoke_vseq)
@@ -48,8 +49,6 @@ class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
         dai_addr inside `PART_CONTENT_RANGE(Secret1Idx);
     if (part_idx == Secret2Idx)
         dai_addr inside `PART_CONTENT_RANGE(Secret2Idx);
-    if (part_idx == LifeCycleIdx)
-        dai_addr inside `PART_CONTENT_RANGE(LifeCycleIdx);
     solve part_idx before dai_addr;
   }
 
@@ -118,7 +117,7 @@ class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
       if (cfg.stop_transaction_generators()) break;
       `uvm_info(`gfn, $sformatf("starting seq %0d/%0d", i, num_trans), UVM_LOW)
 
-      // to avoid access locked OTP partions, issue reset and clear the OTP memory to all 0.
+      // to avoid access locked OTP partitions, issue reset and clear the OTP memory to all 0.
       if (access_locked_parts == 0) begin
         do_otp_ctrl_init = 1;
         if (i > 1 && do_dut_init) dut_init();
@@ -158,7 +157,8 @@ class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
       end
 
       for (int i = 0; i < num_dai_op; i++) begin
-        bit [TL_DW-1:0] rdata0, rdata1, backdoor_rd_val;
+        bit [TL_DW-1:0] rdata0, rdata1;
+        uvm_hdl_data_t backdoor_rd_val;
         if (cfg.stop_transaction_generators()) break;
 
         `DV_CHECK_RANDOMIZE_FATAL(this)
@@ -179,7 +179,8 @@ class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
 
         // Inject ECC error.
         if (ecc_otp_err != OtpNoEccErr && dai_addr < LifeCycleOffset) begin
-          `uvm_info(`gfn, $sformatf("Injecting ecc error %0d at 0x%x", ecc_otp_err, dai_addr),
+          `uvm_info(`gfn, $sformatf("Injecting ecc error %0d at 0x%x, old data 0x%x",
+                    ecc_otp_err, dai_addr, OTP_MACRO_FULL_WIDTH'(backdoor_rd_val)),
                     UVM_HIGH)
           backdoor_rd_val = backdoor_inject_ecc_err(dai_addr, ecc_otp_err);
         end
@@ -194,16 +195,17 @@ class otp_ctrl_smoke_vseq extends otp_ctrl_base_vseq;
           uvm_reg_addr_t tlul_addr = cfg.ral.get_addr_from_offset(get_sw_window_offset(dai_addr));
           // tlul error rsp is checked in scoreboard
           do_otp_rd = 1;
-          tl_access(.addr(tlul_addr), .write(0), .data(tlul_val), .blocking(1), .check_rsp(0));
+          tl_access(.addr(tlul_addr), .write(0), .data(tlul_val), .blocking(1), .check_err_rsp(0));
         end
 
         // Backdoor restore injected ECC error, but should not affect fatal alerts.
         if (ecc_otp_err != OtpNoEccErr && dai_addr < LifeCycleOffset) begin
-          `uvm_info(`gfn, $sformatf("Injecting ecc error %0d at 0x%x", ecc_otp_err, dai_addr),
+          `uvm_info(`gfn, $sformatf("Repairing ecc error %0d at 0x%x with 0x%x",
+                    ecc_otp_err, dai_addr, OTP_MACRO_FULL_WIDTH'(backdoor_rd_val)),
                     UVM_HIGH)
-          cfg.mem_bkdr_util_h.write32({dai_addr[TL_DW-3:2], 2'b00}, backdoor_rd_val);
+          cfg.mem_bkdr_util_h.write(dai_addr, backdoor_rd_val);
           // Wait for two lock cycles to make sure the local escalation error propagates to other
-          // patitions and err_code reg.
+          // partitions and err_code reg.
           cfg.clk_rst_vif.wait_clks(2);
         end
 

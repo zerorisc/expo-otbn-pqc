@@ -50,10 +50,10 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
       notes:              "",
     }
     {
-      version:            "2.0.0",
+      version:            "2.1.0",
       life_stage:         "L1",
-      design_stage:       "D3",
-      verification_stage: "V2S",
+      design_stage:       "D1",
+      verification_stage: "V1",
       dif_stage:          "S2",
       notes:              "",
     }
@@ -119,6 +119,38 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
       type:      "otp_ctrl_top_specific_pkg::scrmbl_key_init_t"
       randcount: "256",
       randtype:  "data", // random permutation for randcount elements
+    }
+    // Scrambling Keys
+  % for i in range(otp_mmap["scrambling"]["num_keys"]):
+    { name:      "RndCnstScrmblKey${i}",
+      desc:      "Compile-time scrambling key",
+      type:      "otp_ctrl_top_specific_pkg::key_t"
+      randcount: "${otp_mmap['scrambling']['key_size'] * 8}",
+      randtype:  "extdata",
+    }
+  % endfor
+  % for i in range(otp_mmap["scrambling"]["num_digests"]):
+    { name:      "RndCnstDigestConst${i}",
+      desc:      "Compile-time digest const",
+      type:      "otp_ctrl_top_specific_pkg::digest_const_t"
+      randcount: "${otp_mmap['scrambling']['cnst_size'] * 8}",
+      randtype:  "extdata",
+    }
+  % endfor
+  % for i in range(otp_mmap["scrambling"]["num_digests"]):
+    { name:      "RndCnstDigestIV${i}",
+      desc:      "Compile-time digest initial vector",
+      type:      "otp_ctrl_top_specific_pkg::digest_iv_t"
+      randcount: "${otp_mmap['scrambling']['iv_size'] * 8}",
+      randtype:  "extdata",
+    }
+  % endfor
+<% offset = int(otp_mmap["partitions"][-1]["offset"]) + int(otp_mmap["partitions"][-1]["size"]) %>
+    { name:      "RndCnstPartInvDefault",
+      desc:      "OTP invalid partition default for buffered partitions",
+      type:      "logic [${offset * 8 - 1}:0]"
+      randcount: "${offset * 8}",
+      randtype:  "extdata",
     }
     // Normal parameters
     { name: "NumSramKeyReqSlots",
@@ -540,7 +572,7 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
     }
     {
       name: "OTP_CTRL.PARTITION.OWNER_SW_CFG"
-      desc: "Define attriutes for rom code execution"
+      desc: "Define attributes for rom code execution"
     }
     {
       name: "OTP_CTRL.INIT"
@@ -603,7 +635,7 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
     }
     {
       name: "OTP_CTRL.ERROR_HANDLING.RECOVERABLE"
-      desc: "Recoverable error is created when unauthorized access atempt are detected via dai interface."
+      desc: "Recoverable error is created when unauthorized access attempt are detected via dai interface."
     }
     {
       name: "OTP_CTRL.ERROR_HANDLING.FATAL"
@@ -752,7 +784,7 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
                 { value: "2",
                   name: "MACRO_ECC_CORR_ERROR",
                   desc: '''
-                  A correctable ECC error has occured during an OTP read operation.
+                  A correctable ECC error has occurred during an OTP read operation.
                   The corresponding controller automatically recovers from this error when
                   issuing a new command.
                   '''
@@ -867,6 +899,14 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
             desc: '''
                   Initiates the digest calculation and locking sequence for the partition specified by
                   !!DIRECT_ACCESS_ADDRESS.
+                  '''
+          }
+          { bits: "3",
+            name: "ZEROIZE",
+            desc: '''
+                  Initiates the zeroization sequence of location specified by !!DIRECT_ACCESS_ADDRESS.
+                  The command places the resulting count of bits set into !!DIRECT_ACCESS_RDATA_0 if
+                  the execution is successful.
                   '''
           }
         ]
@@ -1105,7 +1145,7 @@ otp_size_as_uint32 = otp_size_as_bytes // 4
           name:     "${part["name"]}_DIGEST",
           desc:     '''
                     Integrity digest for the ${part["name"]} partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the ${part["name"]} partition is locked and
                     the digest becomes visible in this CSR.

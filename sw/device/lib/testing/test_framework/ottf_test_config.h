@@ -5,6 +5,8 @@
 #ifndef OPENTITAN_SW_DEVICE_LIB_TESTING_TEST_FRAMEWORK_OTTF_TEST_CONFIG_H_
 #define OPENTITAN_SW_DEVICE_LIB_TESTING_TEST_FRAMEWORK_OTTF_TEST_CONFIG_H_
 
+#include "hw/top/dt/dt_api.h"
+
 /**
  * Communication interfaces that can be used as the OTTF console.
  */
@@ -13,7 +15,7 @@ typedef enum ottf_console_type {
   kOttfConsoleSpiDevice,
 } ottf_console_type_t;
 
-typedef struct ottf_console {
+typedef struct ottf_console_opt {
   /**
    * Communication interface type to use for the OTTF console (see
    * `ottf_console_type_t` above).
@@ -29,7 +31,35 @@ typedef struct ottf_console {
    * reconfigure it before printing the test status.
    */
   bool test_may_clobber;
-} ottf_console_t;
+  /**
+   * Indicates if SW buffering should be turned on for `ottf_console_putbuf()`
+   * to increase the transmit performance when using a peripheral backend like
+   * SPI that has a frame overhead associated with each packet transmission.
+   *
+   * Set this option to true if you are using the SPI console device with UJSON
+   * transmissions.
+   */
+  bool putbuf_buffered;
+} ottf_console_opt_t;
+
+typedef struct ottf_console_tx_indicator {
+  /**
+   * Indicates if the TX indicator GPIO is to be used in conjunction with the
+   * SPI console.
+   */
+  bool enable;
+  /**
+   * Indicates the GPIO to use to signal to the host that the SPI console buffer
+   * is not empty.
+   */
+  uint32_t spi_console_tx_ready_gpio;
+  /**
+   * Indicates the MIO to connect to the GPIO pin above. to signal to the host
+   * that the SPI console buffer is not empty. A value of UINT32_MAX indicates
+   * this feature is unused.
+   */
+  dt_pad_t spi_console_tx_ready_mio;
+} ottf_console_tx_indicator_t;
 
 /**
  * Configuration variables for an on-device test.
@@ -63,7 +93,14 @@ typedef struct ottf_test_config {
    * status and error messages are written to. Typically UART0, but other
    * communication peripherals may be supported.
    */
-  ottf_console_t console;
+  ottf_console_opt_t console;
+
+  /**
+   * The TX indicator GPIO to use in conjunction with the SPI console, if a
+   * polling mechanism is not desireable to use such as in manufacturing ATE
+   * environments.
+   */
+  ottf_console_tx_indicator_t console_tx_indicator;
 
   /**
    * Indicates that this test will utilize the UART to receive commands from

@@ -10,7 +10,8 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from enum import Enum
 
-from topgen.lib import CEnum, CArrayMapping, Name
+from basegen.lib import Name
+from topgen.lib import CEnum, CArrayMapping, find_modules
 from reggen.ip_block import IpBlock
 
 import logging
@@ -237,12 +238,13 @@ class Extension(ABC):
         return `None`.
         """
 
-    def extend_dt_ip(self) -> Optional[StructType]:
+    def extend_dt_ip(self) -> Optional[tuple[Name, StructType]]:
         """
         Override this function to add some fields to the structure storing
         fields for a given IP. This method MUST not modify `ip_helper` but
         it can access its public fields. Return `None` if you don't want to
-        add more fields.
+        add more fields. Otherwise return a tuple (name, struct): the ext
+        struct will be placed in the DT struct under the name `name`.
         """
 
     def fill_dt_ip(self, m) -> Optional[dict]:
@@ -258,6 +260,7 @@ class Extension(ABC):
         HeaderEnd = 0  # At the end of `dt_<ip>.h`
         SourceEnd = 1  # At the end of `dt_<ip>.c`
         SourceIncludes = 2  # At the include stage of `dt_<ip>.c`
+        HeaderIncludes = 3  # At the include stage of `dt_<ip>.h`
 
     def render_dt_ip(self, pos: DtIpPos) -> str:
         """
@@ -266,9 +269,20 @@ class Extension(ABC):
         return ""
 
 
-class EmptyExtension(Extension):
-    def create_ext(ip_helper: "IpHelper") -> Optional[Extension]:
-        return None
+class TopGenHelper:
+    """
+    We cannot easily import the TopGen class from topgen.lib so we need to replicate some
+    of the logic when it comes to type/enum naming. This helper classes encapsulats this logic.
+    """
+    def __init__(self, topcfg):
+        self.top = topcfg
+
+    def irq_id_type_name(self, plic_name: str) -> Name:
+        """
+        Given a PLIC name, return the full naem of the `irq_id_t` type.
+        """
+        return Name(["top"]) + Name.from_snake_case(self.top["name"]) + \
+            Name.from_snake_case(plic_name.removeprefix("rv_")) + Name(["irq", "id"])
 
 
 class TopHelper:
@@ -302,6 +316,7 @@ class TopHelper:
     def __init__(self, topcfg, enum_type, array_mapping_type):
         self.top = topcfg
         self._top_name = Name(["top"]) + Name.from_snake_case(topcfg["name"])
+        self._topgen = TopGenHelper(topcfg)
 
         assert enum_type in [CEnum], "Unsupported enum type"
         assert array_mapping_type in [CArrayMapping], \
@@ -352,7 +367,8 @@ class TopHelper:
         # List all muxed pads directly from the top.
         pads = [pad for pad in self.top['pinout']['pads'] if pad['connection'] == 'muxed']
         # List direct pads from the pinmux to avoid pins which are not relevant.
-        pads += [pad for pad in self.top['pinmux']['ios'] if pad['connection'] != 'muxed']
+        if self.top.get("pinmux", {}).get("ios"):
+            pads += [pad for pad in self.top['pinmux']['ios'] if pad['connection'] != 'muxed']
 
         # List all pads and put them in an enum.
         self.pad_enum = self._enum_type(Name([]), self.DT_PAD_NAME)
@@ -389,6 +405,12 @@ class TopHelper:
         for clock in clocks["srcs"] + clocks["derived_srcs"]:
             clock_name = Name.from_snake_case(clock["name"])
             self.clock_enum.add_constant(clock_name, "clock {}".format(clock["name"]))
+
+        # Unmanaged clocks
+        for clock in self.top['unmanaged_clocks']:
+            clock_name = Name.from_snake_case(clock)
+            self.clock_enum.add_constant(clock_name)
+
         self.clock_enum.add_count_constant("Number of clocks")
 
         # List of all reset nodes and put them in an enum.
@@ -397,6 +419,12 @@ class TopHelper:
         for reset_node in self.top["resets"]["nodes"]:
             reset_name = Name.from_snake_case(reset_node["name"])
             self.reset_enum.add_constant(reset_name, "Reset node {}".format(reset_node["name"]))
+
+        # Unmanaged resets
+        for reset in self.top['unmanaged_resets']:
+            reset_name = Name.from_snake_case(reset)
+            self.reset_enum.add_constant(reset_name)
+
         self.reset_enum.add_count_constant("Number of resets")
 
         # Create structure to describe a peripheral I/O and a pad.
@@ -510,11 +538,14 @@ registers to connect a peripheral to this pad.""",  # noqa:E501
         """
         Create the array mappings to dispatch interrupts.
         """
+
+        plic_names = [m["name"] for m in find_modules(self.top["module"], "rv_plic")]
+        assert len(plic_names) == 1, "dtgen assumes that there is exactly one PLIC"
+        self.the_plic_irq_id_type_name = self._topgen.irq_id_type_name(plic_names[0])
+
         self.inst_from_irq_map = ArrayMapType(
             elem_type = ScalarType(self.instance_id_enum.name),
-            index_type = ScalarType(Name(["top"]) +
-                                    Name.from_snake_case(self.top["name"]) +
-                                    Name(["plic", "irq", "id"])),
+            index_type = ScalarType(self.the_plic_irq_id_type_name),
             length = Name(["count"])
         )
         self.inst_from_irq_values = OrderedDict(
@@ -533,7 +564,7 @@ registers to connect a peripheral to this pad.""",  # noqa:E501
                 self.inst_from_irq_values[name] = module_name
 
     def has_alert_handler(self):
-        # FIXME find a better way then just harcoding this module name
+        # FIXME find a better way then just hardcoding this module name
         return any(module["name"] == "alert_handler" for module in self.top["module"])
 
     def _init_alert_map(self):
@@ -597,7 +628,8 @@ class IpHelper:
     EXTENSION_FIELD_NAME = Name(["ext"])
 
     def __init__(self, top_helper: TopHelper, ip: IpBlock, ipconfig: object, default_node: str,
-                 enum_type: object, array_mapping_type: object, extension_cls = None):
+                 enum_type: object, array_mapping_type: object,
+                 extension_cls: Optional[list[Extension]] = None):
         self.top_helper = top_helper
         self.top = top_helper.top
         self.ip = ip
@@ -626,7 +658,9 @@ class IpHelper:
         self._init_resets()
         self._init_periph_io()
         self._init_features()
-        self.extension = (extension_cls or EmptyExtension).create_ext(self)
+        self.extensions = list(filter(lambda x: x is not None,
+                                      [ext_cls.create_ext(self)
+                                       for ext_cls in extension_cls or []]))
 
         self._init_instances()
 
@@ -671,7 +705,7 @@ class IpHelper:
         return len(self.ip.alerts) > 0
 
     def has_alert_handler(self):
-        # FIXME find a better way then just harcoding this module name
+        # FIXME find a better way then just hardcoding this module name
         return any(module["name"] == "alert_handler" for module in self.top["module"])
 
     def _init_alerts(self):
@@ -831,7 +865,8 @@ class IpHelper:
             self.inst_dt_values[inst_name] = self._create_instance(m)
             self.inst_map[inst_name] = m
         if isinstance(self.inst_enum, CEnum):
-            self.inst_enum.add_first_constant("First instance")
+            if self.inst_enum.constants:
+                self.inst_enum.add_first_constant("First instance")
             self.inst_enum.add_count_constant("Number of instances")
 
     def has_features(self):
@@ -863,9 +898,7 @@ class IpHelper:
             # FIXME We need to handle better the case where a block is not connected to the PLIC.
             self.inst_struct.add_field(
                 name = self.FIRST_IRQ_FIELD_NAME,
-                field_type = ScalarType(Name(["top"]) +
-                                        Name.from_snake_case(self.top["name"]) +
-                                        Name(["plic", "irq", "id"])),
+                field_type = ScalarType(self.top_helper.the_plic_irq_id_type_name),
                 docstring = """PLIC ID of the first IRQ of this instance
 
 This can be `kDtPlicIrqIdNone` if the block is not connected to the PLIC."""
@@ -913,14 +946,17 @@ This value is undefined if the block is not connected to the Alert Handler."""
                 docstring = "Description of each peripheral I/O"
             )
         # Add extension fields.
-        if self.extension:
-            ext_struct = self.extension.extend_dt_ip()
-            if ext_struct:
+        self._extension_structs = {}
+        for ext in self.extensions:
+            ext_desc = ext.extend_dt_ip()
+            if ext_desc:
+                ext_name, ext_struct = ext_desc
                 self.inst_struct.add_field(
-                    name = self.EXTENSION_FIELD_NAME,
+                    name = ext_name,
                     field_type = ext_struct,
-                    docstring = "Extension"
+                    docstring = "Extension",
                 )
+                self._extension_structs[ext] = ext_name
 
     def _create_instance(self, m):
         """
@@ -1011,7 +1047,7 @@ This value is undefined if the block is not connected to the Alert Handler."""
             periph_ios = OrderedDict()
             for (sig, (port, idx)) in self._device_signals.items():
                 found = False
-                for conn in self.top["pinmux"]["ios"]:
+                for conn in self.top.get("pinmux", {}).get("ios", []):
                     if conn["name"] != m["name"] + "_" + port or idx != conn["idx"]:
                         continue
                     if found:
@@ -1026,10 +1062,11 @@ This value is undefined if the block is not connected to the Alert Handler."""
                     periph_ios[Name.from_snake_case(sig)] = self._create_periph_io_missing_desc()
             inst_desc[self.PERIPH_IO_FIELD_NAME] = periph_ios
         # Add extension fields.
-        if self.extension:
-            ext_fields = self.extension.fill_dt_ip(m)
-            if ext_fields:
-                inst_desc[self.EXTENSION_FIELD_NAME] = ext_fields
+        for (ext, ext_field_name) in self._extension_structs.items():
+            ext_fields = ext.fill_dt_ip(m)
+            assert ext_fields is not None, \
+                "extension did not return fields data despite creating extension fields"
+            inst_desc[ext_field_name] = ext_fields
 
         return inst_desc
 
@@ -1107,4 +1144,7 @@ This value is undefined if the block is not connected to the Alert Handler."""
         }
 
     def render_extension(self, ip_pos: Extension.DtIpPos) -> str:
-        return self.extension.render_dt_ip(ip_pos) if self.extension else ""
+        out = ""
+        for ext in self.extensions:
+            out += "\n" + ext.render_dt_ip(ip_pos) + "\n"
+        return out

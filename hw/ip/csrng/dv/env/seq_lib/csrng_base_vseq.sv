@@ -76,7 +76,7 @@ class csrng_base_vseq extends cip_base_vseq #(
   endtask
 
   function automatic bit edn_under_reset();
-    return cfg.m_edn_agent_cfg[0].vif.rst_n === 1'b0;
+    return cfg.m_edn_agent_cfg[0].under_reset;
   endfunction
 
   // Wait for a CSR to contain an expected value or EDN to be reset, whichever happens first.  This
@@ -107,6 +107,10 @@ class csrng_base_vseq extends cip_base_vseq #(
       cmd = {cs_item.glen, cs_item.flags, cs_item.clen, 1'b0, cs_item.acmd};
     end
     if (app != SW_APP) begin
+      if (edn_under_reset()) begin
+        `uvm_info(`gfn, "HW app stopped due to EDN reset", UVM_HIGH)
+        return;
+      end
       cfg.m_edn_agent_cfg[app].m_cmd_push_agent_cfg.add_h_user_data(cmd);
       m_edn_push_seq[app].num_trans = cs_item.clen + 1;
       for (int i = 0; i < cs_item.clen; i++)
@@ -228,7 +232,7 @@ class csrng_base_vseq extends cip_base_vseq #(
     bit    val_push, val_full, val_data, val_pop, val_not_empty;
     case (case_state)
       fifo_write: begin // fifo write err
-        index1     = path_exts.find_index(x) with (x == "push");
+        index1     = path_exts.find_index(x) with (x == "wvld");
         index2     = path_exts.find_index(x) with (x == "full");
         index3     = path_exts.find_index(x) with (x == "wdata");
         path_push  = paths[index1[0]];
@@ -241,8 +245,8 @@ class csrng_base_vseq extends cip_base_vseq #(
                                  exp_data);
       end
       fifo_read: begin // fifo read err
-        index1         = path_exts.find_index(x) with (x == "pop");
-        index2         = path_exts.find_index(x) with (x == "not_empty");
+        index1         = path_exts.find_index(x) with (x == "rrdy");
+        index2         = path_exts.find_index(x) with (x == "rvld");
         index3         = path_exts.find_index(x) with (x == "rdata");
         path_pop       = paths[index1[0]];
         path_not_empty = paths[index2[0]];
@@ -254,7 +258,7 @@ class csrng_base_vseq extends cip_base_vseq #(
       end
       fifo_state: begin // fifo state err
         index1         = path_exts.find_index(x) with (x == "full");
-        index2         = path_exts.find_index(x) with (x == "not_empty");
+        index2         = path_exts.find_index(x) with (x == "rvld");
         path_full      = paths[index1[0]];
         path_not_empty = paths[index2[0]];
         val_full       = values[index1[0]];
@@ -274,7 +278,7 @@ class csrng_base_vseq extends cip_base_vseq #(
     bit    val_push, val_full, val_pop, val_not_empty;
     case (case_state)
       fifo_write: begin // fifo write err
-        index1     = path_exts.find_index(x) with (x == "push");
+        index1     = path_exts.find_index(x) with (x == "wvld");
         index2     = path_exts.find_index(x) with (x == "full");
         path_push  = paths[index1[0]];
         path_full  = paths[index2[0]];
@@ -283,8 +287,8 @@ class csrng_base_vseq extends cip_base_vseq #(
         force_fifo_err(path_push, path_full, val_push, val_full, reg_field, exp_data);
       end
       fifo_read: begin // fifo read err
-        index1         = path_exts.find_index(x) with (x == "pop");
-        index2         = path_exts.find_index(x) with (x == "not_empty");
+        index1         = path_exts.find_index(x) with (x == "rrdy");
+        index2         = path_exts.find_index(x) with (x == "rvld");
         path_pop       = paths[index1[0]];
         path_not_empty = paths[index2[0]];
         val_pop        = values[index1[0]];
@@ -294,7 +298,7 @@ class csrng_base_vseq extends cip_base_vseq #(
       end
       fifo_state: begin // fifo state err
         index1         = path_exts.find_index(x) with (x == "full");
-        index2         = path_exts.find_index(x) with (x == "not_empty");
+        index2         = path_exts.find_index(x) with (x == "rvld");
         path_full      = paths[index1[0]];
         path_not_empty = paths[index2[0]];
         val_full       = values[index1[0]];
@@ -333,7 +337,7 @@ class csrng_base_vseq extends cip_base_vseq #(
       `DV_CHECK(uvm_hdl_read(path, tmp_cnt));
       // Randomize bit flip vector
       `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(bit_flip_mask, $onehot(bit_flip_mask);)
-      // Make sure the random bit is within the ctr_width (this has a slight prefernce for lower
+      // Make sure the random bit is within the ctr_width (this has a slight preference for lower
       // bits in case 32 is not divisible by ctr_width)
       while (bit_flip_mask > (32'h1 << (ctr_width-1))) begin
         bit_flip_mask = bit_flip_mask >> ctr_width;

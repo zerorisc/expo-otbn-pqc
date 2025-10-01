@@ -74,6 +74,12 @@
                   additional_fusesoc_argument: "--mapping=lowrisc:systems:top_darjeeling:0.1"
                   rel_path: "hw/ip/csrng/lint/{tool}"
              },
+             {    name: entropy_src
+                  fusesoc_core: lowrisc:ip:entropy_src
+                  import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
+                  additional_fusesoc_argument: "--mapping=lowrisc:systems:top_darjeeling:0.1"
+                  rel_path: "hw/ip/entropy_src/lint/{tool}"
+             },
              {    name: edn
                   fusesoc_core: lowrisc:ip:edn
                   import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
@@ -175,11 +181,11 @@
                   additional_fusesoc_argument: "--mapping=lowrisc:systems:top_darjeeling:0.1"
                   rel_path: "hw/ip/soc_dbg_ctrl/lint/{tool}"
              },
-             //{    name: soc_dbg_ctrl_decode
-             //     fusesoc_core: lowrisc:ip:soc_dbg_ctrl_decode
-             //     import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
-             //     rel_path: "hw/ip/socdbg_ctrl/lint/{tool}"
-             //},
+             {    name: soc_dbg_ctrl_decode
+                 fusesoc_core: lowrisc:ip:soc_dbg_ctrl_decode
+                 import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
+                 rel_path: "hw/ip/socdbg_ctrl/lint/{tool}"
+             },
              {    name: top_darjeeling_rv_plic
                   fusesoc_core: lowrisc:darjeeling_ip:rv_plic
                   import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
@@ -192,11 +198,11 @@
                   additional_fusesoc_argument: "--mapping=lowrisc:systems:top_darjeeling:0.1"
                   rel_path:  "hw/ip/rv_timer/lint/{tool}"
              },
-             //{    name: soc_proxy
-             //     fusesoc_core: lowrisc:systems:soc_proxy
-             //     import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
-             //     rel_path: "hw/top_darjeeling/ip/soc_proxy/lint/{tool}"
-             //},
+             {    name: soc_proxy
+                 fusesoc_core: lowrisc:systems:soc_proxy
+                 import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]
+                 rel_path: "hw/top_darjeeling/ip/soc_proxy/lint/{tool}"
+             },
              {    name: spi_device
                   fusesoc_core: lowrisc:ip:spi_device
                   import_cfgs: ["{proj_root}/hw/lint/tools/dvsim/common_lint_cfg.hjson"]

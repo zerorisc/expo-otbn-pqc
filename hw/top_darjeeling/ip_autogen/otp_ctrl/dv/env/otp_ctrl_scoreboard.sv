@@ -1,4 +1,5 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
@@ -88,7 +89,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
         otp_a        = '{default:0};
         otp_lc_data  = '{default:0};
         // secret partitions have been scrambled before writing to OTP.
-        // here calculate the pre-srambled raw data when clearing internal OTP to all 0s.
+        // here calculate the pre-scrambled raw data when clearing internal OTP to all 0s.
         data = descramble_data(0, Secret0Idx);
         for (int i = Secret0Offset / TL_SIZE;
              i <= Secret0DigestOffset / TL_SIZE - 1;
@@ -97,7 +98,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
               data[SCRAMBLE_DATA_SIZE-1:TL_DW] : data[TL_DW-1:0];
         end
         // secret partitions have been scrambled before writing to OTP.
-        // here calculate the pre-srambled raw data when clearing internal OTP to all 0s.
+        // here calculate the pre-scrambled raw data when clearing internal OTP to all 0s.
         data = descramble_data(0, Secret1Idx);
         for (int i = Secret1Offset / TL_SIZE;
              i <= Secret1DigestOffset / TL_SIZE - 1;
@@ -106,7 +107,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
               data[SCRAMBLE_DATA_SIZE-1:TL_DW] : data[TL_DW-1:0];
         end
         // secret partitions have been scrambled before writing to OTP.
-        // here calculate the pre-srambled raw data when clearing internal OTP to all 0s.
+        // here calculate the pre-scrambled raw data when clearing internal OTP to all 0s.
         data = descramble_data(0, Secret2Idx);
         for (int i = Secret2Offset / TL_SIZE;
              i <= Secret2DigestOffset / TL_SIZE - 1;
@@ -115,7 +116,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
               data[SCRAMBLE_DATA_SIZE-1:TL_DW] : data[TL_DW-1:0];
         end
         // secret partitions have been scrambled before writing to OTP.
-        // here calculate the pre-srambled raw data when clearing internal OTP to all 0s.
+        // here calculate the pre-scrambled raw data when clearing internal OTP to all 0s.
         data = descramble_data(0, Secret3Idx);
         for (int i = Secret3Offset / TL_SIZE;
              i <= Secret3DigestOffset / TL_SIZE - 1;
@@ -163,23 +164,25 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
             exp_status[OtpDaiIdleIdx] = 1;
           end
 
-          // Hwcfg_o gets data from OTP HW cfg partition
+          // hw_cfg0_o gets data from OTP HW_CFG0 partition, excluding the digest
+          // and potentially the zeroized mark
           exp_hw_cfg0_data = cfg.otp_ctrl_vif.under_error_states() ?
-                             otp_ctrl_part_pkg::PartInvDefault[HwCfg0Offset*8 +: HwCfg0Size*8] :
-                             otp_hw_cfg0_data_t'({<<32 {otp_a[HwCfg0Offset/4 +: HwCfg0Size/4]}});
+              top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[HwCfg0Offset*8 +: (HwCfg0Size - 8)*8] :
+              otp_hw_cfg0_data_t'({<<32 {otp_a[HwCfg0Offset/4 +: (HwCfg0Size - 8)/4]}});
           `DV_CHECK_EQ(cfg.otp_ctrl_vif.otp_broadcast_o.valid, lc_ctrl_pkg::On)
           `DV_CHECK_EQ(cfg.otp_ctrl_vif.otp_broadcast_o.hw_cfg0_data, exp_hw_cfg0_data)
 
-          // Hwcfg_o gets data from OTP HW cfg partition
+          // hw_cfg1 gets data from OTP HW_CFG1 partition, excluding the digest
+          // and potentially the zeroized mark
           exp_hw_cfg1_data = cfg.otp_ctrl_vif.under_error_states() ?
-                             otp_ctrl_part_pkg::PartInvDefault[HwCfg1Offset*8 +: HwCfg1Size*8] :
-                             otp_hw_cfg1_data_t'({<<32 {otp_a[HwCfg1Offset/4 +: HwCfg1Size/4]}});
+                             top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[HwCfg1Offset*8 +: (HwCfg1Size - 8)*8] :
+                             otp_hw_cfg1_data_t'({<<32 {otp_a[HwCfg1Offset/4 +: (HwCfg1Size - 8)/4]}});
           `DV_CHECK_EQ(cfg.otp_ctrl_vif.otp_broadcast_o.valid, lc_ctrl_pkg::On)
           `DV_CHECK_EQ(cfg.otp_ctrl_vif.otp_broadcast_o.hw_cfg1_data, exp_hw_cfg1_data)
 
           if (!cfg.otp_ctrl_vif.under_error_states()) begin
             // ---------------------- Check lc_data_o output -----------------------------------
-            // Because initialization was succesful, the valid should be set and error should be
+            // Because initialization was successful, the valid should be set and error should be
             // reset.
             exp_lc_data.valid = 1;
             exp_lc_data.error = 0;
@@ -228,7 +231,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   {<<32 {otp_a[CreatorRootKeyShare0Offset/4 +: CreatorRootKeyShare0Size/4]}};
             end else begin
               exp_keymgr_data.creator_root_key_share0 =
-                  PartInvDefault[CreatorRootKeyShare0Offset*8 +: CreatorRootKeyShare0Size*8];
+                  top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[CreatorRootKeyShare0Offset*8 +: CreatorRootKeyShare0Size*8];
             end
             // Check otp_keymgr_key_t struct by item is easier to debug.
             `DV_CHECK_EQ(cfg.otp_ctrl_vif.keymgr_key_o.creator_root_key_share0_valid,
@@ -239,7 +242,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   {<<32 {otp_a[CreatorRootKeyShare1Offset/4 +: CreatorRootKeyShare1Size/4]}};
             end else begin
               exp_keymgr_data.creator_root_key_share1 =
-                  PartInvDefault[CreatorRootKeyShare1Offset*8 +: CreatorRootKeyShare1Size*8];
+                  top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[CreatorRootKeyShare1Offset*8 +: CreatorRootKeyShare1Size*8];
             end
             // Check otp_keymgr_key_t struct by item is easier to debug.
             `DV_CHECK_EQ(cfg.otp_ctrl_vif.keymgr_key_o.creator_root_key_share1_valid,
@@ -250,7 +253,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   {<<32 {otp_a[CreatorSeedOffset/4 +: CreatorSeedSize/4]}};
             end else begin
               exp_keymgr_data.creator_seed =
-                  PartInvDefault[CreatorSeedOffset*8 +: CreatorSeedSize*8];
+                  top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[CreatorSeedOffset*8 +: CreatorSeedSize*8];
             end
             // Check otp_keymgr_key_t struct by item is easier to debug.
             `DV_CHECK_EQ(cfg.otp_ctrl_vif.keymgr_key_o.creator_seed_valid,
@@ -261,7 +264,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   {<<32 {otp_a[OwnerSeedOffset/4 +: OwnerSeedSize/4]}};
             end else begin
               exp_keymgr_data.owner_seed =
-                  PartInvDefault[OwnerSeedOffset*8 +: OwnerSeedSize*8];
+                  top_darjeeling_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault[OwnerSeedOffset*8 +: OwnerSeedSize*8];
             end
             // Check otp_keymgr_key_t struct by item is easier to debug.
             `DV_CHECK_EQ(cfg.otp_ctrl_vif.keymgr_key_o.owner_seed_valid,
@@ -294,41 +297,51 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
   // 1. Externally lc_escalation_en is set to lc_ctrl_pkg::On.
   // 2. Internal fatal alert triggered and all partitions are driven to error states.
   virtual task process_lc_esc();
-    forever begin
-      wait(cfg.otp_ctrl_vif.alert_reqs == 1 && cfg.en_scb);
-
-      if (cfg.otp_ctrl_vif.lc_esc_on == 0) `DV_CHECK_NE(exp_alert, OtpNoAlert)
-
-      if (exp_alert != OtpCheckAlert) set_exp_alert("fatal_check_error", 1, 5);
-
-      // If the lc_escalation is triggered by internal fatal alert, wait 2 negedge until status is
-      // updated internally
-      if (cfg.otp_ctrl_vif.lc_esc_on == 0) begin
-        cfg.clk_rst_vif.wait_n_clks(2);
-        exp_status[OtpCheckPendingIdx] = 0;
-        exp_status[OtpDaiIdleIdx] = 0;
-      end else begin
-        exp_status = '0;
-        // Only lc_esc_on will set these bits to 1.
-        exp_status[OtpDerivKeyFsmErrIdx:OtpLfsrFsmErrIdx] = '1;
+    fork
+      // Handle external escalation requests.
+      forever begin
+        wait(cfg.otp_ctrl_vif.lc_escalate_en_i != lc_ctrl_pkg::Off && cfg.en_scb);
+        `uvm_info(`gfn, "Got lc_escalate_en_i", UVM_MEDIUM)
+        set_exp_alert("fatal_check_error", 1, 5);
+        wait(cfg.otp_ctrl_vif.lc_escalate_en_i == lc_ctrl_pkg::Off);
       end
+      // Handle internal alerts.
+      forever begin
+        wait(cfg.otp_ctrl_vif.alert_reqs == 1 && cfg.en_scb);
 
-      // Update status bits.
-      foreach (FATAL_EXP_STATUS[i]) begin
-        if (FATAL_EXP_STATUS[i]) begin
-          predict_err(.status_err_idx(otp_status_e'(i)), .err_code(OtpFsmStateError),
-                      .update_esc_err(1));
+        if (cfg.otp_ctrl_vif.lc_esc_on == 0) `DV_CHECK_NE(exp_alert, OtpNoAlert)
+
+        if (exp_alert != OtpCheckAlert) set_exp_alert("fatal_check_error", 1, 5);
+
+        // If the lc_escalation is triggered by internal fatal alert, wait 2 negedge until status is
+        // updated internally
+        if (cfg.otp_ctrl_vif.lc_esc_on == 0) begin
+          cfg.clk_rst_vif.wait_n_clks(2);
+          exp_status[OtpCheckPendingIdx] = 0;
+          exp_status[OtpDaiIdleIdx] = 0;
+        end else begin
+          exp_status = '0;
+          // Only lc_esc_on will set these bits to 1.
+          exp_status[OtpDerivKeyFsmErrIdx:OtpLfsrFsmErrIdx] = '1;
         end
+
+        // Update status bits.
+        foreach (FATAL_EXP_STATUS[i]) begin
+          if (FATAL_EXP_STATUS[i]) begin
+            predict_err(.status_err_idx(otp_status_e'(i)), .err_code(OtpFsmStateError),
+                        .update_esc_err(1));
+          end
+        end
+
+        // Update digest values and direct_access_regwen.
+        predict_rdata(1, 0, 0);
+        void'(ral.direct_access_regwen.predict(.value(0), .kind(UVM_PREDICT_READ)));
+
+        // DAI access is locked until reset, so no need to backdoor read otp write value until reset.
+
+        wait(cfg.otp_ctrl_vif.alert_reqs == 0);
       end
-
-      // Update digest values and direct_access_regwen.
-      predict_rdata(1, 0, 0);
-      void'(ral.direct_access_regwen.predict(.value(0), .kind(UVM_PREDICT_READ)));
-
-      // DAI access is locked until reset, so no need to backdoor read otp write value until reset.
-
-      wait(cfg.otp_ctrl_vif.alert_reqs == 0);
-    end
+    join
   endtask
 
   // This task monitors if lc_program req is interrupted by reset.
@@ -509,7 +522,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
     bit data_phase_read   = (!write && channel == DataChannel);
     bit data_phase_write  = (write && channel == DataChannel);
 
-    if (ral_name != "otp_macro_reg_block") begin
+    if (ral_name != "otp_macro_prim_reg_block") begin
       process_core_tl_access(item, csr_addr, ral_name, addr_mask,
                              addr_phase_read, addr_phase_write, data_phase_read, data_phase_write);
     end else begin
@@ -630,7 +643,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
 
     // process the csr req
     // for write, update local variable and fifo at address phase
-    // for read, update predication at address phase and compare at data phase
+    // for read, update prediction at address phase and compare at data phase
     case (csr_name)
       // add individual case item for each csr
       "intr_state": begin
@@ -715,7 +728,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
           // LC partition cannot be access via DAI
           if (part_idx == LifeCycleIdx) begin
             predict_err(OtpDaiErrIdx, OtpAccessError);
-            if (item.a_data == DaiRead) predict_rdata(is_secret(dai_addr), 0, 0);
+            if (item.a_data == DaiRead) predict_rdata(is_granule_64(dai_addr), 0, 0);
           end else begin
             // Collect coverage.
             if (cfg.en_cov) begin
@@ -738,30 +751,22 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                 // Check if it is sw partition read lock
                 check_dai_rd_data = 1;
 
+                // Hardware digests and zeroized marks are always readable.
                 // SW partitions write read_lock_csr can lock read access.
-                if (sw_read_lock ||
-                    // Secret partitions cal digest can also lock read access.
-                    // However, digest is always readable except SW partitions (Issue #5752).
-                    (is_secret(dai_addr) && get_digest_reg_val(part_idx) != 0 &&
-                     !is_digest(dai_addr)) ||
-                    // If the partition has creator key material and lc_creator_seed_sw_rw is
-                    // disable, then return access error.
-                    (PartInfo[part_idx].iskeymgr_creator && !is_digest(dai_addr) &&
-                     cfg.otp_ctrl_vif.lc_creator_seed_sw_rw_en_i != lc_ctrl_pkg::On)) begin
+                if (!((is_digest(dai_addr) && PartInfo[part_idx].hw_digest) ||
+                      is_zeroized_addr(dai_addr)) &&
+                    (sw_read_lock ||
+                     // Secret partitions cal digest can also lock read access.
+                     (is_secret(dai_addr) && get_digest_reg_val(part_idx) != 0) ||
+                     // If the partition has creator key material and lc_creator_seed_sw_rw is
+                     // disabled, or the partition has owner key material and lc_owner_seed_sw_rw
+                     // is disabled, then return access error.
+                     (PartInfo[part_idx].iskeymgr_creator &&
+                      cfg.otp_ctrl_vif.lc_creator_seed_sw_rw_en_i != lc_ctrl_pkg::On) ||
+                     (PartInfo[part_idx].iskeymgr_owner &&
+                      cfg.otp_ctrl_vif.lc_owner_seed_sw_rw_en_i != lc_ctrl_pkg::On))) begin
                   predict_err(OtpDaiErrIdx, OtpAccessError);
-                  predict_rdata(is_secret(dai_addr) || is_digest(dai_addr), 0, 0);
-                end else if (sw_read_lock ||
-                    // Secret partitions cal digest can also lock read access.
-                    // However, digest is always readable except SW partitions (Issue #5752).
-                    (is_secret(dai_addr) && get_digest_reg_val(part_idx) != 0 &&
-                     !is_digest(dai_addr)) ||
-                    // If the partition has owner key material and lc_owner_seed_sw_rw is disable,
-                    // then return access error.
-                    (PartInfo[part_idx].iskeymgr_owner && !is_digest(dai_addr) &&
-                     cfg.otp_ctrl_vif.lc_owner_seed_sw_rw_en_i != lc_ctrl_pkg::On)) begin
-                  predict_err(OtpDaiErrIdx, OtpAccessError);
-                  predict_rdata(is_secret(dai_addr) || is_digest(dai_addr), 0, 0);
-
+                  predict_rdata(is_granule_64(dai_addr), 0, 0);
                 end else begin
                   bit [TL_DW-1:0] read_out0, read_out1;
                   bit [TL_AW-1:0] otp_addr = get_scb_otp_addr();
@@ -770,12 +775,12 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   // Backdoor read to check if there is any ECC error.
                   if (part_has_integrity(part_idx)) begin
                     ecc_err = read_a_word_with_ecc(dai_addr, read_out0);
-                    if (is_secret(dai_addr) || is_digest(dai_addr)) begin
+                    if (is_granule_64(dai_addr)) begin
                       ecc_err = max2(read_a_word_with_ecc(dai_addr + 4, read_out1), ecc_err);
                     end
                   end else begin
                     ecc_err = read_a_word_with_ecc_raw(dai_addr, read_out0);
-                    if (is_secret(dai_addr) || is_digest(dai_addr)) begin
+                    if (is_granule_64(dai_addr)) begin
                       ecc_err = max2(read_a_word_with_ecc_raw(dai_addr + 4, read_out1), ecc_err);
                     end
                   end
@@ -783,7 +788,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   if (ecc_err == OtpEccCorrErr && part_has_integrity(part_idx)) begin
                     predict_err(OtpDaiErrIdx, OtpMacroEccCorrError);
                     backdoor_update_otp_array(dai_addr);
-                    predict_rdata(is_secret(dai_addr) || is_digest(dai_addr),
+                    predict_rdata(is_granule_64(dai_addr),
                                   otp_a[otp_addr], otp_a[otp_addr+1]);
                   end else if (ecc_err == OtpEccUncorrErr && part_has_integrity(part_idx)) begin
                     predict_err(OtpDaiErrIdx, OtpMacroEccUncorrError);
@@ -796,15 +801,13 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                   end else if (ecc_err inside {OtpEccCorrErr, OtpEccUncorrErr} &&
                                !part_has_integrity(part_idx)) begin
                     predict_no_err(OtpDaiErrIdx);
-                    predict_rdata(is_secret(dai_addr) || is_digest(dai_addr),
-                                  read_out0, read_out1);
+                    predict_rdata(is_granule_64(dai_addr), read_out0, read_out1);
                     // do not check direct_access_rdata_* on ECC errors in
                     // non-integrity partitions
                     check_dai_rd_data = 0;
                   end else begin
                     predict_no_err(OtpDaiErrIdx);
-                    predict_rdata(is_secret(dai_addr) || is_digest(dai_addr),
-                                  otp_a[otp_addr], otp_a[otp_addr+1]);
+                    predict_rdata(is_granule_64(dai_addr), otp_a[otp_addr], otp_a[otp_addr+1]);
                   end
                 end
               end
@@ -825,6 +828,8 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
                 end else if (is_write_locked || (PartInfo[part_idx].iskeymgr_owner &&
                              !is_digest(dai_addr) &&
                              cfg.otp_ctrl_vif.lc_owner_seed_sw_rw_en_i != lc_ctrl_pkg::On)) begin
+                  predict_err(OtpDaiErrIdx, OtpAccessError);
+                end else if (PartInfo[part_idx].zeroizable && is_zeroized_addr(dai_addr)) begin
                   predict_err(OtpDaiErrIdx, OtpAccessError);
                 end else begin
                   predict_no_err(OtpDaiErrIdx);
@@ -953,7 +958,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
           exp_status[OtpCheckPendingIdx] = 1;
           under_chk = 1;
           if (check_timeout <= CHK_TIMEOUT_CYC) begin
-            set_exp_alert("fatal_check_error", 1, `gmv(ral.check_timeout));
+            set_exp_alert("fatal_check_error", 1, `gmv(ral.check_timeout) + CHK_TIMEOUT_SLACK);
             predict_err(OtpTimeoutErrIdx);
           end else begin
             if (get_field_val(ral.check_trigger.consistency, item.a_data)) begin
@@ -1270,7 +1275,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
 
     otp_a[otp_addr] = readout_word;
 
-    if (is_digest(dai_addr)) begin
+    if (is_digest(dai_addr) || is_zeroized_addr(dai_addr)) begin
       otp_a[otp_addr+1] = readout_word1;
     end else if (is_secret(dai_addr)) begin
       bit [TL_DW*2-1:0] mem_rd_val, descrambled_val;
@@ -1770,7 +1775,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
     bit mem_access_allowed = super.is_tl_mem_access_allowed(item, ral_name, mem_byte_access_err,
                                                             mem_wo_err, mem_ro_err, custom_err);
 
-    if (ral_name == "otp_macro_reg_block") return mem_access_allowed;
+    if (ral_name == "otp_macro_prim_reg_block") return mem_access_allowed;
 
     // Ensure the address is within the memory window range.
     // Also will skip checking if memory access is not allowed due to TLUL bus error.
@@ -2028,7 +2033,7 @@ class otp_ctrl_scoreboard #(type CFG_T = otp_ctrl_env_cfg)
   endfunction
 
   virtual function bit predict_tl_err(tl_seq_item item, tl_channels_e channel, string ral_name);
-    if (ral_name == "otp_macro_reg_block" &&
+    if (ral_name == "otp_macro_prim_reg_block" &&
         cfg.otp_ctrl_vif.lc_dft_en_i != lc_ctrl_pkg::On) begin
       if (channel == DataChannel) begin
         `DV_CHECK_EQ(item.d_error, 1,

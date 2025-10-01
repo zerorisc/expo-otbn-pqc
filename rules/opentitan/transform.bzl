@@ -163,11 +163,12 @@ def scramble_flash(ctx, **kwargs):
       kwargs: Overrides of values normally retrived from the context object.
         output: The name of the output file.  Constructed from `name` and `suffix`
                  if not specified.
-        suffix: The suffix to give the file if the ouput isn't specified.
+        suffix: The suffix to give the file if the output isn't specified.
         src: The src File object.
         otp: The OTP settings.
         otp_mmap: The OTP memory mapping file.
-        otp_seed: The OTP seed.
+
+        top_secret_cfg: The secret configuration file.
         otp_data_perm: The OTP data permutation configuration.
         _tool: The flash scrambling script.
 
@@ -191,18 +192,18 @@ def scramble_flash(ctx, **kwargs):
         "--out-flash-vmem",
         output.path,
     ]
+
+    # Always get top_secret_cfg since the tool requires it
+    top_secret_cfg = get_override(ctx, "file.top_secret_cfg", kwargs)
+    arguments.extend(["--top-secret-cfg", top_secret_cfg.path])
+    inputs.append(top_secret_cfg)
+
     if otp:
-        otp_mmap = get_override(ctx, "file.otp_mmap", kwargs)
-        otp_seed = get_override(ctx, "attr.otp_seed", kwargs)
         arguments.extend([
             "--in-otp-vmem",
             otp.path,
-            "--in-otp-mmap",
-            otp_mmap.path,
-            "--otp-seed",
-            str(otp_seed[BuildSettingInfo].value),
         ])
-        inputs.extend([otp, otp_mmap])
+        inputs.extend([otp])
 
         otp_data_perm = get_override(ctx, "attr.otp_data_perm", kwargs)
         if otp_data_perm:
@@ -261,9 +262,9 @@ def convert_to_scrambled_rom_vmem(ctx, **kwargs):
         output: The name of the output file.  Constructed from `name` and `suffix`
                  if not specified.
         src: The src File object.
-        rom_scramble_config: The scrambling config.
         rom_scramble_tool: The scrambling tool.
         rom_scramble_mode: The scrambling mode.
+        top_secret_cfg: The secrets configuration of the top.
     Returns:
       (The transformed File, The hashfile)
     """
@@ -279,15 +280,17 @@ def convert_to_scrambled_rom_vmem(ctx, **kwargs):
 
     src = get_override(ctx, "attr.src", kwargs)
 
-    config = get_override(ctx, "file.rom_scramble_config", kwargs)
+    top_config = get_override(ctx, "file.top_gen_hjson", kwargs)
+    secrets = get_override(ctx, "file.top_secret_cfg", kwargs)
     tool = get_override(ctx, "executable.rom_scramble_tool", kwargs)
     mode = get_override(ctx, "attr.rom_scramble_mode", kwargs)
 
     ctx.actions.run(
         outputs = [output, hashfile],
-        inputs = [src, tool, config],
+        inputs = [src, tool, top_config, secrets],
         arguments = [
-            config.path,
+            top_config.path,
+            secrets.path,
             mode,
             src.path,
             output.path,

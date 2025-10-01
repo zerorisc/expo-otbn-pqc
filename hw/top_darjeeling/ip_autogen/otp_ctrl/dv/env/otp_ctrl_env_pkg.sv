@@ -1,4 +1,5 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 package otp_ctrl_env_pkg;
@@ -13,7 +14,7 @@ package otp_ctrl_env_pkg;
   import csr_utils_pkg::*;
   import push_pull_agent_pkg::*;
   import otp_ctrl_core_ral_pkg::*;
-  import otp_macro_ral_pkg::*;
+  import otp_macro_prim_ral_pkg::*;
   import otp_ctrl_reg_pkg::*;
   import otp_ctrl_pkg::*;
   import otp_ctrl_part_pkg::*;
@@ -49,6 +50,10 @@ package otp_ctrl_env_pkg;
 
   parameter int OTP_ADDR_WIDTH = OtpByteAddrWidth-2;
 
+  // The full word size of the OTP macro, including ECC.
+  parameter int OTP_MACRO_FULL_WIDTH = OtpWidth + prim_secded_pkg::get_synd_width(
+              prim_secded_pkg::SecdedHamming, OtpWidth);
+
   parameter uint NUM_PRIM_REG = 8;
 
   // sram rsp data has 1 bit for seed_valid, the rest are for key and nonce
@@ -61,7 +66,11 @@ package otp_ctrl_env_pkg;
   parameter uint NUM_SRAM_EDN_REQ = 12;
   parameter uint NUM_OTBN_EDN_REQ = 10;
 
+  // This is used to randomize CHECK_TIMEOUT in sequences, set to a low value
+  // so it will certainly cause a check error due to a timeout.
   parameter uint CHK_TIMEOUT_CYC = 40;
+  // This is some slack for a timeout error propagation to become an alert.
+  parameter uint CHK_TIMEOUT_SLACK = 4;
 
   // When fatal alert triggered, all partitions and the DAI & LCI go to error state and status will
   // be set to 1.
@@ -92,7 +101,32 @@ package otp_ctrl_env_pkg;
     Secret3Offset
   };
 
-  // lc does not have digest
+  // start address of special locations, either digest or zeroized field
+  parameter int PART_OTP_SPECIALS_OFFSETS [NumPart-1] = {
+    VendorTestOffset + VendorTestSize - 8,
+    CreatorSwCfgOffset + CreatorSwCfgSize - 8,
+    OwnerSwCfgOffset + OwnerSwCfgSize - 8,
+    OwnershipSlotStateOffset + OwnershipSlotStateSize - 0,
+    RotCreatorAuthOffset + RotCreatorAuthSize - 8,
+    RotOwnerAuthSlot0Offset + RotOwnerAuthSlot0Size - 8,
+    RotOwnerAuthSlot1Offset + RotOwnerAuthSlot1Size - 8,
+    PlatIntegAuthSlot0Offset + PlatIntegAuthSlot0Size - 8,
+    PlatIntegAuthSlot1Offset + PlatIntegAuthSlot1Size - 8,
+    PlatOwnerAuthSlot0Offset + PlatOwnerAuthSlot0Size - 8,
+    PlatOwnerAuthSlot1Offset + PlatOwnerAuthSlot1Size - 8,
+    PlatOwnerAuthSlot2Offset + PlatOwnerAuthSlot2Size - 8,
+    PlatOwnerAuthSlot3Offset + PlatOwnerAuthSlot3Size - 8,
+    ExtNvmOffset + ExtNvmSize - 0,
+    RomPatchOffset + RomPatchSize - 8,
+    HwCfg0Offset + HwCfg0Size - 8,
+    HwCfg1Offset + HwCfg1Size - 8,
+    Secret0Offset + Secret0Size - 16,
+    Secret1Offset + Secret1Size - 16,
+    Secret2Offset + Secret2Size - 16,
+    Secret3Offset + Secret3Size - 16
+  };
+
+  // lc partition does not have digest
   parameter int PART_OTP_DIGEST_ADDRS [NumPart-1] = {
     VendorTestDigestOffset >> 2,
     CreatorSwCfgDigestOffset >> 2,
@@ -115,6 +149,31 @@ package otp_ctrl_env_pkg;
     Secret1DigestOffset >> 2,
     Secret2DigestOffset >> 2,
     Secret3DigestOffset >> 2
+  };
+
+  // lc partition is not zeroizable
+  parameter int PART_OTP_ZEROIZED_ADDRS [NumPart-1] = {
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    -1, // This partition has no zeroized field.
+    Secret0ZerOffset >> 2,
+    Secret1ZerOffset >> 2,
+    Secret2ZerOffset >> 2,
+    Secret3ZerOffset >> 2
   };
 
   // types
@@ -229,11 +288,22 @@ package otp_ctrl_env_pkg;
     return PartInfo[part_idx].hw_digest;
   endfunction
 
+  function automatic bit part_is_zeroizable(int part_idx);
+    return PartInfo[part_idx].zeroizable;
+  endfunction
+
+  function automatic int digest_offset(int part_idx);
+    return PART_OTP_DIGEST_ADDRS[part_idx] << 2;
+  endfunction
+
+  function automatic int zeroized_offset(int part_idx);
+    return PART_OTP_ZEROIZED_ADDRS[part_idx] << 2;
+  endfunction
+
   function automatic bit is_sw_digest(bit [TL_DW-1:0] addr);
     int part_idx = get_part_index(addr);
     if (PartInfo[part_idx].sw_digest) begin
-      // If the partition contains a digest, it will be located in the last 64bit of the partition.
-      return {addr[TL_DW-1:3], 3'b0} == ((PartInfo[part_idx].offset + PartInfo[part_idx].size) - 8);
+      return {addr[TL_DW-1:3], 3'b0} == digest_offset(part_idx);
     end else begin
       return 0;
     end
@@ -241,9 +311,18 @@ package otp_ctrl_env_pkg;
 
   function automatic bit is_digest(bit [TL_DW-1:0] addr);
     int part_idx = get_part_index(addr);
-    if (PartInfo[part_idx].sw_digest || PartInfo[part_idx].hw_digest) begin
+    if (part_has_digest(part_idx)) begin
       // If the partition contains a digest, it will be located in the last 64bit of the partition.
-      return {addr[TL_DW-1:3], 3'b0} == ((PartInfo[part_idx].offset + PartInfo[part_idx].size) - 8);
+      return {addr[TL_DW-1:3], 3'b0} == digest_offset(part_idx);
+    end else begin
+      return 0;
+    end
+  endfunction
+
+  function automatic bit is_zeroized_addr(bit [TL_DW-1:0] addr);
+    int part_idx = get_part_index(addr);
+    if (part_is_zeroizable(part_idx)) begin
+      return {addr[TL_DW-1:3], 3'b0} == zeroized_offset(part_idx);
     end else begin
       return 0;
     end
@@ -278,9 +357,13 @@ package otp_ctrl_env_pkg;
     return dai_addr + SW_WINDOW_BASE_ADDR;
   endfunction
 
+  function automatic bit is_granule_64(bit [TL_DW-1:0] dai_addr);
+    return (is_secret(dai_addr) || is_digest(dai_addr) || is_zeroized_addr(dai_addr)) ? 1'b1 : 1'b0;
+  endfunction
+
   function automatic bit [TL_DW-1:0] normalize_dai_addr(bit [TL_DW-1:0] dai_addr);
-    normalize_dai_addr = (is_secret(dai_addr) || is_digest(dai_addr)) ? dai_addr >> 3 << 3 :
-                                                                        dai_addr >> 2 << 2;
+    normalize_dai_addr = is_granule_64(dai_addr) ? dai_addr >> 3 << 3 :
+                                                   dai_addr >> 2 << 2;
   endfunction
 
   // package sources

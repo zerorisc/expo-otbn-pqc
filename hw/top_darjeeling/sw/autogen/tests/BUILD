@@ -4,8 +4,8 @@
 #
 # ------------------- W A R N I N G: A U T O - G E N E R A T E D   C O D E !! -------------------#
 # PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
-# util/topgen.py -t hw/top_darjeeling/data/top_darjeeling.hjson
-# -o hw/top_darjeeling
+# util/topgen.py -t hw/top_darjeeling/data/top_darjeeling.hjson \
+#                -o hw/top_darjeeling/
 
 load(
     "//rules/opentitan:defs.bzl",
@@ -19,11 +19,11 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 
 package(default_visibility = ["//visibility:public"])
 
-# Number of periphals per test
+# Number of peripherals per test
 NR_IRQ_PERIPH_PER_TEST = 10
 
 # Total numbers of tests (the last will contain only remaining IRQs)
-NR_IRQ_PERIPH_TESTS = 2
+NR_IRQ_PERIPH_TESTS = 3
 
 [
     opentitan_test(
@@ -60,6 +60,7 @@ NR_IRQ_PERIPH_TESTS = 2
             "//sw/device/lib/dif/autogen:csrng",
             "//sw/device/lib/dif/autogen:dma",
             "//sw/device/lib/dif/autogen:edn",
+            "//sw/device/lib/dif/autogen:entropy_src",
             "//sw/device/lib/dif/autogen:gpio",
             "//sw/device/lib/dif/autogen:hmac",
             "//sw/device/lib/dif/autogen:i2c",
@@ -112,6 +113,7 @@ opentitan_test(
         "//sw/device/lib/dif/autogen:csrng",
         "//sw/device/lib/dif/autogen:dma",
         "//sw/device/lib/dif/autogen:edn",
+        "//sw/device/lib/dif/autogen:entropy_src",
         "//sw/device/lib/dif/autogen:gpio",
         "//sw/device/lib/dif/autogen:hmac",
         "//sw/device/lib/dif/autogen:i2c",

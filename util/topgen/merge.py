@@ -16,7 +16,8 @@ from reggen.ip_block import IpBlock
 from reggen.params import (LocalParam, MemSizeParameter, Parameter,
                            RandParameter)
 from reggen.validate import check_bool
-from topgen import lib, secure_prng
+from topgen import lib
+from topgen.secure_prng import SecurePrngFactory
 from topgen.typing import IpBlocksT
 
 from .clocks import Clocks, UnmanagedClocks
@@ -26,7 +27,8 @@ from .resets import Resets, UnmanagedResets
 def _get_random_data_hex_literal(width):
     """ Fetch 'width' random bits and return them as hex literal"""
     width = int(width)
-    literal_str = hex(secure_prng.getrandbits(width))
+    prng = SecurePrngFactory.get("topgen")
+    literal_str = hex(prng.getrandbits(width))
     return literal_str
 
 
@@ -36,7 +38,8 @@ def _get_random_perm_hex_literal(numel):
     num_elements = int(numel)
     width = int(ceil(log2(num_elements)))
     idx = [x for x in range(num_elements)]
-    secure_prng.shuffle(idx)
+    prng = SecurePrngFactory.get("topgen")
+    prng.shuffle(idx)
     literal_str = ""
     for k in idx:
         literal_str += format(k, '0' + str(width) + 'b')
@@ -103,7 +106,7 @@ def elaborate_instance(instance, block: IpBlock):
             log.warning(f"{mod_name} has security-critical parameter "
                         f"{param.name} not exposed to top")
 
-        # Move special prefixes to the beginnining of the parameter name.
+        # Move special prefixes to the beginning of the parameter name.
         param_prefixes = ["Sec", "RndCnst", "MemSize"]
         name_top = cc_mod_name + param.name
         for prefix in param_prefixes:
@@ -124,15 +127,28 @@ def elaborate_instance(instance, block: IpBlock):
 
         # Generate random bits or permutation, if needed
         if isinstance(param, RandParameter):
-            if param.randtype == 'data':
+            if param.randtype == "data":
                 new_default = _get_random_data_hex_literal(param.randcount)
                 # Effective width of the random vector
                 randwidth = param.randcount
-            else:
-                assert param.randtype == 'perm'
+            elif param.randtype == "perm":
                 new_default = _get_random_perm_hex_literal(param.randcount)
                 # Effective width of the random vector
                 randwidth = param.randcount * ceil(log2(param.randcount))
+            else:
+                assert param.randtype == "extdata"
+                # Default value is provided externally at a later point or has already been filled
+                # in. If this is already the case, we don't need to fill in a blank value to be
+                # filled in later.
+                fill_default = None
+                for p in instance.get("param_list", []):
+                    if p["name"] == param.name and p["default"] is not None:
+                        fill_default = p["default"]
+                        break
+                randwidth = param.randcount
+                new_default = None
+                if fill_default:
+                    new_default = fill_default
 
             new_param['default'] = new_default
             new_param['randwidth'] = randwidth
@@ -182,7 +198,7 @@ def elaborate_instance(instance, block: IpBlock):
                     # signals of all IPs would reference to that single mangled
                     # parameter. Since parameters are instance dependent, that
                     # would fail. Therefore, copy the parameter first to have
-                    # a unique paramter for that particular signal and
+                    # a unique parameter for that particular signal and
                     # instance, which is safe to mangle.
                     s['width'] = deepcopy(s['width'])
                     s['width'].name_top = p['name_top']
@@ -378,7 +394,7 @@ def xbar_adddevice(top: ConfigT, name_to_block: IpBlocksT, xbar: ConfigT,
         log.error(
             "Another crossbar %s needs to be specified in the 'nodes' list" %
             device)
-        return
+        raise RuntimeError(f"Cannot add device {device} to crossbar")
 
     # If there is no module or memory with the right name, this might still be
     # ok: we might be connecting to another crossbar or to a predefined module.
@@ -399,13 +415,13 @@ def xbar_adddevice(top: ConfigT, name_to_block: IpBlocksT, xbar: ConfigT,
         if device in predefined_modules:
             log.error("device %s shouldn't be host type" % device)
 
-            return
+            raise RuntimeError(f"Cannot add device {device} to crossbar")
 
         # case 3: not defined
         # Crossbar check
         log.error("Device %s doesn't exist in 'module', 'memory', predefined, "
                   "or as a node object" % device)
-        return
+        raise RuntimeError(f"Cannot add device {device} to crossbar")
 
     # If we get here, inst points an instance of some block or memory. It
     # shouldn't point at a crossbar (because that would imply a naming clash)
@@ -583,15 +599,6 @@ def xbar_cross_node(node_name: str,
     return (asid, result)
 
 
-# find the first instance name of a given type
-def _find_module_name(modules: Dict[str, ConfigT], module_type: str):
-    for m in modules:
-        if m['type'] == module_type:
-            return m['name']
-
-    return None
-
-
 def _get_clock_group_name(clk: Union[str, OrderedDict],
                           default_ep_grp: str) -> Tuple[str, str]:
     """Return the clock group of a particular clock connection
@@ -646,7 +653,7 @@ def extract_clocks(top: ConfigT):
         # Ensure each module has a default case
         export_if = ep.get('clock_reset_export', [])
 
-        # The clock group attribute in an end point sets the defaut
+        # The clock group attribute in an end point sets the default
         # group for every clock in that end point.
         #
         # However, the end point can also override specific clocks to
@@ -678,7 +685,7 @@ def extract_clocks(top: ConfigT):
                     name = "{}_i".format(src_name)
 
                 elif group.unique:
-                    # new unqiue clock name
+                    # new unique clock name
                     name = "{}_{}".format(src_name, ep_name)
 
                 else:
@@ -722,14 +729,14 @@ def connect_clocks(top: ConfigT, name_to_block: IpBlocksT):
     assert isinstance(clocks, Clocks)
 
     # add entry to inter_module automatically
-    clkmgr_name = _find_module_name(top["module"], "clkmgr")
+    clkmgr = lib.find_module(top["module"], "clkmgr")
     # If there is no clkmgr, nothing to do here
-    if not clkmgr_name:
+    if not clkmgr:
         return
 
     external = top['inter_module']['external']
     for intf in top['exported_clks']:
-        external[f'{clkmgr_name}.clocks_{intf}'] = f"clks_{intf}"
+        external[f'{clkmgr["name"]}.clocks_{intf}'] = f"clks_{intf}"
 
     typed_clocks = clocks.typed_clocks()
 
@@ -802,7 +809,7 @@ def connect_clocks(top: ConfigT, name_to_block: IpBlocksT):
 
         clkmgr_idle.append(ep_name + '.' + idle_signal)
 
-    top['inter_module']['connect']['{}.idle'.format(clkmgr_name)] = clkmgr_idle
+    top['inter_module']['connect']['{}.idle'.format(clkmgr["name"])] = clkmgr_idle
 
 
 def amend_resets(top: ConfigT,
@@ -821,7 +828,7 @@ def amend_resets(top: ConfigT,
         top['unmanaged_resets'] = UnmanagedResets(unmanaged_resets)
     top_resets = (top['resets'] if isinstance(top['resets'], Resets) else
                   Resets(top['resets'], top['clocks']))
-    rstmgr_name = _find_module_name(top['module'], 'rstmgr')
+    rstmgr = lib.find_module(top['module'], 'rstmgr')
 
     # Generate exported reset list
     exported_rsts = OrderedDict()
@@ -876,11 +883,11 @@ def amend_resets(top: ConfigT,
     top['exported_rsts'] = exported_rsts
 
     # add entry to inter_module automatically
-    if rstmgr_name is None and allow_missing_blocks:
+    if not rstmgr and allow_missing_blocks:
         pass
     else:
         for intf in top['exported_rsts']:
-            top['inter_module']['external'][f'{rstmgr_name}.resets_{intf}'] = (
+            top['inter_module']['external'][f'{rstmgr["name"]}.resets_{intf}'] = (
                 "rsts_{}".format(intf))
 
     # reset class objects
@@ -1075,6 +1082,7 @@ def amend_interrupt(top: ConfigT,
     if "interrupt" not in top or top["interrupt"] == "":
         top["interrupt"] = []
 
+    default_plic = top.get("default_plic", None)
     interrupts = []
     outgoing_interrupts = defaultdict(list)
     for m in modules + list(chain(*outgoing_modules.values())):
@@ -1096,10 +1104,15 @@ def amend_interrupt(top: ConfigT,
             qual["intr_type"] = signal.intr_type
             qual["default_val"] = signal.default_val
             qual["incoming"] = False
+            plic = ip.get("plic", default_plic)
+            if plic is not None:
+                qual["plic"] = plic
             if "outgoing_interrupt" in ip:
                 outgoing_interrupts[ip["outgoing_interrupt"]].append(qual)
+                qual["outgoing"] = True
             else:
                 interrupts.append(qual)
+                qual["outgoing"] = False
 
     for irqs in top['incoming_interrupt'].values():
         for irq in irqs:
@@ -1110,6 +1123,9 @@ def amend_interrupt(top: ConfigT,
                                 "incoming interrupt")
             qual_irq["incoming"] = True
             qual_irq["width"] = 1
+            # Incoming interrupts are assigned to the default PLIC
+            qual_irq["plic"] = default_plic  # May still be None
+            qual_irq["outgoing"] = False
             interrupts.append(qual_irq)
 
     top["interrupt"] = interrupts
@@ -1146,9 +1162,111 @@ def get_alert_modules(top: ConfigT,
     return modules
 
 
+def alert_handler_signals(handler):
+    suffix = handler.replace("alert_handler", "")
+    return (f"alert{suffix}_tx", f"alert{suffix}_rx")
+
+
+def get_alert_connections(top: ConfigT,
+                          name_to_block: IpBlocksT,
+                          allow_missing_blocks=False) -> List[str]:
+    """Return an existing top['alert_connections'] or generate one.
+    """
+    if "alert_connections" in top:
+        return top["alert_connections"]
+
+    default_handler = top.get("default_alert_handler", None)
+    connections = defaultdict(list)
+
+    # Construct the connection information here
+    alert_idx = defaultdict(int)
+    outgoing_alert_idx = defaultdict(int)
+    for module in top["module"]:
+        outgoing = "outgoing_alert" in module
+        block = name_to_block.get(module["type"])
+        if block is None and allow_missing_blocks:
+            continue
+        if block.alerts:
+            alert_comments = []
+            handler = module.get("alert_handler", default_handler)
+
+            # Checking whether there is a handler is done in validation
+            if not outgoing and not handler:
+                continue
+
+            # Generate slices
+            w = len(block.alerts)
+            if outgoing:
+                outgoing_group = module["outgoing_alert"]
+                lo = outgoing_alert_idx[outgoing_group]
+                slice = f"{lo+w-1}:{lo}"
+                async_expr = f"AsyncOnOutgoingAlert{outgoing_group.capitalize()}[{slice}]"
+                alert_tx_expr = f"outgoing_alert_{outgoing_group}_tx_o[{slice}]"
+                alert_rx_expr = f"outgoing_alert_{outgoing_group}_rx_i[{slice}]"
+            else:
+                alert_tx, alert_rx = alert_handler_signals(handler)
+                lo = alert_idx[handler]
+                slice = f"{lo+w-1}:{lo}"
+                async_expr = f"{handler}_reg_pkg::AsyncOn[{slice}]"
+                alert_tx_expr = f"{alert_tx}[{slice}]"
+                alert_rx_expr = f"{alert_rx}[{slice}]"
+
+            # Generate comments, and increment the applicable alert indices
+            for a in block.alerts:
+                if outgoing:
+                    alert_comments.append(f"External alert group \"{module['outgoing_alert']}\" "
+                                          f"[{outgoing_alert_idx[module['outgoing_alert']]}]: "
+                                          f"{a.name}")
+                    outgoing_alert_idx[module["outgoing_alert"]] += 1
+                else:
+                    alert_comments.append(f"{handler}[{alert_idx[handler]}]: {a.name}")
+                    alert_idx[handler] += 1
+
+            alert_info = {
+                "tx_expr": alert_tx_expr,
+                "rx_expr": alert_rx_expr,
+                "async_expr": async_expr,
+                "comments": alert_comments
+            }
+            connections["module_" + module["name"]] = alert_info
+
+    # Process incoming alerts
+    for alert_group, alerts in top.get("incoming_alert", {}).items():
+        handler = default_handler
+        if not handler:
+            continue
+
+        w = len(alerts)
+        alert_tx, alert_rx = alert_handler_signals(handler)
+        lo = alert_idx[handler]
+        slice = f"{lo+w-1}:{lo}"
+        alert_tx_expr = f"{alert_tx}[{slice}]"
+        alert_rx_expr = f"{alert_rx}[{slice}]"
+
+        alert_comments = []
+        for a in alerts:
+            alert_comments.append(f"{handler}[{alert_idx[handler]}]: {a['name']}")
+            alert_idx[handler] += 1
+
+        alert_info = {
+            "tx_expr": alert_tx_expr,
+            "rx_expr": alert_rx_expr,
+            "async_expr": None,
+            "comments": alert_comments
+        }
+        connections["incoming_" + alert_group] = alert_info
+
+    return connections
+
+
 def commit_alert_modules(top: ConfigT, name_to_block: IpBlocksT):
     """Make sure top['alert_module'] is populated in the final config."""
     top['alert_module'] = get_alert_modules(top, name_to_block)
+
+
+def commit_alert_connections(top: ConfigT, name_to_block: IpBlocksT):
+    """Make sure top['alert_connections'] is populated in the final config."""
+    top['alert_connections'] = get_alert_connections(top, name_to_block)
 
 
 def get_outgoing_alert_modules(top: ConfigT,
@@ -1200,6 +1318,7 @@ def amend_alert(top: ConfigT,
     outgoing_alerts = defaultdict(list)
     missing_ips = []
 
+    default_handler = top.get("default_alert_handler", None)
     for m in alert_modules + list(chain(*outgoing_modules.values())):
         ips = list(filter(lambda module: module["name"] == m, top["module"]))
         if len(ips) == 0:
@@ -1217,6 +1336,7 @@ def amend_alert(top: ConfigT,
         for alert in block.alerts:
             alert_dict = alert.as_nwt_dict('alert')
             alert_dict['async'] = '1'
+            alert_dict['handler'] = ip.get("alert_handler", default_handler)
             qual_sig = lib.add_module_prefix_to_signal(alert_dict,
                                                        module=m.lower())
             alert_name = alert_dict['name']
@@ -1257,14 +1377,14 @@ def amend_wkup(topcfg: ConfigT,
             })
     topcfg["wakeups"] = wakeups
 
-    pwrmgr_name = _find_module_name(topcfg['module'], 'pwrmgr')
-    if pwrmgr_name:
+    pwrmgr = lib.find_module(topcfg['module'], 'pwrmgr')
+    if pwrmgr:
         # add wakeup signals to pwrmgr connections if there is one
         signal_names = [
             f"{s['module'].lower()}.{s['name'].lower()}"
             for s in topcfg["wakeups"]
         ]
-        topcfg["inter_module"]["connect"][f"{pwrmgr_name}.wakeups"] = (
+        topcfg["inter_module"]["connect"][f"{pwrmgr['name']}.wakeups"] = (
             signal_names)
         log.info("Intermodule signals: {}".format(
             topcfg["inter_module"]["connect"]))
@@ -1295,14 +1415,14 @@ def amend_reset_request(topcfg: ConfigT,
             })
     topcfg["reset_requests"]["peripheral"] = reset_signals
 
-    pwrmgr_name = _find_module_name(topcfg['module'], 'pwrmgr')
-    if pwrmgr_name:
+    pwrmgr = lib.find_module(topcfg['module'], 'pwrmgr')
+    if pwrmgr:
         # add reset requests to pwrmgr connections if there is one
         signal_names = [
             "{}.{}".format(s["module"].lower(), s["name"].lower())
             for s in topcfg["reset_requests"]["peripheral"]
         ]
-        topcfg["inter_module"]["connect"][f"{pwrmgr_name}.rstreqs"] = (
+        topcfg["inter_module"]["connect"][f"{pwrmgr['name']}.rstreqs"] = (
             signal_names)
     log.info("Intermodule signals: {}".format(
         topcfg["inter_module"]["connect"]))

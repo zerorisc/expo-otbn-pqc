@@ -9,12 +9,12 @@ use ecdsa::SignatureWithOid;
 use ecdsa::{ECDSA_SHA256_OID, ECDSA_SHA384_OID, ECDSA_SHA512_OID};
 use num_bigint_dig::BigInt;
 use num_traits::Num;
+use p256::U256;
 use p256::ecdsa::signature::Verifier;
 use p256::elliptic_curve::scalar::ScalarPrimitive as ScalarPrimitiveP256;
 use p256::pkcs8::ObjectIdentifier;
-use p256::U256;
-use p384::elliptic_curve::scalar::ScalarPrimitive as ScalarPrimitiveP384;
 use p384::U384;
+use p384::elliptic_curve::scalar::ScalarPrimitive as ScalarPrimitiveP384;
 use serde::Deserialize;
 use sha2::digest::generic_array::GenericArray;
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -511,7 +511,7 @@ fn run_ecdsa_testcase(
 
 fn test_ecdsa(opts: &Opts, transport: &TransportWrapper) -> Result<()> {
     let spi = transport.spi("BOOTSTRAP")?;
-    let spi_console_device = SpiConsoleDevice::new(&*spi)?;
+    let spi_console_device = SpiConsoleDevice::new(&*spi, None)?;
     let _ = UartConsole::wait_for(&spi_console_device, r"Running [^\r\n]*", opts.timeout)?;
 
     let mut test_counter = 0u32;

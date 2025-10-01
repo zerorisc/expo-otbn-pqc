@@ -38,10 +38,10 @@ opentitan_test(
     name = "boot_svc_empty_test",
     srcs = ["boot_svc_empty_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000 {firmware}@0x90000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a} {firmware}@{owner_slot_b}",
         exit_failure = "BFV|PASS|FAIL",
         exit_success = "FinalBootLog: 2:AA\r\n",
     ),
@@ -63,10 +63,10 @@ opentitan_test(
     name = "boot_svc_wakeup_test",
     srcs = ["boot_svc_wakeup_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a}",
         #exit_failure = "BFV|PASS|FAIL",
         #exit_success = "FinalBootLog: 2:AA\r\n",
     ),
@@ -91,10 +91,10 @@ opentitan_test(
     name = "boot_svc_next_test",
     srcs = ["boot_svc_next_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000 {firmware}@0x90000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a} {firmware}@{owner_slot_b}",
         exit_failure = "BFV:.*|PASS|FAIL",
         exit_success = "FinalBootLog: 3:ABA\r\n",
     ),
@@ -117,10 +117,10 @@ opentitan_test(
     name = "boot_svc_primary_test",
     srcs = ["boot_svc_primary_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000 {firmware}@0x90000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a} {firmware}@{owner_slot_b}",
         exit_failure = "BFV:.*|PASS|FAIL",
         exit_success = "FinalBootLog: 5:ABBBA\r\n",
         test_cmd = """
@@ -151,10 +151,10 @@ opentitan_test(
     name = "boot_svc_bad_next_test",
     srcs = ["boot_svc_bad_next_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000 {firmware}@0x90000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a} {firmware}@{owner_slot_b}",
         exit_failure = "BFV:.*|PASS|FAIL",
         exit_success = "FinalBootLog: 3:AAA\r\n",
     ),
@@ -184,7 +184,7 @@ opentitan_binary(
     testonly = True,
     srcs = ["boot_svc_min_sec_ver_test.c"],
     exec_env = [
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext",
+        "//hw/top_earlgrey:fpga_cw310_rom_ext",
     ],
     linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_virtual",
     manifest = ":manifest_version_4",
@@ -206,10 +206,10 @@ opentitan_test(
     name = "boot_svc_min_sec_ver_test",
     srcs = ["boot_svc_min_sec_ver_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
-        assemble = "{rom_ext}@0 {firmware}@0x10000 {min_sec_ver_4:signed_bin}@0x90000",
+        assemble = "{rom_ext}@{rom_ext_slot_a} {firmware}@{owner_slot_a} {min_sec_ver_4:signed_bin}@{owner_slot_b}",
         binaries = {
             ":min_sec_ver_4": "min_sec_ver_4",
         },

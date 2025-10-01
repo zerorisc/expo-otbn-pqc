@@ -161,7 +161,9 @@ task ac_range_check_scoreboard::get_tl_unfilt_d_chan_item(output ac_range_check_
   tl_unfilt = ac_range_check_scb_item::type_id::create("tl_unfilt");
   // Timeout with an error if the FIFO remains empty
   fork
-    `DV_WAIT_TIMEOUT(10_000_000, `gfn, "Unable to get any item from tl_unfilt_d_chan_fifo.", 0)
+    // Because of the increased number of transactions, the timeout must be
+    // increased
+    `DV_WAIT_TIMEOUT(100_000_000, `gfn, "Unable to get any item from tl_unfilt_d_chan_fifo.", 0)
     tl_unfilt_d_chan_fifo.get(tl_unfilt.item);
   join_any
   act_unfilt_d_chan_cnt++;
@@ -176,7 +178,9 @@ task ac_range_check_scoreboard::get_tl_filt_a_chan_item(output ac_range_check_sc
   tl_filt = ac_range_check_scb_item::type_id::create("tl_filt");
   // Timeout with an error if the FIFO remains empty
   fork
-    `DV_WAIT_TIMEOUT(10_000_000, `gfn, "Unable to get any item from tl_filt_a_chan_fifo.", 0)
+    // Because of the increased number of transactions, the timeout must be
+    // increased
+    `DV_WAIT_TIMEOUT(100_000_000, `gfn, "Unable to get any item from tl_filt_a_chan_fifo.", 0)
     tl_filt_a_chan_fifo.get(tl_filt.item);
   join_any
   act_filt_a_chan_cnt++;
@@ -265,17 +269,36 @@ task ac_range_check_scoreboard::process_tl_access(tl_seq_item item,
 
   // Process the CSR req:
   //  - for write, update local variable and FIFO at AChanWrite phase
-  //  - for read, update predication at AChanRead phase and compare at DChanRead phase
+  //  - for read, update prediction at AChanRead phase and compare at DChanRead phase
   case (csr_name)
     // Add individual case item for each csr
+    // TODO: Coverage sampling for interrupts should be moved to the CIP
+    // instead of it being performed in the scoreboard / predictor. Why it is
+    // implemented in such a manner must be examined.
     "intr_state": begin
-      // FIXME TODO MVy
+      if (tl_phase == DChanRead) begin
+        if (cfg.en_cov) begin
+          cov.intr_cg.sample(.intr(0),
+                             .intr_en(`gmv(cfg.ral.intr_enable)),
+                             .intr_state(`gmv(cfg.ral.intr_state)));
+          cov.intr_pins_cg.sample(.intr_pin(0),
+                                  .intr_pin_value(cfg.intr_vif.sample()));
+        end
+      end
     end
     "intr_enable": begin
       // FIXME TODO MVy
     end
     "intr_test": begin
-      // FIXME TODO MVy
+      if (tl_phase == AChanWrite) begin
+        if (cfg.en_cov) begin
+          bit intr_state = `gmv(cfg.ral.intr_state) | item.a_data;
+          cov.intr_test_cg.sample(.intr(0),
+                                  .intr_test(item.a_data),
+                                  .intr_en(`gmv(cfg.ral.intr_enable)),
+                                  .intr_state(intr_state));
+        end
+      end
     end
     "alert_test": begin
       // FIXME TODO MVy
@@ -361,18 +384,22 @@ function void ac_range_check_scoreboard::check_phase(uvm_phase phase);
   // things when the ran test is related to the CSR checks in particular.
   if (cfg.en_scb) begin
     if (a_chan_matching_cnt == 0) begin
-      // TODO: Needs a coversation if this check makes sense.
       // Downgrading this to an info. If all input TL transaction for some reason get
       // filtered, the block has legally done its job. Cannot downgrade this to a warning as all
       // warnings are also treated as errors.
 
       // There is a legal scenario where all range indexes are disabled and bypass is also disabled,
       // then all TLUL transactions are DENIED and will never see a_chan_matching_cnt > 0
-      // `uvm_info(`gfn, {"No matching transaction found, it can be because all the TL accesses ",
-      //    "have been filtered. Please check your DUT configuration and your sequence."}, UVM_LOW)
-
-      `uvm_error(`gfn, {"No matching transaction found, it can be because all the TL accesses ",
-                "have been filtered. Please check your DUT configuration and your sequence."})
+      // Other scenario where no TLUL traffic will be observed are standard CSR tests
+      // The scoreboard is usually disabled for the standard CIP tests, but for intr_test
+      // scoreboard will be enabled and this specific check has to be disabled
+      if (cfg.en_scb_err_downgrade) begin
+        `uvm_info(`gfn, {"No matching transaction found, it can be because all the TL accesses ",
+          "have been filtered. Please check your DUT configuration and your sequence."}, UVM_LOW)
+      end else begin
+        `uvm_error(`gfn, {"No matching transaction found, it can be because all the TL accesses ",
+          "have been filtered. Please check your DUT configuration and your sequence."})
+      end
     end
 
     if (d_chan_matching_cnt != predict.all_unfilt_a_chan_cnt) begin

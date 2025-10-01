@@ -1,3 +1,7 @@
+# Copyright zeroRISC Inc.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
@@ -15,6 +19,7 @@ load(
     "fpga_params",
     "opentitan_binary",
     "opentitan_test",
+    "qemu_params",
     "silicon_params",
     "verilator_params",
 )
@@ -103,6 +108,12 @@ opentitan_test(
     name = "aes_kwp_sideload_functest",
     srcs = ["aes_kwp_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "long",
     ),
@@ -120,6 +131,12 @@ opentitan_test(
     name = "aes_sideload_functest",
     srcs = ["aes_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "long",
     ),
@@ -262,6 +279,12 @@ opentitan_test(
     name = "ecdh_p256_sideload_functest",
     srcs = ["ecdh_p256_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "eternal",
         # This test can take > 60 minutes, so mark it manual as it shouldn't
@@ -284,6 +307,12 @@ opentitan_test(
     name = "ecdh_p384_sideload_functest",
     srcs = ["ecdh_p384_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "eternal",
         # This test can take > 60 minutes, so mark it manual as it shouldn't
@@ -365,6 +394,12 @@ opentitan_test(
     name = "ecdsa_p256_sideload_functest",
     srcs = ["ecdsa_p256_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "eternal",
         # This test can take > 60 minutes, so mark it manual as it shouldn't
@@ -388,6 +423,12 @@ opentitan_test(
     name = "ecdsa_p384_sideload_functest",
     srcs = ["ecdsa_p384_sideload_functest.c"],
     exec_env = CRYPTOTEST_EXEC_ENVS,
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "eternal",
         # This test can take > 60 minutes, so mark it manual as it shouldn't
@@ -413,6 +454,27 @@ autogen_cryptotest_header(
     hjson = "//sw/device/tests/crypto/testvectors:ecdsa_p256_verify_testvectors_hardcoded",
     template = ":ecdsa_p256_verify_testvectors.h.tpl",
     tool = "//sw/device/tests/crypto:ecdsa_p256_verify_set_testvectors",
+)
+
+opentitan_test(
+    name = "ed25519_functest",
+    srcs = ["ed25519_functest.c"],
+    exec_env = CRYPTOTEST_EXEC_ENVS,
+    verilator = verilator_params(
+        timeout = "long",
+    ),
+    deps = [
+        "//sw/device/lib/crypto/drivers:entropy",
+        "//sw/device/lib/crypto/drivers:otbn",
+        "//sw/device/lib/crypto/impl:ed25519",
+        "//sw/device/lib/crypto/impl:integrity",
+        "//sw/device/lib/crypto/impl:sha2",
+        "//sw/device/lib/crypto/impl:status",
+        "//sw/device/lib/crypto/include:datatypes",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing:entropy_testutils",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
 )
 
 autogen_cryptotest_header(
@@ -540,12 +602,19 @@ opentitan_test(
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
     ),
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "long",
     ),
     deps = [
         "//sw/device/lib/base:macros",
         "//sw/device/lib/crypto/drivers:kmac",
+        "//sw/device/lib/crypto/impl:key_transport",
         "//sw/device/lib/crypto/impl:kmac_kdf",
         "//sw/device/lib/crypto/impl:sha3",
         "//sw/device/lib/dif:keymgr",
@@ -561,6 +630,12 @@ opentitan_test(
     srcs = ["kmac_sideload_functest.c"],
     exec_env = dicts.add(
         EARLGREY_TEST_ENVS,
+    ),
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
     ),
     verilator = verilator_params(
         timeout = "long",

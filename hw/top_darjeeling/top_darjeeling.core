@@ -22,7 +22,7 @@ filesets:
       - lowrisc:ip:i2c
       - lowrisc:ip:pattgen
       - lowrisc:ip:aes
-      - lowrisc:ip:entropy_src_pkg
+      - lowrisc:ip:entropy_src
       - lowrisc:ip:csrng
       - lowrisc:ip:edn
       - lowrisc:ip:dma
@@ -54,8 +54,6 @@ filesets:
       - lowrisc:darjeeling_ip:racl_ctrl
       - lowrisc:darjeeling_ip:gpio
       - lowrisc:ip:aon_timer
-      - lowrisc:ip:adc_ctrl
-      - lowrisc:ip:sysrst_ctrl
       - lowrisc:ip:rom_ctrl
       - lowrisc:ip:soc_dbg_ctrl
       - lowrisc:systems:soc_proxy
@@ -63,13 +61,24 @@ filesets:
       - lowrisc:prim:all
       - lowrisc:prim:mubi
       - lowrisc:systems:top_darjeeling_pkg
+      # TODO(#27347): prim_pkg is deprecated
+      - lowrisc:prim:prim_legacy_pkg
       - "fileset_partner  ? (partner:systems:top_darjeeling_ast_pkg)"
       - "!fileset_partner ? (lowrisc:systems:top_darjeeling_ast_pkg)"
     files:
-      - rtl/autogen/top_darjeeling_rnd_cnst_pkg.sv
       - rtl/autogen/top_darjeeling_racl_pkg.sv
       - rtl/autogen/top_darjeeling.sv
     file_type: systemVerilogSource
+
+  files_rtl_testing:
+    depend:
+      - lowrisc:darjeeling_constants:testing_rnd_cnst_pkg
+      - lowrisc:darjeeling_constants:testing_lc_ctrl_state_pkg
+
+  files_rtl_tapeout:
+    depend:
+      - lowrisc:darjeeling_constants:tapeout_rnd_cnst_pkg
+      - lowrisc:darjeeling_constants:tapeout_lc_ctrl_state_pkg
 
   files_verilator_waiver:
     depend:
@@ -102,7 +111,8 @@ mapping:
   "lowrisc:virtual_constants:top_pkg": "lowrisc:darjeeling_constants:top_pkg"
   "lowrisc:virtual_constants:top_racl_pkg": "lowrisc:darjeeling_constants:top_racl_pkg"
   "lowrisc:systems:ast_pkg": "lowrisc:systems:top_darjeeling_ast_pkg"
-  "lowrisc:dv:chip_env": "lowrisc:dv:top_darjeeling_chip_env"
+  "lowrisc:virtual_ip:lc_ctrl_state_pkg": "lowrisc:darjeeling_constants:testing_lc_ctrl_state_pkg"
+  "lowrisc:virtual_constants:rnd_cnst_pkg": "lowrisc:darjeeling_constants:testing_rnd_cnst_pkg"
   # TODO(#27347): prim_legacy_pkg is deprecated
   "lowrisc:prim:prim_pkg": "lowrisc:prim:prim_legacy_pkg"
 
@@ -114,15 +124,19 @@ parameters:
 targets:
   default: &default_target
     filesets:
-      - tool_verilator   ? (files_verilator_waiver)
-      - tool_ascentlint  ? (files_ascentlint_waiver)
-      - tool_veriblelint ? (files_veriblelint_waiver)
+      - tool_verilator    ? (files_verilator_waiver)
+      - tool_ascentlint   ? (files_ascentlint_waiver)
+      - tool_veriblelint  ? (files_veriblelint_waiver)
+      - fileset_tapeout   ? (files_rtl_tapeout)
+      - "!fileset_tapeout ? (files_rtl_testing)"
       - files_rtl_generic
     toplevel: top_darjeeling
 
   sim:
     default_tool: icarus
     filesets:
+      - fileset_tapeout   ? (files_rtl_tapeout)
+      - "!fileset_tapeout ? (files_rtl_testing)"
       - files_rtl_generic
     toplevel: top_darjeeling
 

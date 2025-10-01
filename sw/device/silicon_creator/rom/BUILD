@@ -152,6 +152,7 @@ cc_library(
         ":sigverify_keys_spx",
         ":sigverify_otp_keys",
         "//hw/top:aon_timer_c_regs",
+        "//hw/top:dt",
         "//sw/device/lib/arch:device",
         "//sw/device/lib/base:bitfield",
         "//sw/device/lib/base:csr",
@@ -236,10 +237,10 @@ opentitan_binary(
 # Create the legacy ROM target names so that existing splicing rules can find
 # the rom VMEM files.
 legacy_rom_targets(
-    suffixes = [
-        "fpga_cw310",
-        "fpga_cw340",
-    ],
+    suffixes = {
+        "fpga_cw310": ["//hw/top_earlgrey:fpga_cw310"],
+        "fpga_cw340": ["//hw/top_earlgrey:fpga_cw340"],
+    },
     target = "mask_rom",
 )
 
@@ -353,6 +354,7 @@ cc_library(
     srcs = ["bootstrap.c"],
     hdrs = ["bootstrap.h"],
     deps = [
+        "//hw/top:dt",
         "//hw/top:flash_ctrl_c_regs",
         "//hw/top:gpio_c_regs",
         "//hw/top:otp_ctrl_c_regs",
@@ -403,6 +405,7 @@ cc_library(
     hdrs = ["sigverify_otp_keys.h"],
     deps = [
         ":sigverify_key_types",
+        "//hw/top:dt",
         "//hw/top:otp_ctrl_c_regs",
         "//sw/device/lib/base:macros",
         "//sw/device/silicon_creator/lib:error",
@@ -597,7 +600,7 @@ opentitan_test(
             --exec="console --non-interactive --exit-success='PASS.*\r\n' --exit-failure='{exit_failure}'"
 
             --exec="no-op --info '### Measuring stack utilization for bootstrap slot B'"
-            --exec="bootstrap --mirror=false --clear-uart=true --leave-in-bootstrap {good_b}@0x80000"
+            --exec="bootstrap --mirror=false --clear-uart=true --leave-in-bootstrap {good_b}@{rom_ext_slot_b}"
             --exec="console --non-interactive --exit-success='{stack_usage}' --exit-failure='{exit_failure}'"
 
             --exec="gpio remove ROM_BOOTSTRAP"

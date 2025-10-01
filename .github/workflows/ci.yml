@@ -76,6 +76,7 @@ jobs:
   otbn_crypto_tests:
     name: OTBN crypto tests
     runs-on: ubuntu-22.04
+    if: ${{ github.event_name != 'merge_group' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

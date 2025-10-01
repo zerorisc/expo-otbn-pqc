@@ -41,7 +41,16 @@ struct FiRngTestCase {
     // Input only needed for the "Init" subcommand.
     #[serde(default)]
     input: String,
+    #[serde(default)]
+    sensors: String,
+    #[serde(default)]
+    alerts: String,
+    #[serde(default)]
     expected_output: Vec<String>,
+    #[serde(default)]
+    flaky_expected_output: Vec<String>,
+    #[serde(default)]
+    reset: bool,
 }
 
 fn filter_response(response: serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
@@ -79,6 +88,18 @@ fn run_fi_rng_testcase(
         input.send(uart)?;
     }
 
+    // Check if we need to send sensor info.
+    if !test_case.sensors.is_empty() {
+        let sensors: serde_json::Value = serde_json::from_str(test_case.sensors.as_str()).unwrap();
+        sensors.send(uart)?;
+    }
+
+    // Check if we need to send alert info.
+    if !test_case.alerts.is_empty() {
+        let alerts: serde_json::Value = serde_json::from_str(test_case.alerts.as_str()).unwrap();
+        alerts.send(uart)?;
+    }
+
     // Check test outputs
     if !test_case.expected_output.is_empty() {
         for exp_output in test_case.expected_output.iter() {
@@ -96,7 +117,7 @@ fn run_fi_rng_testcase(
                 // Check received with expected output.
                 if output_expected != output_received {
                     log::info!(
-                        "FAILED {} test #{}: expected = '{}', actual = '{}'",
+                        "FAILED {} test #{}: expected = '{}', actual = '{}'\n",
                         test_case.command,
                         test_case.test_case_id,
                         exp_output,
@@ -104,6 +125,35 @@ fn run_fi_rng_testcase(
                     );
                     *fail_counter += 1;
                 }
+            }
+        }
+    }
+
+    // Check flaky test outputs
+    if !test_case.flaky_expected_output.is_empty() {
+        for exp_output in test_case.flaky_expected_output.iter() {
+            // Get test output & filter.
+            let output = serde_json::Value::recv(uart, opts.timeout, false)?;
+            // Only check non empty JSON responses.
+            if output.as_object().is_some() {
+                let output_received = filter_response(output.clone());
+
+                // Filter expected output.
+                let exp_output: serde_json::Value =
+                    serde_json::from_str(exp_output.as_str()).unwrap();
+                let output_expected = filter_response(exp_output.clone());
+
+                // Check received with expected output.
+                if output_expected != output_received {
+                    log::info!(
+                        "Flaky result of {} test #{}: expected = '{}', actual = '{}'\n",
+                        test_case.command,
+                        test_case.test_case_id,
+                        exp_output,
+                        output
+                    );
+                }
+                // Do not let the flaky test influence the fail counter.
             }
         }
     }
@@ -123,9 +173,13 @@ fn test_fi_rng(opts: &Opts, transport: &TransportWrapper) -> Result<()> {
         let raw_json = fs::read_to_string(file)?;
         let fi_rng_tests: Vec<FiRngTestCase> = serde_json::from_str(&raw_json)?;
         for fi_rng_test in &fi_rng_tests {
-            test_counter += 1;
-            log::info!("Test counter: {}", test_counter);
-            run_fi_rng_testcase(fi_rng_test, opts, &*uart, &mut fail_counter)?;
+            if fi_rng_test.reset {
+                transport.reset_target(Duration::from_millis(750), true)?;
+            } else {
+                test_counter += 1;
+                log::info!("Test counter: {}", test_counter);
+                run_fi_rng_testcase(fi_rng_test, opts, &*uart, &mut fail_counter)?;
+            }
         }
     }
     assert_eq!(

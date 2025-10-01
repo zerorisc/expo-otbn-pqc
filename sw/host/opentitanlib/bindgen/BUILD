@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_library")
 load("@rules_rust_bindgen//:defs.bzl", "rust_bindgen", "rust_bindgen_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -16,6 +16,7 @@ _ENGLISH_BREAKFAST_DEPS = [
     "//sw/device/lib/dif:lc_ctrl",
     "//sw/device/lib/dif:otp_ctrl",
     "//sw/device/lib/dif:rstmgr",
+    "//sw/device/lib/dif:sram_ctrl",
     "//sw/device/lib/dif:uart",
 ]
 
@@ -106,10 +107,13 @@ rust_bindgen_library(
         "--allowlist-var=OTP_CTRL_.*_SIZE",
         "--allowlist-var=PATTGEN_.*_REG_OFFSET",
         "--allowlist-var=PINMUX_.*_REG_OFFSET",
+        "--allowlist-var=PINMUX_.*_BIT",
         "--allowlist-var=PWM_.*_REG_OFFSET",
         "--allowlist-var=PWRMGR_.*_REG_OFFSET",
         "--allowlist-type=dif_rstmgr_reset_info",
         "--allowlist-var=RSTMGR_.*_OFFSET",
+        "--allowlist-var=RSTMGR_.*_BIT",
+        "--allowlist-var=RSTMGR_.*_MASK",
         "--allowlist-var=RV_TIMER_.*_REG_OFFSET",
         "--allowlist-var=SENSOR_CTRL_.*_REG_OFFSET",
         "--allowlist-var=SPI_DEVICE_.*_REG_OFFSET",

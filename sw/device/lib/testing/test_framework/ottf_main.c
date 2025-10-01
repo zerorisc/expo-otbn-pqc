@@ -7,18 +7,17 @@
 #include <assert.h>
 #include <stddef.h>
 
-#include "dt/dt_rstmgr.h"
-#include "dt/dt_rv_core_ibex.h"
 #include "external/freertos/include/FreeRTOS.h"
 #include "external/freertos/include/queue.h"
 #include "external/freertos/include/task.h"
+#include "hw/top/dt/dt_rstmgr.h"
+#include "hw/top/dt/dt_rv_core_ibex.h"
 #include "sw/device/lib/arch/device.h"
 #include "sw/device/lib/base/macros.h"
 #include "sw/device/lib/base/mmio.h"
 #include "sw/device/lib/dif/dif_base.h"
 #include "sw/device/lib/dif/dif_rstmgr.h"
 #include "sw/device/lib/dif/dif_rv_core_ibex.h"
-#include "sw/device/lib/dif/dif_uart.h"
 #include "sw/device/lib/runtime/hart.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/testing/rand_testutils.h"

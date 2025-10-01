@@ -28,7 +28,6 @@ filesets:
       - lowrisc:ip:hmac
       - lowrisc:ip:kmac
       - lowrisc:ip:otbn
-      - lowrisc:ip:otp_macro
       - lowrisc:prim:ram_1p_scr
       - lowrisc:prim:flash
       - lowrisc:ip:sram_ctrl
@@ -61,12 +60,25 @@ filesets:
       - lowrisc:prim:usb_diff_rx
       - lowrisc:prim:mubi
       - lowrisc:systems:top_earlgrey_pkg
+      # TODO(#27347): prim_pkg is deprecated
+      - lowrisc:prim:prim_legacy_pkg
       - "fileset_partner  ? (partner:systems:top_earlgrey_ast_pkg)"
       - "!fileset_partner ? (lowrisc:systems:top_earlgrey_ast_pkg)"
+      - "fileset_partner  ? (partner:ip:otp_macro)"
+      - "!fileset_partner ? (lowrisc:ip:otp_macro)"
     files:
-      - rtl/autogen/top_earlgrey_rnd_cnst_pkg.sv
       - rtl/autogen/top_earlgrey.sv
     file_type: systemVerilogSource
+
+  files_rtl_testing:
+    depend:
+      - lowrisc:earlgrey_constants:testing_rnd_cnst_pkg
+      - lowrisc:earlgrey_constants:testing_lc_ctrl_state_pkg
+
+  files_rtl_tapeout:
+    depend:
+      - lowrisc:earlgrey_constants:tapeout_rnd_cnst_pkg
+      - lowrisc:earlgrey_constants:tapeout_lc_ctrl_state_pkg
 
   files_verilator_waiver:
     depend:
@@ -100,7 +112,8 @@ mapping:
   "lowrisc:virtual_constants:top_racl_pkg": "lowrisc:earlgrey_constants:top_racl_pkg"
   "lowrisc:systems:ast_pkg": "lowrisc:systems:top_earlgrey_ast_pkg"
   "lowrisc:virtual_ip:flash_ctrl_prim_reg_top": "lowrisc:earlgrey_ip:flash_ctrl_prim_reg_top"
-  "lowrisc:dv:chip_env": "lowrisc:dv:top_earlgrey_chip_env"
+  "lowrisc:virtual_ip:lc_ctrl_state_pkg": "lowrisc:earlgrey_constants:testing_lc_ctrl_state_pkg"
+  "lowrisc:virtual_constants:rnd_cnst_pkg": "lowrisc:earlgrey_constants:testing_rnd_cnst_pkg"
   # TODO(#27347): prim_legacy_pkg is deprecated
   "lowrisc:prim:prim_pkg": "lowrisc:prim:prim_legacy_pkg"
 
@@ -112,15 +125,19 @@ parameters:
 targets:
   default: &default_target
     filesets:
-      - tool_verilator   ? (files_verilator_waiver)
-      - tool_ascentlint  ? (files_ascentlint_waiver)
-      - tool_veriblelint ? (files_veriblelint_waiver)
+      - tool_verilator    ? (files_verilator_waiver)
+      - tool_ascentlint   ? (files_ascentlint_waiver)
+      - tool_veriblelint  ? (files_veriblelint_waiver)
+      - fileset_tapeout   ? (files_rtl_tapeout)
+      - "!fileset_tapeout ? (files_rtl_testing)"
       - files_rtl_generic
     toplevel: top_earlgrey
 
   sim:
     default_tool: icarus
     filesets:
+      - fileset_tapeout   ? (files_rtl_tapeout)
+      - "!fileset_tapeout ? (files_rtl_testing)"
       - files_rtl_generic
     toplevel: top_earlgrey
 

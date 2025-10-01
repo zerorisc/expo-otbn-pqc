@@ -121,6 +121,18 @@ import math
     { name: "BUS.INTEGRITY",
       desc: "End-to-end bus integrity scheme."
     }
+    { name: "CTRL.REGWEN_MUBI"
+      desc: "Registers are protected from writes with a multi-bit encoded signal."
+    }
+    { name: "CTRL.MUBI"
+      desc: "Registers have multi-bit encoded fields."
+    }
+    { name: "INTERSIG.MUBI"
+      desc: "Range overwrite singal to bypass the matching logic."
+    }
+    { name: "CTR.REDUN"
+     desc: "The log counter is protected by a second counter that counts in the opposite direction."
+    }
   ]
   regwidth: "32"
   registers: [
@@ -178,6 +190,8 @@ import math
           name: "log_clear"
           resval: 0x0
           hwqe: "true"
+          swaccess: "r0w1c"
+          hwaccess: "hrw"
           desc: '''Clears all log information for the first denied access including:
                     - LOG_STATUS
                     - LOG_ADDRESS.

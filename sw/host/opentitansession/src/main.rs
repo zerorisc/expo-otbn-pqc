@@ -2,15 +2,15 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
 use directories::{BaseDirs, ProjectDirs};
 use erased_serde::Serialize;
 use log::LevelFilter;
 use rustix::process::{Pid, Signal};
-use std::env::{self, args_os, ArgsOs};
+use std::env::{self, ArgsOs, args_os};
 use std::ffi::OsString;
-use std::fs::{self, read_to_string, File};
+use std::fs::{self, File, read_to_string};
 use std::io::{self, ErrorKind, Write};
 use std::iter::Iterator;
 use std::path::PathBuf;
@@ -158,7 +158,7 @@ fn session_child(listen_port: Option<u16>, backend_opts: &backend::BackendOpts) 
     let _maintain_connection = transport.maintain_connection()?;
 
     // Bind to TCP socket, in preparation for servicing requests from network.
-    let mut session = SessionHandler::init(&transport, listen_port)?;
+    let mut session = SessionHandler::init(transport, listen_port)?;
 
     // Instantiation of Transport backend, and binding to a socket was successful, now go
     // through the process of making this process a daemon, disconnected from the
@@ -239,7 +239,7 @@ fn main() -> Result<()> {
         rustix::process::set_parent_process_death_signal(Some(Signal::TERM))?;
 
         let transport = backend::create(&opts.backend_opts)?;
-        let mut session = SessionHandler::init(&transport, opts.listen_port)?;
+        let mut session = SessionHandler::init(transport, opts.listen_port)?;
         println!("Listening on port {}", session.get_port());
         session.run_loop()?;
         return Ok(());

@@ -6,9 +6,7 @@
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
 //
 // util/topgen.py -t hw/top_englishbreakfast/data/top_englishbreakfast.hjson \
-//                -o hw/top_englishbreakfast/ \
-//                --rnd_cnst_seed \
-//                47496257290787239787852990649372780135330843464066774986444696694703339830170
+//                -o hw/top_englishbreakfast/
 
 
 module chip_englishbreakfast_cw305 #(
@@ -646,9 +644,8 @@ module chip_englishbreakfast_cw305 #(
   ast_pkg::adc_ast_rsp_t adc_rsp;
 
   // entropy source interface
-  // The entropy source pacakge definition should eventually be moved to es
-  entropy_src_pkg::entropy_src_rng_req_t es_rng_req;
-  entropy_src_pkg::entropy_src_rng_rsp_t es_rng_rsp;
+  logic es_rng_enable, es_rng_valid;
+  logic [ast_pkg::EntropyStreams-1:0] es_rng_bit;
   logic es_rng_fips;
 
   // entropy distribution network
@@ -804,7 +801,7 @@ module chip_englishbreakfast_cw305 #(
     // USB IO Pull-up Calibration Setting
     .usb_io_pu_cal_o       ( ),
 
-    // clocks' oschillator bypass for FPGA
+    // clocks' oscillator bypass for FPGA
     .clk_osc_byp_i         ( clks_osc_byp ),
 
     // adc
@@ -882,10 +879,10 @@ module chip_englishbreakfast_cw305 #(
     .adc_d_o               ( adc_rsp.data ),
     .adc_d_val_o           ( adc_rsp.data_valid ),
     // rng
-    .rng_en_i              ( es_rng_req.rng_enable ),
+    .rng_en_i              ( es_rng_enable ),
     .rng_fips_i            ( es_rng_fips ),
-    .rng_val_o             ( es_rng_rsp.rng_valid ),
-    .rng_b_o               ( es_rng_rsp.rng_b ),
+    .rng_val_o             ( es_rng_valid ),
+    .rng_b_o               ( es_rng_bit ),
     // entropy
     .entropy_rsp_i         ( ast_edn_edn_rsp ),
     .entropy_req_o         ( ast_edn_edn_req ),

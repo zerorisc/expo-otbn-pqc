@@ -23,7 +23,7 @@ class tl_monitor extends dv_base_monitor#(
   // appear at the same time.
   //
   // Otherwise, wait on a_chan_port and d_chan_port with two concurrent processes. A and D
-  // transactions that happen at the same time will be popped from the fifos in an indeterminate
+  // transactions that happen at the same time will be popped from the FIFOs in an indeterminate
   // order.
   uvm_analysis_port #(tl_channels_e) channel_dir_port;
   uvm_analysis_port #(tl_seq_item)   a_chan_port;
@@ -64,6 +64,7 @@ class tl_monitor extends dv_base_monitor#(
   endtask
 
   virtual task run_phase(uvm_phase phase);
+    super.run_phase(phase);
     fork
       monitor_reset();
       ad_channels_thread();
@@ -251,6 +252,7 @@ class tl_monitor extends dv_base_monitor#(
   endtask
 
   virtual function void report_phase(uvm_phase phase);
+    super.report_phase(phase);
     if (pending_a_req.size() > 0) begin
       `uvm_error(get_full_name(), $sformatf(
                  "%0d items left at the end of sim", pending_a_req.size()))

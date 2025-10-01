@@ -74,7 +74,7 @@ _MANUF_TEST_LOCKED_KEY = None
         ecdsa_key = _MANUF_TEST_LOCKED_KEY if (lc_state, lc_val) in _TEST_LOCKED_LC_ITEMS else ecdsa_key_for_lc_state(ECDSA_SPX_KEY_STRUCTS, lc_val),
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_sival": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         },
         fpga = fpga_params(
             changes_otp = True,
@@ -115,7 +115,7 @@ opentitan_test(
     srcs = ["//sw/device/silicon_creator/rom/e2e:empty_test.c"],
     exec_env = {
         "//hw/top_earlgrey:fpga_cw340_sival": None,
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
     },
     fpga = fpga_params(
         changes_otp = True,
@@ -137,7 +137,7 @@ opentitan_test(
     name = "manuf_cp_volatile_unlock_raw_functest",
     srcs = ["//sw/device/silicon_creator/rom/e2e:empty_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
     },
     fpga = fpga_params(
         changes_otp = True,
@@ -156,7 +156,6 @@ opentitan_test(
 )
 
 # This is the same as rom_with_fake_keys_otp_test_unlocked* but with ROM execution disabled.
-# TODO(#21204): Enable configuration of ROT AUTH partitions in CP stage.
 [
     otp_image(
         name = "otp_img_rom_exec_disabled_test_unlocked{}".format(i),
@@ -176,7 +175,7 @@ opentitan_test(
         srcs = ["//sw/device/silicon_creator/rom/e2e:empty_test.c"],
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_sival": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         },
         fpga = fpga_params(
             changes_otp = True,
@@ -216,6 +215,28 @@ cc_library(
     ],
 )
 
+# Execution from SRAM is always enabled by default in TEST_UNLOCKED* LC states
+# unless HW_CFG1 OTP partition has the EN_SRAM_IFETCH field set to True. In that
+# case, the EXEC CSR in the sram_ctrl controls SRAM execution enablement.
+# Therefore, we want to test with the HW_CFG1 partition programmed with
+# EN_SRAM_IFETCH set to True.
+[
+    otp_image(
+        name = "otp_img_sram_exec_en_test_unlocked{}".format(i),
+        src = "//hw/top_earlgrey/data/otp:otp_json_test_unlocked{}".format(i),
+        overlays = [
+            "//hw/top_earlgrey/data/otp:otp_json_fixed_secret0",
+            "//hw/top_earlgrey/data/otp:otp_json_creator_sw_cfg",
+            "//hw/top_earlgrey/data/otp:otp_json_owner_sw_cfg",
+            "//hw/top_earlgrey/data/otp:otp_json_alert_digest_cfg",
+            "//hw/top_earlgrey/data/otp:otp_json_hw_cfg1",
+            "//hw/top_earlgrey/data/otp:otp_json_exec_disabled",
+        ],
+        visibility = ["//visibility:private"],
+    )
+    for i in range(0, 8)
+]
+
 # We are using a bitstream with ROM execution disabled so the contents of flash
 # does not matter but opentitan_test() is unhappy if we don't provide one.
 # Additionally, ROM execution is disabled in the OTP image we use so we do not
@@ -226,12 +247,12 @@ cc_library(
         srcs = ["sram_empty_functest.c"],
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_sival": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
             "//hw/top_earlgrey:silicon_creator": None,
         },
         fpga = fpga_params(
             needs_jtag = True,
-            otp = ":otp_img_rom_exec_disabled_{}".format(lc_state.lower()),
+            otp = ":otp_img_sram_exec_en_{}".format(lc_state.lower()),
             tags = ["manuf"],
             test_cmd = "--elf={firmware}",
             test_harness = "//sw/host/tests/manuf/manuf_sram_program_crc_check",
@@ -239,7 +260,7 @@ cc_library(
         kind = "ram",
         linker_script = "//sw/device/silicon_creator/manuf/lib:sram_program_linker_script",
         silicon = silicon_params(
-            interface = "hyper310",
+            interface = "cw310",
             needs_jtag = True,
             test_cmd = "--elf={firmware}",
             test_harness = "//sw/host/tests/manuf/manuf_sram_program_crc_check",
@@ -252,6 +273,7 @@ cc_library(
             "//sw/device/lib/dif:uart",
             "//sw/device/lib/runtime:log",
             "//sw/device/lib/testing:pinmux_testutils",
+            "//sw/device/lib/testing/test_framework:ottf_console",
             "//sw/device/lib/testing/test_framework:ottf_test_config",
             "//sw/device/lib/testing/test_framework:status",
             "//sw/device/silicon_creator/manuf/lib:sram_start",
@@ -274,7 +296,7 @@ opentitan_binary(
     testonly = True,
     srcs = ["sram_device_info_flash_wr_functest.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         "//hw/top_earlgrey:fpga_cw340_sival": None,
     },
     kind = "ram",
@@ -289,12 +311,12 @@ opentitan_binary(
         "//sw/device/lib/dif:lc_ctrl",
         "//sw/device/lib/dif:otp_ctrl",
         "//sw/device/lib/dif:pinmux",
-        "//sw/device/lib/dif:uart",
         "//sw/device/lib/runtime:log",
         "//sw/device/lib/testing:flash_ctrl_testutils",
         "//sw/device/lib/testing:otp_ctrl_testutils",
         "//sw/device/lib/testing:pinmux_testutils",
         "//sw/device/lib/testing/test_framework:check",
+        "//sw/device/lib/testing/test_framework:ottf_console",
         "//sw/device/lib/testing/test_framework:ottf_test_config",
         "//sw/device/lib/testing/test_framework:status",
         "//sw/device/silicon_creator/manuf/lib:flash_info_fields",
@@ -317,7 +339,7 @@ opentitan_binary(
         ),
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_sival": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         },
         fpga = fpga_params(
             binaries = {
@@ -371,7 +393,7 @@ opentitan_binary(
     testonly = True,
     srcs = ["sram_exec_test.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         "//hw/top_earlgrey:fpga_cw340_rom_with_fake_keys": None,
     },
     kind = "ram",
@@ -386,6 +408,7 @@ opentitan_binary(
         "//sw/device/lib/testing:otp_ctrl_testutils",
         "//sw/device/lib/testing:pinmux_testutils",
         "//sw/device/lib/testing/test_framework:check",
+        "//sw/device/lib/testing/test_framework:ottf_console",
         "//sw/device/lib/testing/test_framework:ottf_test_config",
         "//sw/device/lib/testing/test_framework:status",
         "//sw/device/silicon_creator/manuf/lib:sram_start",
@@ -402,7 +425,7 @@ opentitan_binary(
         srcs = ["idle_functest.c"],
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_sival": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
         },
         fpga = fpga_params(
             binaries = {
@@ -440,7 +463,7 @@ opentitan_test(
     srcs = ["//sw/device/silicon_creator/rom/e2e:empty_test.c"],
     exec_env = {
         "//hw/top_earlgrey:fpga_cw340_sival": None,
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
     },
     fpga = fpga_params(
         changes_otp = True,
@@ -468,7 +491,7 @@ opentitan_test(
     name = "otp_ctrl_functest",
     srcs = [":empty_functest.c"],
     exec_env = {
-        "//hw/top_earlgrey:fpga_hyper310_rom_with_fake_keys": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
     },
     fpga = fpga_params(
         changes_otp = True,

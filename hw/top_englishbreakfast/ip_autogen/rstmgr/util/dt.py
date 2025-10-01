@@ -4,9 +4,8 @@
 """This contains a class which is used to help generate the device tables (DT)
 files.
 """
-from dtgen.helper import IpHelper, Extension, StructType, ScalarType, ArrayMapType
+from dtgen.helper import indent_text, IpHelper, Extension, StructType, ScalarType, ArrayMapType
 from topgen.lib import Name
-from typing import Optional
 from collections import OrderedDict
 import os
 import sys
@@ -43,7 +42,8 @@ dt_reset_t dt_rstmgr_sw_reset(dt_rstmgr_t dt, size_t idx);
  * `dt_<ip>_reset_req_t` type of the corresponding IP.
  *
  * WARNING At the moment, three hardcoded reset requests are treated specially and have their
- * `rst_req` field set to `0` because there is no corresponding reset request declared by those IPs:
+ * `reset_req` field set to `0` because there is no corresponding reset request declared by those
+ * IPs:
  * - the main power glitch reset request, coming from the `pwrmgr`,
  * - the escalation reset request, coming from the `alert_handler`,
  * - the non-debug-module reset request, coming from the `rv_dm`.
@@ -80,7 +80,19 @@ dt_reset_t dt_rstmgr_sw_reset(dt_rstmgr_t dt, size_t idx) {
   if (idx >= %(sw_reset_count)d) {
     return kDtResetUnknown;
   }
-  return TRY_GET_DT(dt, kDtResetUnknown)->ext.sw_rst[idx];
+  return TRY_GET_DT(dt, kDtResetUnknown)->rstmgr_ext.sw_rst[idx];
+}
+
+size_t dt_rstmgr_hw_reset_req_src_count(dt_rstmgr_t dt) {
+  return %(hw_reset_req_count)d;
+}
+
+dt_rstmgr_reset_req_src_t dt_rstmgr_hw_reset_req_src(dt_rstmgr_t dt, size_t idx) {
+  dt_rstmgr_reset_req_src_t invalid_req = %(invalid_req)s;
+  if (idx >= %(hw_reset_req_count)d) {
+    return invalid_req;
+  }
+  return TRY_GET_DT(dt, invalid_req)->rstmgr_ext.hw_req[idx];
 }
 """
 
@@ -112,11 +124,16 @@ class RstmgrExt(Extension):
             docstring = "Index of the reset request signal for that instance.",
         )
 
+        self._invalid_reset_req = {
+            self.RSTREQ_SOURCE_INST_FIELD_NAME: Name(["Unknown"]),
+            self.RSTREQ_SOURCE_REQ_FIELD_NAME: "kDtResetUnknown",
+        }
+
     def create_ext(ip_helper: IpHelper):
         if ip_helper.ip.name == "rstmgr":
             return RstmgrExt(ip_helper)
 
-    def extend_dt_ip(self) -> Optional[StructType]:
+    def extend_dt_ip(self) -> tuple[Name, StructType]:
         sw_rsts_count = len(self.ipconfig.sw_rsts_list())
         hw_reqs_count = len(self.ipconfig.hw_reset_req_list())
 
@@ -141,7 +158,7 @@ class RstmgrExt(Extension):
             ),
             docstring = "List of hardware reset requests, in the order of the register fields",
         )
-        return st
+        return Name(["rstmgr_ext"]), st
 
     def fill_dt_ip(self, m) -> dict:
         sw_rsts = {}
@@ -197,6 +214,10 @@ class RstmgrExt(Extension):
         elif pos == Extension.DtIpPos.SourceEnd:
             subs = {
                 'sw_reset_count': len(self.ipconfig.sw_rsts_list()),
+                'hw_reset_req_count': len(self.ipconfig.hw_reset_req_list()),
+                'invalid_req':
+                    indent_text(self.reset_req_src_struct.
+                                render_value(self._invalid_reset_req), "  "),
             }
             return SOURCE_EXT_TEMPLATE % subs
         else:

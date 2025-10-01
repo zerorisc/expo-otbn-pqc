@@ -38,10 +38,10 @@
       notes:              "",
     }
     {
-      version:            "2.0.0",
+      version:            "2.1.0",
       life_stage:         "L1",
-      design_stage:       "D3",
-      verification_stage: "V2S",
+      design_stage:       "D1",
+      verification_stage: "V1",
       dif_stage:          "S2",
       notes:              "",
     }
@@ -107,6 +107,80 @@
       type:      "otp_ctrl_top_specific_pkg::scrmbl_key_init_t"
       randcount: "256",
       randtype:  "data", // random permutation for randcount elements
+    }
+    // Scrambling Keys
+    { name:      "RndCnstScrmblKey0",
+      desc:      "Compile-time scrambling key",
+      type:      "otp_ctrl_top_specific_pkg::key_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstScrmblKey1",
+      desc:      "Compile-time scrambling key",
+      type:      "otp_ctrl_top_specific_pkg::key_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstScrmblKey2",
+      desc:      "Compile-time scrambling key",
+      type:      "otp_ctrl_top_specific_pkg::key_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestConst0",
+      desc:      "Compile-time digest const",
+      type:      "otp_ctrl_top_specific_pkg::digest_const_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestConst1",
+      desc:      "Compile-time digest const",
+      type:      "otp_ctrl_top_specific_pkg::digest_const_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestConst2",
+      desc:      "Compile-time digest const",
+      type:      "otp_ctrl_top_specific_pkg::digest_const_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestConst3",
+      desc:      "Compile-time digest const",
+      type:      "otp_ctrl_top_specific_pkg::digest_const_t"
+      randcount: "128",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestIV0",
+      desc:      "Compile-time digest initial vector",
+      type:      "otp_ctrl_top_specific_pkg::digest_iv_t"
+      randcount: "64",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestIV1",
+      desc:      "Compile-time digest initial vector",
+      type:      "otp_ctrl_top_specific_pkg::digest_iv_t"
+      randcount: "64",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestIV2",
+      desc:      "Compile-time digest initial vector",
+      type:      "otp_ctrl_top_specific_pkg::digest_iv_t"
+      randcount: "64",
+      randtype:  "extdata",
+    }
+    { name:      "RndCnstDigestIV3",
+      desc:      "Compile-time digest initial vector",
+      type:      "otp_ctrl_top_specific_pkg::digest_iv_t"
+      randcount: "64",
+      randtype:  "extdata",
+    }
+
+    { name:      "RndCnstPartInvDefault",
+      desc:      "OTP invalid partition default for buffered partitions",
+      type:      "logic [16383:0]"
+      randcount: "16384",
+      randtype:  "extdata",
     }
     // Normal parameters
     { name: "NumSramKeyReqSlots",
@@ -2004,7 +2078,7 @@
     }
     {
       name: "OTP_CTRL.PARTITION.OWNER_SW_CFG"
-      desc: "Define attriutes for rom code execution"
+      desc: "Define attributes for rom code execution"
     }
     {
       name: "OTP_CTRL.INIT"
@@ -2067,7 +2141,7 @@
     }
     {
       name: "OTP_CTRL.ERROR_HANDLING.RECOVERABLE"
-      desc: "Recoverable error is created when unauthorized access atempt are detected via dai interface."
+      desc: "Recoverable error is created when unauthorized access attempt are detected via dai interface."
     }
     {
       name: "OTP_CTRL.ERROR_HANDLING.FATAL"
@@ -2284,7 +2358,7 @@
                 { value: "2",
                   name: "MACRO_ECC_CORR_ERROR",
                   desc: '''
-                  A correctable ECC error has occured during an OTP read operation.
+                  A correctable ECC error has occurred during an OTP read operation.
                   The corresponding controller automatically recovers from this error when
                   issuing a new command.
                   '''
@@ -2399,6 +2473,14 @@
             desc: '''
                   Initiates the digest calculation and locking sequence for the partition specified by
                   !!DIRECT_ACCESS_ADDRESS.
+                  '''
+          }
+          { bits: "3",
+            name: "ZEROIZE",
+            desc: '''
+                  Initiates the zeroization sequence of location specified by !!DIRECT_ACCESS_ADDRESS.
+                  The command places the resulting count of bits set into !!DIRECT_ACCESS_RDATA_0 if
+                  the execution is successful.
                   '''
           }
         ]
@@ -2715,7 +2797,7 @@
           name:     "VENDOR_TEST_DIGEST",
           desc:     '''
                     Integrity digest for the VENDOR_TEST partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the VENDOR_TEST partition is locked and
                     the digest becomes visible in this CSR.
@@ -2738,7 +2820,7 @@
           name:     "CREATOR_SW_CFG_DIGEST",
           desc:     '''
                     Integrity digest for the CREATOR_SW_CFG partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the CREATOR_SW_CFG partition is locked and
                     the digest becomes visible in this CSR.
@@ -2761,7 +2843,7 @@
           name:     "OWNER_SW_CFG_DIGEST",
           desc:     '''
                     Integrity digest for the OWNER_SW_CFG partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the OWNER_SW_CFG partition is locked and
                     the digest becomes visible in this CSR.
@@ -2784,7 +2866,7 @@
           name:     "ROT_CREATOR_AUTH_CODESIGN_DIGEST",
           desc:     '''
                     Integrity digest for the ROT_CREATOR_AUTH_CODESIGN partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the ROT_CREATOR_AUTH_CODESIGN partition is locked and
                     the digest becomes visible in this CSR.
@@ -2807,7 +2889,7 @@
           name:     "ROT_CREATOR_AUTH_STATE_DIGEST",
           desc:     '''
                     Integrity digest for the ROT_CREATOR_AUTH_STATE partition.
-                    The integrity digest is 0 by default. Software must write this
+                    The integrity digest is 0 by default. Software must write a non-zero
                     digest value via the direct access interface in order to lock the partition.
                     After a reset, write access to the ROT_CREATOR_AUTH_STATE partition is locked and
                     the digest becomes visible in this CSR.

@@ -31,7 +31,7 @@ sim_dv(
         "//hw/top_darjeeling/sw/dt:sim_dv",
     ],
     linker_script = "//sw/device/lib/testing/test_framework:ottf_ld_silicon_creator_slot_a",
-    rom_scramble_config = "//hw/top_darjeeling/data/autogen:top_darjeeling.gen.hjson",
+    otp_mmap = "//hw/top_darjeeling/data/otp:otp_ctrl_mmap.hjson",
 )
 
 sim_dv(

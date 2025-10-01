@@ -324,6 +324,30 @@ py_library(
 )
 
 py_library(
+    name = "exporter",
+    srcs = ["exporter.py"],
+    deps = [
+        ":ip_block",
+    ],
+)
+
+py_library(
+    name = "systemrdl_exporter",
+    srcs = ["systemrdl_exporter.py"],
+    deps = [
+        ":access",
+        ":exporter",
+        ":field",
+        ":ip_block",
+        ":multi_register",
+        ":reg_block",
+        ":register",
+        ":window",
+        requirement("peakrdl_systemrdl"),
+    ],
+)
+
+py_library(
     name = "md_helpers",
     srcs = ["md_helpers.py"],
     deps = [

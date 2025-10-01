@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_annotate::Annotate;
@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use crate::io::gpio::{GpioError, GpioPin};
 use crate::io::uart::Uart;
-use crate::transport::common::uart::SerialPortUart;
+use crate::transport::common::uart::{SerialPortUart, SoftwareFlowControl};
 use crate::transport::verilator::gpio::{GpioInner, VerilatorGpioPin};
 use crate::transport::verilator::subprocess::{Options, Subprocess};
 use crate::transport::{
@@ -105,10 +105,9 @@ impl Transport for Verilator {
         );
         let mut inner = self.inner.borrow_mut();
         if inner.uart.is_none() {
-            inner.uart = Some(Rc::new(SerialPortUart::open_pseudo(
-                &self.uart_tty,
-                UART_BAUD,
-            )?));
+            inner.uart = Some(Rc::new(SoftwareFlowControl::new(
+                SerialPortUart::open_pseudo(&self.uart_tty, UART_BAUD)?,
+            )));
         }
         Ok(Rc::clone(inner.uart.as_ref().unwrap()))
     }

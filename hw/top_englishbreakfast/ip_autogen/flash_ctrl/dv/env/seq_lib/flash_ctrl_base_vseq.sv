@@ -64,7 +64,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
   // and policy config associate with it.
   // 8 : default region
 
-  // Vseq to do some initial post-reset actions. Can be overriden by extending envs.
+  // Vseq to do some initial post-reset actions. Can be overridden by extending envs.
   flash_ctrl_callback_vseq callback_vseq;
 
   function void add_address_range(input int bank, input flash_dv_part_e part,
@@ -123,7 +123,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
      return 1'b0;
   endfunction
 
-  // This searches for any overap between the addresses in the given range and the address ranges
+  // This searches for any overlap between the addresses in the given range and the address ranges
   // for the given bank and partition. Notice if the binary search fails we still need to examine
   // the range last examined by the binary search, denoted by the index returned. A miss is the
   // most common outcome of this lookup so having this index is good for performance.
@@ -305,7 +305,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
     end
 
     if (cfg.seq_cfg.disable_flash_init == 0) begin
-      reset_flash();  // Randomly Inititalise Flash After Reset
+      reset_flash();  // Randomly Initialise Flash After Reset
     end
 
     if (cfg.seq_cfg.en_init_keys_seeds == 1) begin
@@ -667,9 +667,9 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
 
     tl_access_w_abort(.addr(addr), .write(1'b0), .completed(completed), .saw_err(saw_err),
                       .tl_access_timeout_ns(cfg.seq_cfg.erase_timeout_ns), .mask(mask),
-                      .data(rdata), .exp_err_rsp(exp_err_rsp), .exp_data(exp_rdata),
-                      .compare_mask(mask), .check_exp_data(check_rdata), .blocking(blocking),
-                      .instr_type(instr_type),
+                      .data(rdata), .exp_err_rsp(exp_err_rsp),
+                      .check_exp_data(check_rdata), .exp_data(exp_rdata),
+                      .compare_mask(mask), .blocking(blocking), .instr_type(instr_type),
                       .tl_sequencer_h(p_sequencer.tl_sequencer_hs[cfg.flash_ral_name]));
   endtask : do_direct_read
 
@@ -710,7 +710,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
       default: `uvm_error(`gfn, "Secret Partition Unrecognised, FAIL")
     endcase
 
-    // Perform Flash Opeation via Host Interface
+    // Perform Flash Operation via Host Interface
     unique case (flash_op.op)
       flash_ctrl_top_specific_pkg::FlashOpErase: begin
         flash_ctrl_start_op(flash_op);
@@ -1539,7 +1539,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
                         str, cfg.scb_h.exp_alert_ff[str].size()), UVM_MEDIUM)
   endfunction // set_otf_exp_alert
 
-  // This function checks wheter input 'sig' is lc_ctrl_pkg::On or lc_ctrl_pkg::Off
+  // This function checks whether input 'sig' is lc_ctrl_pkg::On or lc_ctrl_pkg::Off
   function bit is_lc_ctrl_valid(lc_ctrl_pkg::lc_tx_t sig, bit is_true_valid = 1);
 
     return ((sig == lc_ctrl_pkg::On && is_true_valid == 1) ||
@@ -1553,7 +1553,7 @@ class flash_ctrl_base_vseq extends cip_base_vseq #(
     cfg.flash_ctrl_vif.lc_iso_part_sw_wr_en     = lc_ctrl_pkg::On;
   endfunction // all_sw_rw_en
 
-  // Collect cover poiint by reading csr
+  // Collect cover point by reading csr
   // ral.std_fault_status
   // ral.fault_status
   // ral.err_code

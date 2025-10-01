@@ -6,9 +6,7 @@
 // PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
 //
 // util/topgen.py -t hw/top_earlgrey/data/top_earlgrey.hjson \
-//                -o hw/top_earlgrey/ \
-//                --rnd_cnst_seed \
-//                1017106219537032642877583828875051302543807092889754935647094601236425074047
+//                -o hw/top_earlgrey/
 
 
 module chip_earlgrey_cw310 #(
@@ -753,9 +751,8 @@ module chip_earlgrey_cw310 #(
   ast_pkg::adc_ast_rsp_t adc_rsp;
 
   // entropy source interface
-  // The entropy source pacakge definition should eventually be moved to es
-  entropy_src_pkg::entropy_src_rng_req_t es_rng_req;
-  entropy_src_pkg::entropy_src_rng_rsp_t es_rng_rsp;
+  logic es_rng_enable, es_rng_valid;
+  logic [ast_pkg::EntropyStreams-1:0] es_rng_bit;
   logic es_rng_fips;
 
   // entropy distribution network
@@ -911,7 +908,7 @@ module chip_earlgrey_cw310 #(
     // USB IO Pull-up Calibration Setting
     .usb_io_pu_cal_o       ( ),
 
-    // clocks' oschillator bypass for FPGA
+    // clocks' oscillator bypass for FPGA
     .clk_osc_byp_i         ( clks_osc_byp ),
 
     // adc
@@ -989,10 +986,10 @@ module chip_earlgrey_cw310 #(
     .adc_d_o               ( adc_rsp.data ),
     .adc_d_val_o           ( adc_rsp.data_valid ),
     // rng
-    .rng_en_i              ( es_rng_req.rng_enable ),
+    .rng_en_i              ( es_rng_enable ),
     .rng_fips_i            ( es_rng_fips ),
-    .rng_val_o             ( es_rng_rsp.rng_valid ),
-    .rng_b_o               ( es_rng_rsp.rng_b ),
+    .rng_val_o             ( es_rng_valid ),
+    .rng_b_o               ( es_rng_bit ),
     // entropy
     .entropy_rsp_i         ( ast_edn_edn_rsp ),
     .entropy_req_o         ( ast_edn_edn_req ),
@@ -1062,8 +1059,8 @@ module chip_earlgrey_cw310 #(
 // Also need to add AST simulation and FPGA emulation models for things like entropy source -
 // otherwise Verilator / FPGA will hang.
   top_earlgrey #(
-    .SecAesMasking(1'b1),
-    .SecAesSBoxImpl(aes_pkg::SBoxImplDom),
+    .SecAesMasking(1'b0), // Disable AES masking on the CW310, where we are constrained by area.
+    .SecAesSBoxImpl(aes_pkg::SBoxImplLut),
     .SecAesStartTriggerDelay(0),
     .SecAesAllowForcingMasks(1'b1),
     .CsrngSBoxImpl(aes_pkg::SBoxImplLut),
@@ -1129,9 +1126,9 @@ module chip_earlgrey_cw310 #(
     .sensor_ctrl_ast_alert_req_i  ( ast_alert_req              ),
     .sensor_ctrl_ast_alert_rsp_o  ( ast_alert_rsp              ),
     .sensor_ctrl_ast_status_i     ( ast_pwst.io_pok            ),
-    .es_rng_req_o                 ( es_rng_req                 ),
-    .es_rng_rsp_i                 ( es_rng_rsp                 ),
-    .es_rng_fips_o                ( es_rng_fips                ),
+    .es_rng_enable_o              ( es_rng_enable              ),
+    .es_rng_valid_i               ( es_rng_valid               ),
+    .es_rng_bit_i                 ( es_rng_bit                 ),
     .ast2pinmux_i                 ( ast2pinmux                 ),
     .calib_rdy_i                  ( ast_init_done              ),
     .ast_init_done_i              ( ast_init_done              ),

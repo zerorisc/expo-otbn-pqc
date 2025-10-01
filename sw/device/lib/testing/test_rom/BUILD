@@ -61,11 +61,11 @@ opentitan_binary(
 # Create the legacy ROM target names so that existing splicing rules
 # can find the test_rom VMEM files.
 legacy_rom_targets(
-    suffixes = [
-        "fpga_cw310",
-        "fpga_cw305",
-        "fpga_cw340",
-    ],
+    suffixes = {
+        "fpga_cw310": ["//hw/top_earlgrey:fpga_cw310"],
+        "fpga_cw305": ["//hw/top_earlgrey:fpga_cw305"],
+        "fpga_cw340": ["//hw/top_earlgrey:fpga_cw340"],
+    },
     target = "test_rom",
 )
 
@@ -221,7 +221,7 @@ cc_library(
         "//sw/device/lib/dif:uart",
         "//sw/device/lib/runtime:hart",
         "//sw/device/lib/runtime:log",
-        "//sw/device/lib/runtime:print",
+        "//sw/device/lib/runtime:print_uart",
         "//sw/device/lib/testing:pinmux_testutils",
         "//sw/device/lib/testing/test_framework:check",
         "//sw/device/lib/testing/test_framework:status",

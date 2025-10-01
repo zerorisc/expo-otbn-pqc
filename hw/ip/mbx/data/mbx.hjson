@@ -19,9 +19,9 @@
 
   clocking: [{clock: "clk_i", reset: "rst_ni", primary: true}]
   bus_interfaces: [
-    { protocol: "tlul", direction: "device", name: "core", racl_support: true }
+    { protocol: "tlul", direction: "device", name: "core", hier_path: "u_hostif.u_regs", racl_support: true }
     { protocol: "tlul", direction: "host",   name: "sram" }
-    { protocol: "tlul", direction: "device", name: "soc", racl_support: true }
+    { protocol: "tlul", direction: "device", name: "soc", hier_path: "u_sysif.u_regs", racl_support: true }
   ]
   inter_signal_list: [
     { struct:  "logic",
@@ -219,7 +219,6 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "INBOUND_LIMIT_ADDRESS"
         desc: '''Inclusive end address of the inbound mailbox memory range in the private SRAM.
@@ -236,7 +235,6 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "INBOUND_WRITE_PTR"
         desc: '''Write pointer for the next inbound DWORD write (32 bits).
@@ -254,7 +252,6 @@
             hwaccess: "hwo"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "OUTBOUND_BASE_ADDRESS"
         desc: '''Base address of SRAM region, which is used to buffer the outbound mailbox data.
@@ -270,7 +267,6 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "OUTBOUND_LIMIT_ADDRESS"
         desc: '''Inclusive end address of the outbound mailbox memory range in the private SRAM.
@@ -287,7 +283,6 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "OUTBOUND_READ_PTR"
         desc: '''Read pointer for the next outbound DWORD read.
@@ -306,7 +301,6 @@
             hwaccess: "hwo"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "OUTBOUND_OBJECT_SIZE"
         desc: '''Indicates the size of the data object to be transferred out.
@@ -323,7 +317,6 @@
             hwqe: "true"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
       }
       { name: "DOE_INTR_MSG_ADDR"
         desc: '''
@@ -340,7 +333,7 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
+        tags: ["excl:CsrAllTests:CsrExclAll"] // alias of another register; no automated CSR tests applicable
       }
       { name: "DOE_INTR_MSG_DATA"
         desc: '''
@@ -357,7 +350,7 @@
             resval: "0x0"
           }
         ]
-        tags: ["excl:CsrAllTests:CsrExclAll"] // TODO(#477)
+        tags: ["excl:CsrAllTests:CsrExclAll"] // alias of another register; no automated CSR tests applicable
       }
     ]
     soc: [
@@ -387,7 +380,7 @@
           { name: "doe_async_msg_en"
             desc: '''
                   If DOE Async Message Support is Set, this bit, when Set, enables the use of the DOE Async Message mechanism.
-                  When this bit is set, it allows the DOE instance to raise the SOC_STATUS.doe_async_msg_status, indicating an asnchronous message request.
+                  When this bit is set, it allows the DOE instance to raise the SOC_STATUS.doe_async_msg_status, indicating an asynchronous message request.
                   '''
             bits: "3"
             resval: "0x0"
@@ -461,7 +454,7 @@
       { window: {
           name: "WDATA"
           items: "1"
-          swaccess: "wo"
+          swaccess: "rw"
           desc: '''DOE mailbox write data register.
                 The DOE instance receives data objects via writes to this register.
                 A successful write adds one DWORD to the data object being assembled in the DOE instance.

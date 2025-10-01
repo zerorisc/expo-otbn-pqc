@@ -43,6 +43,8 @@ struct ScaOtbnTestCase {
     #[serde(default)]
     iterations: String,
     #[serde(default)]
+    sensors: String,
+    #[serde(default)]
     masking: String,
     #[serde(default)]
     expected_output: Vec<String>,
@@ -83,6 +85,12 @@ fn run_sca_otbn_testcase(
         input.send(uart)?;
     }
 
+    // Check if we need to send sensor info.
+    if !test_case.sensors.is_empty() {
+        let sensors: serde_json::Value = serde_json::from_str(test_case.sensors.as_str()).unwrap();
+        sensors.send(uart)?;
+    }
+
     // Check test outputs
     if !test_case.expected_output.is_empty() {
         for exp_output in test_case.expected_output.iter() {
@@ -100,7 +108,7 @@ fn run_sca_otbn_testcase(
                 // Check received with expected output.
                 if output_expected != output_received {
                     log::info!(
-                        "FAILED {} test #{}: expected = '{}', actual = '{}'",
+                        "FAILED {} test #{}: expected = '{}', actual = '{}'\n",
                         test_case.command,
                         test_case.test_case_id,
                         exp_output,

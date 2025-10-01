@@ -1,3 +1,7 @@
+/* Copyright zeroRISC Inc. */
+/* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 /* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
@@ -15,7 +19,9 @@
 .globl p256_generate_k
 .globl p256_generate_random_key
 .globl p256_key_from_seed
+.globl p256_scalar_remask
 .globl trigger_fault_if_fg0_z
+.globl trigger_fault_if_fg0_not_z
 .globl mul_modp
 .globl setup_modp
 .globl mod_mul_256x256
@@ -66,6 +72,47 @@ trigger_fault_if_fg0_z:
   bn.lid     x3, 0(x2)
 
   /* If we get here, the flag must have been 0. Restore w31 to zero and return.
+       w31 <= 0 */
+  bn.xor     w31, w31, w31
+
+  ret
+
+/**
+ * Trigger a fault if the FG0.Z flag is 0.
+ *
+ * If the flag is 0, then this routine will trigger an `ILLEGAL_INSN` error and
+ * abort the OTBN program. If the flag is 1, the routine will essentially do
+ * nothing.
+ *
+ * NOTE: Be careful when calling this routine that the FG0.Z flag is not
+ * sensitive; since aborting the program will be quicker than completing it,
+ * the flag's value is likely clearly visible to an attacker through timing.
+ *
+ * @param[in]    w31: all-zero
+ * @param[in]  FG0.Z: boolean indicating (complement of) fault condition
+ *
+ * clobbered registers: x2
+ * clobbered flag groups: none
+ */
+trigger_fault_if_fg0_not_z:
+  /* Read the FG0.Z flag (position 3).
+       x2 <= FG0.Z */
+  csrrw     x2, FG0, x0
+  andi      x2, x2, 8
+  srli      x2, x2, 3
+
+  /* Subtract 1 from FG0.Z.
+       x2 <= x2 - 1 = FG0.Z ? 0 : 2^32 - 1 */
+  addi      x2, x2, -1
+
+  /* The `bn.lid` instruction causes an `BAD_DATA_ADDR` error if the
+     memory address is out of bounds. Therefore, if FG0.Z is 0, this
+     instruction causes an error, but if FG0.Z is 1 it simply loads the word at
+     address 0 into w31. */
+  li         x3, 31
+  bn.lid     x3, 0(x2)
+
+  /* If we get here, the flag must have been 1. Restore w31 to zero and return.
        w31 <= 0 */
   bn.xor     w31, w31, w31
 
@@ -1282,7 +1329,7 @@ scalar_mult_int:
 
   /* Init 2P, this will be used for the addition part in the double-and-add
      loop when the bit at the current index is 1 for both shares of the scalar.
-     2P = (w4, w5, w6) <= (w11, w12, w13) <= 2*(w8, w9, w10) = 2*P */
+     2P = (w4, w5, w6) <= (w8, w9, w10) <= 2*(w8, w9, w10) = 2*P */
   jal       x1, proj_double
   bn.mov    w4, w8
   bn.mov    w5, w9
@@ -1313,7 +1360,7 @@ scalar_mult_int:
   bn.rshi   w2, w2, w31 >> 64
 
   /* double-and-add loop with decreasing index */
-  loopi     320, 39
+  loopi     320, 42
 
     /* double point Q
        Q = (w8, w9, w10) <= 2*(w8, w9, w10) = 2*Q */
@@ -1338,13 +1385,18 @@ scalar_mult_int:
     bn.rshi   w26, w31, w3 >> 255
     bn.xor    w20, w7, w26
 
+    /* init regs with random numbers from URND */
+    bn.wsrr   w11, URND
+    bn.wsrr   w12, URND
+    bn.wsrr   w13, URND
+
     /* N.B. The L bit here is secret. For side channel protection in the
        selects below, it is vital that neither option is equal to the
-       destionation register (e.g. bn.sel w0, w0, w1). In this case, the
+       destination register (e.g. bn.sel w0, w0, w1). In this case, the
        hamming distance from the destination's previous value to its new value
        will be 0 in one of the cases and potentially reveal L.
 
-       Note that the randomized XOR instruction following the bn.sel
+       Note that the randomized XOR instruction before the bn.sel
        instructions below acts both to randomize the low bits of k0 for use in a
        MSb check, as well as to clear flags.
 
@@ -1374,11 +1426,17 @@ scalar_mult_int:
     bn.mov    w26, w9
     bn.mov    w30, w10
 
-    /* N.B. As before, the select instructions below must use distinct
-       source/destination registers to avoid revealing L.
+    /* init destination registers with random numbers from URND */
+    bn.wsrr   w8, URND
+    bn.wsrr   w9, URND
+    bn.wsrr   w10, URND
+
+    /* N.B. The select instructions below must use distinct
+       source/destination registers and source and destination must not be
+       equal for any source and destination pair to avoid revealing L.
 
        Select doubling result (Q) or addition result (Q+P)
-         Q = w0[255] or w1[255]?Q_a=(w11, w12, w13):Q=(w7, w26, w30) */
+         Q = w0[255] or w1[255]?Q+P=(w11, w12, w13):Q=(w7, w26, w30) */
     bn.sel    w8, w11, w7, L
     bn.sel    w9, w12, w26, L
     bn.sel    w10, w13, w30, L
@@ -1391,17 +1449,8 @@ scalar_mult_int:
     bn.rshi   w1, w1, w0 >> 255
     bn.rshi   w0, w0, w31 >> 255
 
-    /* init regs with random numbers from URND */
-    bn.wsrr   w11, URND
-    bn.wsrr   w12, URND
-    bn.wsrr   w13, URND
-
-    /* Shift k1 left 1 bit. */
-    bn.rshi   w3, w3, w2 >> 255
-    bn.rshi   w2, w2, w31 >> 255
-
     /* get a fresh random number from URND and scale the coordinates of
-       2P = (w3, w4, w5) (scaling each projective coordinate with same
+       2P = (w4, w5, w6) (scaling each projective coordinate with same
        factor results in same point) */
     bn.wsrr   w7, URND
 
@@ -1422,6 +1471,10 @@ scalar_mult_int:
     bn.mov    w25, w7
     jal       x1, mul_modp
     bn.mov    w6, w19
+
+    /* Shift k1 left 1 bit. */
+    bn.rshi   w3, w3, w2 >> 255
+    bn.rshi   w2, w2, w31 >> 255
 
   /* Check if the z-coordinate of Q is 0. If so, fail; this represents the
      point at infinity and means the scalar was zero mod n, which likely
@@ -1458,7 +1511,7 @@ scalar_mult_int:
  *
  * Flags: Flags have no meaning beyond the scope of this subroutine.
  *
- * clobbered registers: x2, x3, x16, x17, x21, x22, w0 to w26
+ * clobbered registers: x2, x3, x16, x17, x19, x20, x21, x22, w0 to w29
  * clobbered flag groups: FG0
  */
 p256_base_mult:
@@ -1500,6 +1553,18 @@ p256_base_mult:
   bn.sid    x2++, 0(x21)
   la        x22, y
   bn.sid    x2, 0(x22)
+
+  /* Compute both sides of the Weierstrass equation.
+       w18 <= (x^3 + ax + b) mod p
+       w19 <= (y^2) mod p */
+  jal      x1, p256_isoncurve
+
+  /* Compare the two sides of the equation to check if the result
+     is a valid point as an FI countermeasure.
+     The check fails if both sides are not equal.
+     FG0.Z <= (y^2) mod p == (x^2 + ax + b) mod p */
+  bn.cmp   w18, w19
+  jal      x1, trigger_fault_if_fg0_not_z
 
   ret
 
@@ -1580,7 +1645,7 @@ p256_random_scalar:
      w16 <= w16[63:0] */
   bn.rshi   w18, w31, w16 >> 192
   bn.rshi   w20, w16, w31 >> 64
-  bn.rshi   w16, w20, w31 >> 192
+  bn.rshi   w16, w31, w20 >> 192
 
   /* Generate a random masking parameter.
      w14 <= URND(127) + 1 = x */
@@ -1964,6 +2029,109 @@ p256_key_from_seed:
   bn.sub    w23, w23, w23  /* dummy instruction to clear flags */
 
   ret
+
+/**
+ * Helper routine to remask a scalar in-place.
+ *
+ * @param[in]     x12: d0, pointer to share 0 of 320-bit masked scalar.
+ * @param[in]     x13: d1, pointer to share 1 of 320-bit masked scalar.
+ * @param[in,out] dmem[d0..d0+64]: share 0 of 320-bit masked scalar.
+ * @param[in,out] dmem[d1..d1+64]: share 1 of 320-bit masked scalar.
+ *
+ * clobbered registers: x3-x4, x10-x11, w1-w11, w31
+ * clobbered flag groups: none
+ */
+p256_scalar_remask:
+  /* Initialize all-zero register. */
+  bn.xor    w31, w31, w31
+
+  /* Get a fresh 320-bit mask m from URND.
+       [w8,w9] = URND() */
+  bn.wsrr   w8, URND
+  bn.wsrr   w9, URND
+  bn.rshi   w9, w31, w9 >> 192
+
+  /* Load curve order n from DMEM.
+       w11 <= dmem[p256_n] = n */
+  la        x10, p256_n
+  li        x11, 11
+  bn.lid    x11, 0(x10)
+
+  /* Compute (n << 64).
+       [w10,w11] <= w11 << 64 = n << 64 */
+  bn.rshi   w10, w11, w31 >> 192
+  bn.rshi   w11, w31, w11 >> 192
+
+  /* Reduce m modulo (n << 64) with a conditional subtraction.
+       [w4,w5] <= m mod (n << 64) */
+  bn.sub    w6, w8, w10
+  bn.subb   w7, w9, w11
+  bn.sel    w4, w8, w6, FG0.C
+  bn.sel    w5, w9, w7, FG0.C
+  bn.sub    w1, w1, w1  /* dummy instruction to clear flags */
+
+  /* Randomize registers before loading secret share. */
+  bn.wsrr   w2, URND
+  bn.wsrr   w3, URND
+  bn.wsrr   w6, URND
+  bn.wsrr   w7, URND
+  bn.wsrr   w8, URND
+  bn.wsrr   w9, URND
+
+  /* [w6,w7] <= dmem[d0] */
+  li       x3, 6
+  bn.lid   x3++, 0(x12)
+  bn.lid   x3, 32(x12)
+
+  /* [w8,w9] <= d0 + m */
+  bn.add    w8, w6, w4
+  bn.addc   w9, w7, w5
+  bn.sub    w1, w1, w1  /* dummy instruction to clear flags */
+
+  /* [w2,w3] <= (d0 + m) mod (n << 64). */
+  bn.sub    w6, w8, w10
+  bn.subb   w7, w9, w11
+  bn.sel    w2, w8, w6, FG0.C
+  bn.sel    w3, w9, w7, FG0.C
+  bn.sub    w1, w1, w1  /* dummy instruction to clear flags */
+
+  /* dmem[d0] <= [w2,w3] */
+  li       x3, 2
+  bn.sid   x3++, 0(x12)
+  bn.sid   x3, 32(x12)
+
+  /* Randomize registers before loading secret share. */
+  bn.wsrr   w2, URND
+  bn.wsrr   w3, URND
+  bn.wsrr   w6, URND
+  bn.wsrr   w7, URND
+  bn.wsrr   w8, URND
+  bn.wsrr   w9, URND
+
+  /* [w6,w7] <= dmem[d1] */
+  li       x3, 6
+  bn.lid   x3++, 0(x13)
+  bn.lid   x3, 32(x13)
+
+  /* [w8,w9] <= d1 - m */
+  bn.sub    w8, w6, w4
+  bn.subb   w9, w7, w5
+
+  /* [w2,w3] <= (d1 - m) mod (n << 64). */
+  bn.add    w6, w8, w10, FG1
+  bn.addc   w7, w9, w11, FG1
+  bn.sel    w2, w6, w8, FG0.C
+  bn.sel    w3, w7, w9, FG0.C
+  bn.sub    w1, w1, w1  /* dummy instruction to clear flags */
+  bn.sub    w1, w1, w1, FG1  /* dummy instruction to clear flags */
+
+  /* dmem[d1] <= [w2,w3] */
+  li       x3, 2
+  bn.sid   x3++, 0(x13)
+  bn.sid   x3, 32(x13)
+
+  ret
+
 
 .section .data
 

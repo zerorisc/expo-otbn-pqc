@@ -12,7 +12,7 @@
 #include "sw/device/lib/dif/dif_uart.h"
 #include "sw/device/lib/runtime/hart.h"
 #include "sw/device/lib/runtime/log.h"
-#include "sw/device/lib/runtime/print.h"
+#include "sw/device/lib/runtime/print_uart.h"
 #include "sw/device/lib/testing/pinmux_testutils.h"
 #include "sw/device/lib/testing/test_framework/check.h"
 #include "sw/device/lib/testing/test_framework/ottf_test_config.h"
@@ -77,7 +77,7 @@ static dif_uart_t uart;
 
 /**
  * Callbacks for processing USB reciept. The latter increments the
- * recieved character by one, to make them distinct.
+ * received character by one, to make them distinct.
  */
 static void usb_receipt_callback_0(uint8_t c) {
   c = make_printable(c, '?');

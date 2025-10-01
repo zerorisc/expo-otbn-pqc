@@ -2,211 +2,172 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
-use mio::event::Event;
-use mio::net::TcpListener;
-use mio::net::TcpStream;
-use mio::{Events, Interest, Poll, Registry, Token};
-use mio_signals::{Signal, SignalSet, Signals};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::collections::HashMap;
-use std::io::{ErrorKind, Read, Write};
+use std::io::ErrorKind;
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use std::task::Poll;
+
+use anyhow::{Context, Result};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 
 use super::CommandHandler;
-use super::ExtraEventHandler;
 
 const BUFFER_SIZE: usize = 8192;
 const EOL_CODE: u8 = b'\n';
-
-pub fn get_next_token() -> Token {
-    static TOCKEN_COUNTER: AtomicUsize = AtomicUsize::new(0);
-    Token(TOCKEN_COUNTER.fetch_add(1, Ordering::Relaxed))
-}
 
 /// This struct listens on a TCP socket, and maintains a number of concurrent connections,
 /// receiving serialized JSON representations of `Msg`, passing them to the given
 /// `CommandHandler` to obtain responses to be sent as socket flow contol permits.  Note that
 /// this implementaion is not specific to (and does not refer to) any particular protocol.
-pub struct JsonSocketServer<
-    Msg: DeserializeOwned + Serialize,
-    T: CommandHandler<Msg, E>,
-    E: ExtraEventHandler,
-> {
+pub struct JsonSocketServer<Msg: DeserializeOwned + Serialize, T: CommandHandler<Msg>> {
     command_handler: T,
-    extra_event_handler: E,
-    poll: Poll,
     socket: TcpListener,
-    socket_token: Token,
-    signals: Signals,
-    signal_token: Token,
-    nonblocking_help_token: Token,
-    connection_map: HashMap<Token, Connection>,
-    exit_requested: bool,
     phantom: PhantomData<Msg>,
 }
 
-impl<Msg: DeserializeOwned + Serialize, T: CommandHandler<Msg, E>, E: ExtraEventHandler>
-    JsonSocketServer<Msg, T, E>
+impl<Msg: DeserializeOwned + Serialize + Send + 'static, T: CommandHandler<Msg> + 'static>
+    JsonSocketServer<Msg, T>
 {
-    pub fn new(
-        command_handler: T,
-        extra_event_handler: E,
-        mut socket: TcpListener,
-    ) -> Result<Self> {
-        let poll = Poll::new()?;
-        let socket_token = get_next_token();
-        poll.registry()
-            .register(&mut socket, socket_token, Interest::READABLE)?;
-        // Create a `Signals` instance that will catch given set of signals for us.
-        let signals: SignalSet = Signal::Terminate | Signal::Interrupt;
-        let mut signals = Signals::new(signals)?;
-        // And register it with our `Poll` instance.
-        let signal_token = get_next_token();
-        poll.registry()
-            .register(&mut signals, signal_token, Interest::READABLE)?;
-        let nonblocking_help_token = get_next_token();
-        command_handler.register_nonblocking_help(poll.registry(), nonblocking_help_token)?;
+    pub fn new(command_handler: T, socket: TcpListener) -> Result<Self> {
         Ok(Self {
             command_handler,
-            extra_event_handler,
-            poll,
             socket,
-            socket_token,
-            signals,
-            signal_token,
-            nonblocking_help_token,
-            connection_map: HashMap::new(),
-            exit_requested: false,
             phantom: PhantomData,
         })
     }
 
-    pub fn run_loop(&mut self) -> Result<()> {
-        let mut events = Events::with_capacity(1024);
-        while !self.exit_requested {
-            match self.poll.poll(&mut events, None) {
-                Ok(()) => (),
-                Err(err) if err.kind() == ErrorKind::Interrupted => {
-                    continue;
-                }
-                Err(err) => bail!("poll: {}", err),
-            }
-            for event in events.iter() {
-                if event.token() == self.socket_token {
-                    self.process_new_connection()?;
-                } else if event.token() == self.signal_token {
-                    self.process_signals()?;
-                } else if event.token() == self.nonblocking_help_token {
-                    self.command_handler.nonblocking_help()?;
-                } else if self
-                    .extra_event_handler
-                    .handle_poll_event(event, &mut self.connection_map)?
-                {
-                } else {
-                    match self.process_connection(event) {
-                        Ok(shutdown) => {
-                            if shutdown {
-                                self.shutdown_connection(event)?;
-                            }
-                        }
-                        Err(e) => {
-                            log::warn!("Connection {:#X} error: {}", event.token().0, e,);
-                            self.shutdown_connection(event)?;
-                        }
+    pub async fn run_loop(&mut self) -> Result<()> {
+        // Create a local set to allow `spawn_local`. This is needed as majority of opentitanlib is not
+        // multi-thread-safe currently.
+        let local_set = tokio::task::LocalSet::new();
+        let _local_set_guard = local_set.enter();
+
+        // Store all connections in a join set so they're aborted when terminating.
+        let mut set = tokio::task::JoinSet::new();
+        let mut id_counter = 0;
+
+        // Since opentitanlib is mostly not multi-thread-safe, we have to stay on this thread to deal with
+        // `command_handler`.
+        // We do this by using a mpsc queue that each connection can push to.
+        let (sender, mut recv) = tokio::sync::mpsc::channel(32);
+
+        let listener = async {
+            loop {
+                // Drain connections that are already completed.
+                while set.try_join_next().is_some() {}
+
+                let (conn_socket, _address) = self
+                    .socket
+                    .accept()
+                    .await
+                    .context("Error accepting TCP connection")?;
+
+                let conn_arc = Arc::new(Mutex::new(Connection::new(conn_socket)));
+
+                let id = id_counter;
+                id_counter += 1;
+                log::info!("New connection id:{:#X}", id);
+
+                let sender_clone = sender.clone();
+                set.spawn(async move {
+                    if let Err(err) = Self::process_connection(sender_clone, conn_arc).await {
+                        log::warn!("Connection {:#X} error: {}", id, err);
                     }
-                }
-            }
-        }
-        Ok(())
-    }
 
-    /// Accept new socket connections, creating new Connection objects.
-    fn process_new_connection(&mut self) -> Result<()> {
-        loop {
-            match self.socket.accept() {
-                Ok((mut conn_socket, _addres)) => {
-                    let token = get_next_token();
-                    log::info!("New connection id:{:#X}", token.0);
-                    match self.connection_map.entry(token) {
-                        Vacant(entry) => {
-                            self.poll.registry().register(
-                                &mut conn_socket,
-                                token,
-                                Interest::READABLE | Interest::WRITABLE,
-                            )?;
-                            entry.insert(Connection::new(conn_socket));
-                        }
-                        Occupied(_) => {
-                            panic!("JsonSocketServer error: token colision");
-                        }
-                    };
-                }
-                Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                    // No more connections ready to accept (or spurious poll event).
-                    return Ok(());
-                }
-                Err(err) => bail!("Error accepting TCP connection: {}", err),
+                    log::info!("Closing connection id:{:#X}", id);
+                });
             }
-        }
-    }
 
-    fn process_signals(&mut self) -> Result<()> {
-        loop {
-            match self.signals.receive()? {
-                Some(Signal::Interrupt) => {
-                    log::info!("Got interrupt signal");
-                    self.exit_requested = true;
-                }
-                Some(Signal::Terminate) => {
-                    log::info!("Got terminate signal");
-                    self.exit_requested = true;
-                }
-                Some(signal) => {
-                    log::info!("Got unexpected signal: {:?}", signal);
-                }
-                None => return Ok(()),
+            // Type hint
+            #[allow(unreachable_code)]
+            Ok::<(), anyhow::Error>(())
+        };
+
+        let handler = async {
+            loop {
+                let (conn_arc, request, resp_send) =
+                    recv.recv().await.expect("recv shouldn't be dropped");
+                let resp = self.command_handler.execute_cmd(&conn_arc, &request)?;
+                // Ignore error which indicates the connection has been closed.
+                let _ = resp_send.send(resp);
             }
+
+            // Type hint
+            #[allow(unreachable_code)]
+            Ok::<(), anyhow::Error>(())
+        };
+
+        // Ensure that the local set never completes so we can keep polling it using `select!`.
+        local_set.spawn_local(std::future::pending::<()>());
+
+        tokio::select! {
+            r = listener => r,
+            r = handler => r,
+            _ = local_set => unreachable!(),
         }
     }
 
     /// Read and write as much as possible from one particular socket connection.
-    fn process_connection(&mut self, event: &Event) -> Result<bool> {
-        match self.connection_map.get_mut(&event.token()) {
-            Some(conn) => {
-                if event.is_writable() {
+    async fn process_connection(
+        sender: tokio::sync::mpsc::Sender<(
+            Arc<Mutex<Connection>>,
+            Msg,
+            tokio::sync::oneshot::Sender<Msg>,
+        )>,
+        conn_arc: Arc<Mutex<Connection>>,
+    ) -> Result<()> {
+        loop {
+            let (readable, writable) = std::future::poll_fn(|cx| -> Poll<Result<_>> {
+                let conn = conn_arc.lock().unwrap();
+                let need_poll_write = !conn.tx_buf.is_empty();
+
+                let read_poll = conn.socket.poll_read_ready(cx)?;
+                let write_poll = if need_poll_write {
+                    conn.socket.poll_write_ready(cx)?
+                } else {
+                    Poll::Pending
+                };
+
+                match (read_poll, write_poll) {
+                    (Poll::Pending, Poll::Pending) => Poll::Pending,
+                    (Poll::Ready(()), _) => Poll::Ready(Ok((true, write_poll.is_ready()))),
+                    _ => Poll::Ready(Ok((false, true))),
+                }
+            })
+            .await?;
+
+            {
+                let mut conn = conn_arc.lock().unwrap();
+                if writable {
                     conn.write()?;
                 }
-                if event.is_readable() {
+                if readable {
                     conn.read()?;
-                    Self::process_any_requests(
-                        conn,
-                        &mut self.command_handler,
-                        event.token(),
-                        self.poll.registry(),
-                        &mut self.extra_event_handler,
-                    )?;
                 }
-                // Return whether this connection object should be dropped.
-                Ok((conn.rx_eof && (conn.tx_buf.is_empty())) || conn.broken)
-            }
-            None => bail!("Connection don't exist token:{:#X}", event.token().0),
-        }
-    }
 
-    /// Close a socket connection and remove it from the poll list.
-    fn shutdown_connection(&mut self, event: &Event) -> Result<()> {
-        log::info!("Closing connection id:{:#X}", event.token().0);
-        let mut conn = self
-            .connection_map
-            .remove(&event.token())
-            .expect("Missing connection this should never happend!!!");
-        self.poll.registry().deregister(&mut conn.socket)?;
-        // As `conn` runs out of scope here, its `drop()` method will close the OS handle, which
-        // in turn causes TCP/IP connection shutdown to be signalled to the remote end.
+                if (conn.rx_eof && (conn.tx_buf.is_empty())) || conn.broken {
+                    break;
+                }
+            }
+
+            #[allow(clippy::let_and_return)]
+            while let Some(request) = {
+                let v = Self::get_complete_request(&mut conn_arc.lock().unwrap())?;
+                v
+            } {
+                let (resp_send, resp_recv) = tokio::sync::oneshot::channel();
+                sender
+                    .send((conn_arc.clone(), request, resp_send))
+                    .await
+                    .unwrap();
+                let resp = resp_recv.await?;
+                conn_arc.lock().unwrap().transmit_outgoing_msg(resp)?;
+            }
+        }
+
         Ok(())
     }
 
@@ -225,23 +186,6 @@ impl<Msg: DeserializeOwned + Serialize, T: CommandHandler<Msg, E>, E: ExtraEvent
             return Ok(Some(res));
         }
         Ok(None)
-    }
-
-    // Look for any completely received requests in the rx_buf, and handle them one by one.
-    fn process_any_requests(
-        conn: &mut Connection,
-        command_handler: &mut T,
-        conn_token: Token,
-        registry: &Registry,
-        extra_event_handler: &mut E,
-    ) -> Result<()> {
-        while let Some(request) = Self::get_complete_request(conn)? {
-            // One complete request received, execute it.
-            let resp =
-                command_handler.execute_cmd(conn_token, registry, extra_event_handler, &request)?;
-            conn.transmit_outgoing_msg(resp)?;
-        }
-        Ok(())
     }
 }
 
@@ -286,7 +230,7 @@ impl Connection {
         let mut rx_buf_len: usize = self.rx_buf.len();
         loop {
             self.rx_buf.resize(rx_buf_len + BUFFER_SIZE, 0);
-            match self.socket.read(&mut self.rx_buf[rx_buf_len..]) {
+            match self.socket.try_read(&mut self.rx_buf[rx_buf_len..]) {
                 Ok(0) => {
                     self.rx_eof = true;
                     break;
@@ -309,7 +253,7 @@ impl Connection {
     // Transmit as much data out of tx_buf as socket will allow.
     fn write(&mut self) -> Result<()> {
         while !self.tx_buf.is_empty() {
-            match self.socket.write(&self.tx_buf) {
+            match self.socket.try_write(&self.tx_buf) {
                 Ok(n) => {
                     if n < self.tx_buf.len() {
                         // Shuffling bytes around in a Vec is expensive, but realistically, as

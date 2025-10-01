@@ -166,9 +166,9 @@ FLASH_CTRL_INFO_PAGES_DEFINE(INFO_PAGE_STRUCT_DECL_);
  */
 enum {
   kFlashCtrlSecMmioCertInfoPageCreatorCfg = 2,
-  kFlashCtrlSecMmioCertInfoPageOwnerRestrict = 1,
+  kFlashCtrlSecMmioCertInfoPageOwnerRestrict = 2,
   kFlashCtrlSecMmioCertInfoPagesOwnerRestrict = 5,
-  kFlashCtrlSecMmioCreatorInfoPagesLockdown = 12,
+  kFlashCtrlSecMmioCreatorInfoPagesLockdown = 14,
   kFlashCtrlSecMmioDataDefaultCfgSet = 1,
   kFlashCtrlSecMmioDataDefaultPermsSet = 1,
   kFlashCtrlSecMmioExecSet = 1,
@@ -197,6 +197,11 @@ enum {
  * used to check expectations.
  */
 void flash_ctrl_init(void);
+
+/**
+ * Permanently disable the flash controller.
+ */
+void flash_ctrl_disable(void);
 
 /**
  * Status bits.
@@ -239,7 +244,7 @@ void flash_ctrl_status_get(flash_ctrl_status_t *status);
  */
 typedef struct flash_ctrl_error_code {
   /**
-   * Flash macro error occured.
+   * Flash macro error occurred.
    */
   bool macro_err;
   /**

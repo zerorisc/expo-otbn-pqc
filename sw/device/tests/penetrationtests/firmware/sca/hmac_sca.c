@@ -59,7 +59,7 @@ static status_t trigger_hmac(uint8_t key_buf[], uint8_t msg_buf[],
   dif_hmac_digest_t digest;
 
   if (uj_triggers.start_trigger) {
-    pentest_set_trigger_low();
+    pentest_set_trigger_high();
   }
   TRY(dif_hmac_mode_hmac_start(&hmac, inverted_key_buff,
                                kHmacTransactionConfig));
@@ -100,29 +100,38 @@ static status_t trigger_hmac(uint8_t key_buf[], uint8_t msg_buf[],
 }
 
 status_t handle_hmac_pentest_init(ujson_t *uj) {
-  penetrationtest_cpuctrl_t uj_data;
-  TRY(ujson_deserialize_penetrationtest_cpuctrl_t(uj, &uj_data));
+  penetrationtest_cpuctrl_t uj_cpuctrl_data;
+  TRY(ujson_deserialize_penetrationtest_cpuctrl_t(uj, &uj_cpuctrl_data));
+  penetrationtest_sensor_config_t uj_sensor_data;
+  TRY(ujson_deserialize_penetrationtest_sensor_config_t(uj, &uj_sensor_data));
 
   // Setup trigger and enable peripherals needed for the test.
   pentest_select_trigger_type(kPentestTriggerTypeSw);
-  // Enable the HMAC module and disable unused IP blocks to improve
-  // SCA measurements.
-  pentest_init(kPentestTriggerSourceHmac,
-               kPentestPeripheralEntropy | kPentestPeripheralIoDiv4 |
-                   kPentestPeripheralOtbn | kPentestPeripheralCsrng |
-                   kPentestPeripheralEdn | kPentestPeripheralHmac);
 
   // Disable the instruction cache and dummy instructions for SCA.
   penetrationtest_device_info_t uj_output;
   TRY(pentest_configure_cpu(
-      uj_data.icache_disable, uj_data.dummy_instr_disable,
-      uj_data.enable_jittery_clock, uj_data.enable_sram_readback,
-      &uj_output.clock_jitter_locked, &uj_output.clock_jitter_en,
-      &uj_output.sram_main_readback_locked, &uj_output.sram_ret_readback_locked,
-      &uj_output.sram_main_readback_en, &uj_output.sram_ret_readback_en));
+      uj_cpuctrl_data.enable_icache, &uj_output.icache_en,
+      uj_cpuctrl_data.enable_dummy_instr, &uj_output.dummy_instr_en,
+      uj_cpuctrl_data.dummy_instr_count, uj_cpuctrl_data.enable_jittery_clock,
+      uj_cpuctrl_data.enable_sram_readback, &uj_output.clock_jitter_locked,
+      &uj_output.clock_jitter_en, &uj_output.sram_main_readback_locked,
+      &uj_output.sram_ret_readback_locked, &uj_output.sram_main_readback_en,
+      &uj_output.sram_ret_readback_en, uj_cpuctrl_data.enable_data_ind_timing,
+      &uj_output.data_ind_timing_en));
+
+  // Enable the HMAC module and disable unused IP blocks to improve
+  // SCA measurements.
+  pentest_init(kPentestTriggerSourceHmac,
+               kPentestPeripheralIoDiv4 | kPentestPeripheralHmac,
+               uj_sensor_data.sensor_ctrl_enable,
+               uj_sensor_data.sensor_ctrl_en_fatal);
 
   mmio_region_t base_addr = mmio_region_from_addr(TOP_EARLGREY_HMAC_BASE_ADDR);
   TRY(dif_hmac_init(base_addr, &hmac));
+
+  // Read rom digest.
+  TRY(pentest_read_rom_digest(uj_output.rom_digest));
 
   // Read device ID and return to host.
   TRY(pentest_read_device_id(uj_output.device_id));
@@ -205,6 +214,35 @@ status_t handle_hmac_sca_batch_random(ujson_t *uj) {
   return OK_STATUS();
 }
 
+status_t handle_hmac_sca_batch_daisy_chain(ujson_t *uj) {
+  penetrationtest_hmac_sca_key_t uj_key;
+  penetrationtest_hmac_sca_message_t uj_message;
+  penetrationtest_hmac_sca_num_it_t uj_it;
+  penetrationtest_hmac_sca_triggers_t uj_triggers;
+
+  TRY(ujson_deserialize_penetrationtest_hmac_sca_key_t(uj, &uj_key));
+  TRY(ujson_deserialize_penetrationtest_hmac_sca_message_t(uj, &uj_message));
+  TRY(ujson_deserialize_penetrationtest_hmac_sca_num_it_t(uj, &uj_it));
+  TRY(ujson_deserialize_penetrationtest_hmac_sca_triggers_t(uj, &uj_triggers));
+
+  // Invoke HMAC for each data set.
+  uint32_t tag_buf[kTagLengthWord];
+  uint8_t message_buf[HMACSCA_CMD_MAX_MESSAGE_BYTES];
+  memcpy(message_buf, uj_message.message, sizeof(uj_message.message));
+  for (size_t it = 0; it < uj_it.num_iterations; it++) {
+    TRY(trigger_hmac(uj_key.key, message_buf, tag_buf, uj_triggers));
+    // Copy the output of the HMAC to the input
+    memcpy(message_buf, tag_buf, HMACSCA_CMD_MAX_MESSAGE_BYTES);
+  }
+
+  // Send the last tag to host via UART.
+  penetrationtest_hmac_sca_tag_t uj_tag;
+  memcpy(uj_tag.tag, tag_buf, kTagLength);
+  RESP_OK(ujson_serialize_penetrationtest_hmac_sca_tag_t, uj, &uj_tag);
+
+  return OK_STATUS();
+}
+
 status_t handle_hmac_sca_single(ujson_t *uj) {
   penetrationtest_hmac_sca_key_t uj_key;
   penetrationtest_hmac_sca_message_t uj_message;
@@ -244,6 +282,8 @@ status_t handle_hmac_sca(ujson_t *uj) {
       return handle_hmac_sca_batch_fvsr(uj);
     case kHmacScaSubcommandBatchRandom:
       return handle_hmac_sca_batch_random(uj);
+    case kHmacScaSubcommandBatchDaisy:
+      return handle_hmac_sca_batch_daisy_chain(uj);
     case kHmacScaSubcommandSingle:
       return handle_hmac_sca_single(uj);
     default:

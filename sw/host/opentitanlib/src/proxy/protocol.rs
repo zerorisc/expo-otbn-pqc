@@ -12,7 +12,7 @@ use crate::io::gpio::{
 };
 use crate::io::i2c::DeviceStatus;
 use crate::io::spi::{MaxSizes, TransferMode};
-use crate::io::uart::Parity;
+use crate::io::uart::{FlowControl, Parity};
 use crate::proxy::errors::SerializedError;
 use crate::transport::Capabilities;
 use crate::util::voltage::Voltage;
@@ -183,7 +183,10 @@ pub enum UartRequest {
         rate: u32,
     },
     SetBreak(bool),
+    GetParity,
     SetParity(Parity),
+    GetFlowControl,
+    SetFlowControl(bool),
     GetDevicePath,
     Read {
         timeout_millis: Option<u32>,
@@ -192,7 +195,6 @@ pub enum UartRequest {
     Write {
         data: Vec<u8>,
     },
-    SupportsNonblockingRead,
     RegisterNonblockingRead,
 }
 
@@ -201,11 +203,13 @@ pub enum UartResponse {
     GetBaudrate { rate: u32 },
     SetBaudrate,
     SetBreak,
+    GetParity { parity: Parity },
     SetParity,
+    GetFlowControl { flow_control: FlowControl },
+    SetFlowControl,
     GetDevicePath { path: String },
     Read { data: Vec<u8> },
     Write,
-    SupportsNonblockingRead { has_support: bool },
     RegisterNonblockingRead { channel: u32 },
 }
 

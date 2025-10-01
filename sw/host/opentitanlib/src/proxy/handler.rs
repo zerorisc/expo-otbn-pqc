@@ -2,14 +2,15 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
-use mio::{Registry, Token};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use super::CommandHandler;
 use super::errors::SerializedError;
 use super::protocol::{
     BitbangEntryRequest, BitbangEntryResponse, DacBangEntryRequest, EmuRequest, EmuResponse,
@@ -18,32 +19,31 @@ use super::protocol::{
     I2cTransferResponse, Message, ProxyRequest, ProxyResponse, Request, Response, SpiRequest,
     SpiResponse, SpiTransferRequest, SpiTransferResponse, UartRequest, UartResponse,
 };
-use super::CommandHandler;
 use crate::app::TransportWrapper;
 use crate::bootstrap::Bootstrap;
 use crate::io::gpio::{
     BitbangEntry, DacBangEntry, GpioBitbangOperation, GpioDacBangOperation, GpioPin,
 };
-use crate::io::{i2c, nonblocking_help, spi};
+use crate::io::{i2c, spi};
+use crate::proxy::Connection;
 use crate::proxy::nonblocking_uart::NonblockingUartRegistry;
 use crate::transport::TransportError;
 
 /// Implementation of the handling of each protocol request, by means of an underlying
 /// `Transport` implementation.
-pub struct TransportCommandHandler<'a> {
-    transport: &'a TransportWrapper,
-    nonblocking_help: Rc<dyn nonblocking_help::NonblockingHelp>,
+pub struct TransportCommandHandler {
+    transport: TransportWrapper,
+    uart_registry: NonblockingUartRegistry,
     spi_chip_select: HashMap<String, Vec<spi::AssertChipSelect>>,
     ongoing_bitbanging: Option<Box<dyn GpioBitbangOperation<'static, 'static>>>,
     ongoing_dacbanging: Option<Box<dyn GpioDacBangOperation>>,
 }
 
-impl<'a> TransportCommandHandler<'a> {
-    pub fn new(transport: &'a TransportWrapper) -> Result<Self> {
-        let nonblocking_help = transport.nonblocking_help()?;
+impl TransportCommandHandler {
+    pub fn new(transport: TransportWrapper) -> Result<Self> {
         Ok(Self {
             transport,
-            nonblocking_help,
+            uart_registry: NonblockingUartRegistry::new(),
             spi_chip_select: HashMap::new(),
             ongoing_bitbanging: None,
             ongoing_dacbanging: None,
@@ -62,13 +62,7 @@ impl<'a> TransportCommandHandler<'a> {
     /// by the given `Request`, and return a response to be sent to the client.  Any `Err`
     /// return from this method will be propagated to the remote client, without any server-side
     /// logging.
-    fn do_execute_cmd(
-        &mut self,
-        conn_token: Token,
-        registry: &Registry,
-        others: &mut NonblockingUartRegistry,
-        req: &Request,
-    ) -> Result<Response> {
+    fn do_execute_cmd(&mut self, conn: &Arc<Mutex<Connection>>, req: &Request) -> Result<Response> {
         match req {
             Request::GetCapabilities => {
                 Ok(Response::GetCapabilities(self.transport.capabilities()?))
@@ -269,9 +263,23 @@ impl<'a> TransportCommandHandler<'a> {
                         instance.set_break(*enable)?;
                         Ok(Response::Uart(UartResponse::SetBreak))
                     }
+                    UartRequest::GetParity => {
+                        let parity = instance.get_parity()?;
+                        Ok(Response::Uart(UartResponse::GetParity { parity }))
+                    }
                     UartRequest::SetParity(parity) => {
                         instance.set_parity(*parity)?;
                         Ok(Response::Uart(UartResponse::SetParity))
+                    }
+                    UartRequest::GetFlowControl => {
+                        let flow_control = instance.get_flow_control()?;
+                        Ok(Response::Uart(UartResponse::GetFlowControl {
+                            flow_control,
+                        }))
+                    }
+                    UartRequest::SetFlowControl(flow_control) => {
+                        instance.set_flow_control(*flow_control)?;
+                        Ok(Response::Uart(UartResponse::SetFlowControl))
                     }
                     UartRequest::GetDevicePath => {
                         let path = instance.get_device_path()?;
@@ -294,15 +302,8 @@ impl<'a> TransportCommandHandler<'a> {
                         instance.write(data)?;
                         Ok(Response::Uart(UartResponse::Write))
                     }
-                    UartRequest::SupportsNonblockingRead => {
-                        let has_support = instance.supports_nonblocking_read()?;
-                        Ok(Response::Uart(UartResponse::SupportsNonblockingRead {
-                            has_support,
-                        }))
-                    }
                     UartRequest::RegisterNonblockingRead => {
-                        let channel =
-                            others.nonblocking_uart_init(&instance, conn_token, registry)?;
+                        let channel = self.uart_registry.nonblocking_uart_init(&instance, conn)?;
                         Ok(Response::Uart(UartResponse::RegisterNonblockingRead {
                             channel,
                         }))
@@ -572,7 +573,7 @@ impl<'a> TransportCommandHandler<'a> {
                     Ok(Response::Proxy(ProxyResponse::Provides { provides_map }))
                 }
                 ProxyRequest::Bootstrap { options, payload } => {
-                    Bootstrap::update(self.transport, options, payload)?;
+                    Bootstrap::update(&self.transport, options, payload)?;
                     Ok(Response::Proxy(ProxyResponse::Bootstrap))
                 }
                 ProxyRequest::ApplyPinStrapping { strapping_name } => {
@@ -595,34 +596,19 @@ impl<'a> TransportCommandHandler<'a> {
     }
 }
 
-impl<'a> CommandHandler<Message, NonblockingUartRegistry> for TransportCommandHandler<'a> {
+impl CommandHandler<Message> for TransportCommandHandler {
     /// This method will perform whatever action on the underlying `Transport` that is requested
     /// by the given `Message`, and return a response to be sent to the client.  Any `Err`
     /// return from this method will be treated as an irrecoverable protocol error, causing an
     /// error message in the server log, and the connection to be terminated.
-    fn execute_cmd(
-        &mut self,
-        conn_token: Token,
-        registry: &Registry,
-        others: &mut NonblockingUartRegistry,
-        msg: &Message,
-    ) -> Result<Message> {
+    fn execute_cmd(&mut self, conn: &Arc<Mutex<Connection>>, msg: &Message) -> Result<Message> {
         if let Message::Req(req) = msg {
             // Package either `Ok()` or `Err()` into a `Message`, to be sent via network.
             return Ok(Message::Res(
-                self.do_execute_cmd(conn_token, registry, others, req)
+                self.do_execute_cmd(conn, req)
                     .map_err(SerializedError::from),
             ));
         }
         bail!("Client sent non-Request to server!!!");
-    }
-
-    fn register_nonblocking_help(&self, registry: &mio::Registry, token: mio::Token) -> Result<()> {
-        self.nonblocking_help
-            .register_nonblocking_help(registry, token)
-    }
-
-    fn nonblocking_help(&self) -> Result<()> {
-        self.nonblocking_help.nonblocking_help()
     }
 }

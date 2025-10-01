@@ -1,4 +1,5 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 class otp_ctrl_base_vseq extends cip_base_vseq #(
@@ -133,7 +134,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     used_dai_addrs.delete();
   endfunction
 
-  // Overide this task for otp_ctrl_common_vseq and otp_ctrl_stress_all_with_rand_reset_vseq
+  // Override this task for otp_ctrl_common_vseq and otp_ctrl_stress_all_with_rand_reset_vseq
   // because some registers won't set to default value until otp_init is done.
   virtual task read_and_check_all_csrs_after_reset();
     cfg.otp_ctrl_vif.drive_lc_escalate_en(lc_ctrl_pkg::Off);
@@ -148,19 +149,20 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     bit [TL_DW-1:0] val;
     dai_wr_inprogress = 1;
     if (write_unused_addr) begin
-      if (used_dai_addrs.exists(addr[OTP_ADDR_WIDTH - 1 : 0])) begin
+      bit [OTP_ADDR_WIDTH - 1 : 0] granule_addr = normalize_dai_addr(addr);
+      if (used_dai_addrs.exists(granule_addr)) begin
         `uvm_info(`gfn, $sformatf("addr %0h is already written!", addr), UVM_MEDIUM)
         dai_wr_inprogress = 0;
         return;
       end else begin
-        used_dai_addrs[addr] = 1;
+        used_dai_addrs[granule_addr] = 1;
       end
     end
     addr = randomize_dai_addr(addr);
     `uvm_info(`gfn, $sformatf("dai write addr %0h, data %0h", addr, wdata0), UVM_HIGH)
     csr_wr(ral.direct_access_address, addr);
     csr_wr(ral.direct_access_wdata[0], wdata0);
-    if (is_secret(addr) || is_sw_digest(addr)) csr_wr(ral.direct_access_wdata[1], wdata1);
+    if (is_secret(addr) || is_zeroized_addr(addr) || is_sw_digest(addr)) csr_wr(ral.direct_access_wdata[1], wdata1);
 
     do_otp_wr = 1;
     csr_wr(ral.direct_access_cmd, int'(otp_ctrl_top_specific_pkg::DaiWrite));
@@ -201,7 +203,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
 
     wait_dai_op_done();
     csr_rd(ral.direct_access_rdata[0], rdata0);
-    if (is_secret(addr) || is_digest(addr)) csr_rd(ral.direct_access_rdata[1], rdata1);
+    if (is_granule_64(addr)) csr_rd(ral.direct_access_rdata[1], rdata1);
     rd_and_clear_intrs();
   endtask : dai_rd
 
@@ -212,7 +214,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     dai_rd(addr, rdata0, rdata1);
     if (!cfg.under_reset) begin
       `DV_CHECK_EQ(rdata0, exp_data0, $sformatf("dai addr %0h rdata0 readout mismatch", addr))
-      if (is_secret(addr) || is_digest(addr)) begin
+      if (is_granule_64(addr)) begin
         `DV_CHECK_EQ(rdata1, exp_data1, $sformatf("dai addr %0h rdata1 readout mismatch", addr))
       end
     end
@@ -550,21 +552,19 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
   endtask
 
   // This function backdoor inject error according to ecc_err:
-  // - for OtpEccUncorrErr it injects a 2 bit eror
-  // - for OtpEccCorrErr it injects a 1 bit eror
-  // This function will output original backdoor read data for the given address
+  // - for OtpEccUncorrErr it injects a 2 bit error
+  // - for OtpEccCorrErr it injects a 1 bit error
+  // Return the original backdoor read data for the given address
   // so the error can be cleared.
   virtual function bit [TL_DW-1:0] backdoor_inject_ecc_err(bit [TL_DW-1:0] addr,
                                                            otp_ecc_err_e   ecc_err);
-    bit [TL_DW-1:0] val;
-    addr = {addr[TL_DW-1:2], 2'b00};
-    val = cfg.mem_bkdr_util_h.read32(addr);
+    uvm_hdl_data_t val = cfg.mem_bkdr_util_h.read(addr);
     if (ecc_err == OtpNoEccErr || addr >= (LifeCycleOffset + LifeCycleSize)) return val;
 
     // Backdoor read and write back with error bits
     cfg.mem_bkdr_util_h.inject_errors(addr, (ecc_err == OtpEccUncorrErr) ? 2 : 1);
     `uvm_info(`gfn, $sformatf("original val %0h, addr %0h, err_type %0s",
-                              val, addr, ecc_err.name), UVM_HIGH)
+                              OTP_MACRO_FULL_WIDTH'(val), addr, ecc_err.name), UVM_HIGH)
     return val;
   endfunction
 
@@ -602,7 +602,10 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     if (wait_done && val) csr_spinwait(ral.status.check_pending, 0);
 
     if (ecc_err != OtpNoEccErr) begin
-      cfg.mem_bkdr_util_h.write32(addr, backdoor_rd_val);
+      `uvm_info(`gfn, $sformatf("Repairing ecc error %0d at 0x%x with data 0x%x",
+                    ecc_err, addr, OTP_MACRO_FULL_WIDTH'(backdoor_rd_val)),
+                    UVM_HIGH)
+      cfg.mem_bkdr_util_h.write(addr, backdoor_rd_val);
       cfg.ecc_chk_err = '{default: OtpNoEccErr};
     end
   endtask
@@ -653,7 +656,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
 
   // first two or three LSB bits of DAI address can be randomized based on if it is secret
   virtual function bit [TL_AW-1:0] randomize_dai_addr(bit [TL_AW-1:0] dai_addr);
-    if (is_secret(dai_addr)) begin
+    if (is_granule_64(dai_addr)) begin
       bit [2:0] rand_addr = $urandom();
       randomize_dai_addr = {dai_addr[TL_DW-1:3], rand_addr};
     end else begin
@@ -775,15 +778,15 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
         bit test_access_en;
         bit [TL_AW-1:0] rand_addr = $urandom_range(0, NUM_PRIM_REG - 1) * 4;
         bit [TL_AW-1:0] tlul_addr =
-            cfg.ral_models["otp_macro_reg_block"].get_addr_from_offset(rand_addr);
+            cfg.ral_models["otp_macro_prim_reg_block"].get_addr_from_offset(rand_addr);
         if (cfg.stop_transaction_generators()) break;
         rand_drive_dft_en();
         `DV_CHECK_STD_RANDOMIZE_FATAL(data)
         test_access_en = cfg.otp_ctrl_vif.lc_dft_en_i == lc_ctrl_pkg::On;
         tl_access(.addr(tlul_addr), .write(1), .data(data), .exp_err_rsp(~test_access_en),
-                  .tl_sequencer_h(p_sequencer.tl_sequencer_hs["otp_macro_reg_block"]));
+                  .tl_sequencer_h(p_sequencer.tl_sequencer_hs["otp_macro_prim_reg_block"]));
         tl_access(.addr(tlul_addr), .write(0), .data(data), .exp_err_rsp(~test_access_en),
-                  .tl_sequencer_h(p_sequencer.tl_sequencer_hs["otp_macro_reg_block"]));
+                  .tl_sequencer_h(p_sequencer.tl_sequencer_hs["otp_macro_prim_reg_block"]));
        end
      end
   endtask

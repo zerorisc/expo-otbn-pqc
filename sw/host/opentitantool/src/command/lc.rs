@@ -5,14 +5,14 @@
 use std::any::Any;
 use std::time::Duration;
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use clap::{Args, Subcommand};
 use hex::decode;
 use humantime::parse_duration;
 use serde_annotate::Annotate;
 
-use opentitanlib::app::command::CommandDispatch;
 use opentitanlib::app::TransportWrapper;
+use opentitanlib::app::command::CommandDispatch;
 use opentitanlib::dif::lc_ctrl::{DifLcCtrlState, DifLcCtrlToken, LcCtrlReg, LcCtrlStatus};
 use opentitanlib::io::jtag::{Jtag, JtagParams, JtagTap};
 use opentitanlib::test_utils::lc_transition::{trigger_lc_transition, trigger_volatile_raw_unlock};
@@ -79,6 +79,12 @@ pub struct LcStateRead {
 
     #[command(flatten)]
     pub jtag_params: JtagParams,
+
+    // Skip device reset before connecting to LC controller. This is only
+    // applicable for lifecycle states that support PINMUX_TAP continuous
+    // sampling.
+    #[arg(short, long, action = clap::ArgAction::Set, default_value = "false")]
+    pub skip_reset: bool,
 }
 
 impl CommandDispatch for LcStateRead {
@@ -89,7 +95,13 @@ impl CommandDispatch for LcStateRead {
     ) -> Result<Option<Box<dyn Annotate>>> {
         // Set the TAP straps for the lifecycle controller and reset.
         transport.pin_strapping("PINMUX_TAP_LC")?.apply()?;
-        transport.reset_target(self.reset_delay, true)?;
+
+        if !self.skip_reset {
+            transport.reset_target(self.reset_delay, true)?;
+        } else {
+            // Unconditionally wait for the device to switch tap.
+            std::thread::sleep(Duration::from_millis(10));
+        }
 
         // Spawn an OpenOCD process and connect to the LC JTAG TAP.
         let mut jtag = self

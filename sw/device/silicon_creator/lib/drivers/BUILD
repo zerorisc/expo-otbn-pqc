@@ -51,7 +51,6 @@ dual_cc_library(
         device = [
             "//hw/top:alert_handler_c_regs",
             "//hw/top:otp_ctrl_c_regs",
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         ],
         host = [
             "//sw/device/lib/base:global_mock",
@@ -61,6 +60,7 @@ dual_cc_library(
         shared = [
             ":lifecycle",
             ":otp",
+            "//hw/top:dt",
             "//sw/device/lib/base:abs_mmio",
             "//sw/device/lib/base:macros",
             "//sw/device/lib/base:memory",
@@ -93,6 +93,7 @@ opentitan_test(
         ":alert",
         ":rstmgr",
         "//hw/top:alert_handler_c_regs",
+        "//hw/top:dt",
         "//hw/top:flash_ctrl_c_regs",
         "//hw/top:otp_ctrl_c_regs",
         "//hw/top:rstmgr_c_regs",
@@ -111,6 +112,7 @@ cc_library(
         ":lifecycle",
         ":otp",
         "//hw/top:ast_c_regs",
+        "//hw/top:dt",
         "//hw/top:otp_ctrl_c_regs",
         "//hw/top:sensor_ctrl_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
@@ -146,6 +148,7 @@ dual_cc_library(
         host = ["mock_flash_ctrl.h"],
         shared = ["flash_ctrl.h"],
     ),
+    visibility = ["//visibility:public"],
     deps = dual_inputs(
         device = [
             "//hw/top:otp_ctrl_c_regs",
@@ -279,8 +282,8 @@ cc_library(
     srcs = ["keymgr.c"],
     hdrs = ["keymgr.h"],
     deps = [
+        "//hw/top:dt",
         "//hw/top:keymgr_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/runtime:hart",
@@ -295,6 +298,7 @@ cc_test(
     srcs = ["keymgr_unittest.cc"],
     deps = [
         ":keymgr",
+        "//hw/top:dt",
         "//sw/device/silicon_creator/testing:rom_test",
         "@googletest//:gtest_main",
     ],
@@ -311,6 +315,12 @@ opentitan_test(
             "//hw/top_earlgrey:silicon_creator": None,
             # FIXME broken in sival ROM_EXT, remove this line when fixed. See #21706.
             "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": "broken",
+        },
+    ),
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
         },
     ),
     verilator = verilator_params(
@@ -427,8 +437,8 @@ cc_library(
     srcs = ["otbn.c"],
     hdrs = ["otbn.h"],
     deps = [
+        "//hw/top:dt",
         "//hw/top:otbn_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:bitfield",
         "//sw/device/silicon_creator/lib:error",
@@ -459,7 +469,7 @@ dual_cc_library(
     ),
     deps = dual_inputs(
         device = [
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+            "//hw/top:dt",
         ],
         host = [
             "//sw/device/lib/base:global_mock",
@@ -491,6 +501,7 @@ cc_library(
     srcs = ["pinmux.c"],
     hdrs = ["pinmux.h"],
     deps = [
+        "//hw/top:dt",
         "//hw/top:gpio_c_regs",
         "//hw/top:otp_ctrl_c_regs",
         "//hw/top:pinmux_c_regs",
@@ -579,6 +590,7 @@ dual_cc_library(
     deps = dual_inputs(
         device = [
             ":otp",
+            "//hw/top:dt",
             "//sw/device/lib/arch:boot_stage",
             "//sw/device/lib/base:csr",
             "//sw/device/lib/base:abs_mmio",
@@ -586,7 +598,6 @@ dual_cc_library(
             "//hw/top:entropy_src_c_regs",
             "//hw/top:otp_ctrl_c_regs",
             "//hw/top:rv_core_ibex_c_regs",
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
             "//sw/device/lib/base:crc32",
         ],
         host = [
@@ -657,7 +668,6 @@ dual_cc_library(
     deps = dual_inputs(
         device = [
             "//hw/top:rstmgr_c_regs",
-            "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         ],
         host = [
             "//sw/device/lib/base:global_mock",
@@ -665,6 +675,7 @@ dual_cc_library(
             "@googletest//:gtest",
         ],
         shared = [
+            "//hw/top:dt",
             "//hw/top:otp_ctrl_c_regs",
             "//sw/device/lib/base:bitfield",
             "//sw/device/lib/base:macros",
@@ -755,6 +766,7 @@ cc_library(
     deps = [
         ":pwrmgr",
         "//hw/top:aon_timer_c_regs",
+        "//hw/top:dt",
         "//hw/top:otp_ctrl_c_regs",
         "//hw/top:pwrmgr_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
@@ -792,7 +804,7 @@ opentitan_test(
         ":retention_sram",
         ":rstmgr",
         ":watchdog",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//hw/top:dt",
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/testing:rstmgr_testutils",
         "//sw/device/lib/testing/test_framework:ottf_main",
@@ -853,9 +865,10 @@ cc_library(
     hdrs = ["pwrmgr.h"],
     deps = [
         ":ibex",
+        "//hw/top:dt",
         "//hw/top:pwrmgr_c_regs",
-        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
+        "//sw/device/silicon_creator/lib:error",
         "//sw/device/silicon_creator/lib/base:sec_mmio",
     ],
 )
@@ -867,6 +880,7 @@ cc_library(
     deps = [
         ":lifecycle",
         ":otp",
+        "//hw/top:dt",
         "//hw/top:otp_ctrl_c_regs",
         "//hw/top:sensor_ctrl_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",

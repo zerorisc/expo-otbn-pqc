@@ -57,6 +57,7 @@ tl_if soc_proxy__ctn_tl_if(clk_main, rst_n);
 tl_if hmac_tl_if(clk_main, rst_n);
 tl_if kmac_tl_if(clk_main, rst_n);
 tl_if aes_tl_if(clk_main, rst_n);
+tl_if entropy_src_tl_if(clk_main, rst_n);
 tl_if csrng_tl_if(clk_main, rst_n);
 tl_if edn0_tl_if(clk_main, rst_n);
 tl_if edn1_tl_if(clk_main, rst_n);
@@ -90,7 +91,7 @@ tl_if rstmgr_aon_tl_if(clk_io_div4, rst_n);
 tl_if clkmgr_aon_tl_if(clk_io_div4, rst_n);
 tl_if pinmux_aon_tl_if(clk_io_div4, rst_n);
 tl_if otp_ctrl__core_tl_if(clk_io_div4, rst_n);
-tl_if otp_macro_tl_if(clk_io_div4, rst_n);
+tl_if otp_macro__prim_tl_if(clk_io_div4, rst_n);
 tl_if lc_ctrl__regs_tl_if(clk_io_div4, rst_n);
 tl_if alert_handler_tl_if(clk_io_div4, rst_n);
 tl_if sram_ctrl_ret_aon__regs_tl_if(clk_io_div4, rst_n);
@@ -158,6 +159,7 @@ initial begin
     `DRIVE_CHIP_TL_DEVICE_IF(hmac, hmac, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(kmac, kmac, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(aes, aes, tl)
+    `DRIVE_CHIP_TL_DEVICE_IF(entropy_src, entropy_src, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(csrng, csrng, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(edn0, edn0, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(edn1, edn1, tl)
@@ -202,7 +204,7 @@ initial begin
     `DRIVE_CHIP_TL_DEVICE_IF(clkmgr_aon, clkmgr_aon, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(pinmux_aon, pinmux_aon, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(otp_ctrl__core, otp_ctrl, core_tl)
-    `DRIVE_CHIP_TL_DEVICE_IF(otp_macro, otp_macro, tl)
+    `DRIVE_CHIP_TL_DEVICE_IF(otp_macro__prim, otp_macro, prim_tl)
     `DRIVE_CHIP_TL_DEVICE_IF(lc_ctrl__regs, lc_ctrl, regs_tl)
     `DRIVE_CHIP_TL_DEVICE_IF(alert_handler, alert_handler, tl)
     `DRIVE_CHIP_TL_DEVICE_IF(sram_ctrl_ret_aon__regs, sram_ctrl_ret_aon, regs_tl)

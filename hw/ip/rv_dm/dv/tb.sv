@@ -73,6 +73,7 @@ module tb;
     .next_dm_addr_i            ('0),
 
     // the strapping behavior of lc_hw_debug_en_i will be tested at the top-level.
+    .lc_hw_debug_clr_i         (rv_dm_if.lc_hw_debug_clr          ),
     .lc_hw_debug_en_i          (rv_dm_if.lc_hw_debug_en           ),
     .pinmux_hw_debug_en_i      (rv_dm_if.pinmux_hw_debug_en       ),
     .lc_dft_en_i               (rv_dm_if.lc_dft_en                ),
@@ -172,11 +173,11 @@ module tb;
   initial begin
     forever @rv_dm_if.disable_tlul_assert_host_sba_resp_svas begin
       if (rv_dm_if.disable_tlul_assert_host_sba_resp_svas) begin
-        $assertoff(0, dut.tlul_assert_host_sba.gen_host.respOpcode_M);
-        $assertoff(0, dut.tlul_assert_host_sba.gen_host.respSzEqReqSz_M);
+        $assertoff(0, dut.tlul_assert_host_sba.gen_host.gen_d2h.respOpcode_M);
+        $assertoff(0, dut.tlul_assert_host_sba.gen_host.gen_d2h.respSzEqReqSz_M);
       end else begin
-        $asserton(0, dut.tlul_assert_host_sba.gen_host.respOpcode_M);
-        $asserton(0, dut.tlul_assert_host_sba.gen_host.respSzEqReqSz_M);
+        $asserton(0, dut.tlul_assert_host_sba.gen_host.gen_d2h.respOpcode_M);
+        $asserton(0, dut.tlul_assert_host_sba.gen_host.gen_d2h.respSzEqReqSz_M);
       end
     end
   end

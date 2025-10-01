@@ -6,18 +6,22 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, anyhow, bail};
 use arrayvec::ArrayVec;
 use zerocopy::IntoBytes;
 
-use cert_lib::{parse_and_endorse_x509_cert, validate_cert_chain, CaConfig, CaKey, EndorsedCert};
+use cert_lib::{CaConfig, CaKey, EndorsedCert, parse_and_endorse_x509_cert, validate_cert_chain};
 use ft_ext_lib::ft_ext;
 use opentitanlib::app::TransportWrapper;
 use opentitanlib::console::spi::SpiConsoleDevice;
 use opentitanlib::dif::lc_ctrl::{DifLcCtrlState, LcCtrlReg};
 use opentitanlib::io::jtag::{JtagParams, JtagTap};
+use opentitanlib::test_utils::crashdump::{
+    read_alert_crashdump_data, read_cpu_crashdump_data, read_reset_reason,
+};
 use opentitanlib::test_utils::init::InitializeTest;
 use opentitanlib::test_utils::lc_transition::trigger_lc_transition;
 use opentitanlib::test_utils::load_sram_program::{
@@ -25,14 +29,21 @@ use opentitanlib::test_utils::load_sram_program::{
 };
 use opentitanlib::test_utils::rpc::{ConsoleRecv, ConsoleSend};
 use opentitanlib::uart::console::UartConsole;
-use ot_certs::x509::parse_certificate;
 use ot_certs::CertFormat;
+use ot_certs::x509::parse_certificate;
 use perso_tlv_lib::perso_tlv_get_field;
 use perso_tlv_lib::{CertHeader, CertHeaderType, ObjHeader, ObjHeaderType, ObjType};
 use ujson_lib::provisioning_data::{
     LcTokenHash, ManufCertgenInputs, ManufFtIndividualizeData, PersoBlob, SerdesSha256Hash,
 };
 use util_lib::hash_lc_token;
+
+pub mod response;
+use response::*;
+
+// After seeing 10 alert NMIs, this is the time to wait after disconnecting JTAG
+// before capturing crashdump information.
+const FT_NMI_CRASHDUMP_DELAY_MILLIS: u64 = 10000; // 10 seconds
 
 pub fn test_unlock(
     transport: &TransportWrapper,
@@ -109,13 +120,34 @@ pub fn run_sram_ft_individualize(
     // Inject provisioning data into the device.
     ft_individualize_data_in.send(spi_console)?;
 
-    // Wait for provisioning operations to complete.
-    let _ = UartConsole::wait_for(spi_console, r"FT SRAM provisioning done.", timeout)?;
-
-    jtag.disconnect()?;
-    transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
-
-    Ok(())
+    // Wait for provisioning operations to complete. If we see at least 10 NMIs, we know it is time
+    // to capture crashdump information.
+    let console_text = UartConsole::wait_for(
+        spi_console,
+        r"FT SRAM provisioning done.|Processing Alert NMI 10 ...",
+        timeout,
+    )?;
+    match console_text[0].as_str() {
+        "FT SRAM provisioning done." => {
+            jtag.disconnect()?;
+            transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
+            Ok(())
+        }
+        "Processing Alert NMI 10 ..." => {
+            transport.pin_strapping("PINMUX_TAP_RISCV")?.remove()?;
+            jtag.disconnect()?;
+            log::info!(
+                "10 NMIs detected, waiting {:?} before capturing crashdump information",
+                Duration::from_millis(FT_NMI_CRASHDUMP_DELAY_MILLIS)
+            );
+            thread::sleep(Duration::from_millis(FT_NMI_CRASHDUMP_DELAY_MILLIS));
+            read_reset_reason(transport, jtag_params)?;
+            read_cpu_crashdump_data(transport, jtag_params)?;
+            read_alert_crashdump_data(transport, jtag_params)?;
+            Ok(())
+        }
+        _ => Err(anyhow!("Unexpected console_text: {:?}", console_text)),
+    }
 }
 
 pub fn test_exit(
@@ -259,9 +291,10 @@ fn push_endorsed_cert(
     Ok(())
 }
 
-fn process_dev_seeds(seeds: &[u8]) -> Result<()> {
+fn process_dev_seeds(seeds: &[u8]) -> Result<Vec<Vec<u8>>> {
     let expected_seed_num = 2usize;
     let seed_size = 64usize;
+    let mut response = Vec::new();
 
     if seeds.len() != seed_size * expected_seed_num {
         bail!("Unexpected seeds perso object size {}", seeds.len())
@@ -269,10 +302,10 @@ fn process_dev_seeds(seeds: &[u8]) -> Result<()> {
 
     for i in 0..expected_seed_num {
         let seed = &seeds[i * seed_size..(i + 1) * seed_size];
-
+        response.push(seed.to_vec());
         log::info!("Seed #{}: {}", i, hex::encode(seed))
     }
-    Ok(())
+    Ok(response)
 }
 
 fn provision_certificates(
@@ -281,14 +314,22 @@ fn provision_certificates(
     perso_certgen_inputs: &ManufCertgenInputs,
     timeout: Duration,
     spi_console: &SpiConsoleDevice,
+    response: &mut PersonalizeResponse,
 ) -> Result<()> {
     // Send attestation TCB measurements for generating DICE certificates.
+    let t0 = Instant::now();
     let _ = UartConsole::wait_for(spi_console, r"Waiting for certificate inputs ...", timeout)?;
+    response.stats.log_elapsed_time("perso-wait-ready", t0);
+
+    let t0 = Instant::now();
     perso_certgen_inputs.send(spi_console)?;
+    response.stats.log_elapsed_time("perso-certgen-inputs", t0);
 
     // Wait until the device exports the TBS certificates.
+    let t0 = Instant::now();
     let _ = UartConsole::wait_for(spi_console, r"Exporting TBS certificates ...", timeout)?;
     let perso_blob = PersoBlob::recv(spi_console, timeout, true)?;
+    response.stats.log_elapsed_time("perso-tbs-export", t0);
 
     // Extract certificate byte vectors, endorse TBS certs, and ensure they parse with OpenSSL.
     // During the process, both:
@@ -305,12 +346,11 @@ fn provision_certificates(
     // Extract CAs.
     let dice_ca_cert = &ca_cfgs["dice"].certificate;
     let dice_ca_key = &ca_keys["dice"];
-    let ext_ca_cert = &ca_cfgs["ext"].certificate;
-    let ext_ca_key = &ca_keys["ext"];
 
     // DICE certificate names.
     let dice_cert_names = HashSet::from(["UDS", "CDI_0", "CDI_1"]);
 
+    let t0 = Instant::now();
     for _ in 0..perso_blob.num_objs {
         log::info!("Processing next object");
         let header = get_obj_header(&perso_blob.body[start..])?;
@@ -326,8 +366,10 @@ fn provision_certificates(
                 let dev_seed_size = header.obj_size - obj_header_size;
                 let seeds = &perso_blob.body[start..start + dev_seed_size];
                 cert_hasher.update(seeds);
-                process_dev_seeds(seeds)?;
+                let r = process_dev_seeds(seeds)?;
                 start += dev_seed_size;
+                response.seeds.number += r.len();
+                response.seeds.seed.extend(r);
                 continue;
             }
         }
@@ -343,17 +385,20 @@ fn provision_certificates(
             let cert_bytes = if dice_cert_names.contains(cert.cert_name) {
                 parse_and_endorse_x509_cert(cert.cert_body.clone(), dice_ca_key)?
             } else {
+                let ext_ca_key = &ca_keys["ext"];
                 parse_and_endorse_x509_cert(cert.cert_body.clone(), ext_ca_key)?
             };
 
             // Prepare a collection of (SKU-specific) certs whose endorsements should be verified.
             if !dice_cert_names.contains(cert.cert_name) {
-                sku_specific_certs.push(EndorsedCert {
+                let ec = EndorsedCert {
                     format: CertFormat::X509,
                     name: cert.cert_name.to_string(),
                     bytes: cert_bytes.clone(),
                     ignore_critical: false,
-                });
+                };
+                response.certs.insert(ec.name.clone(), ec.clone());
+                sku_specific_certs.push(ec);
             }
 
             // Prepare the UJSON data payloads that will be sent back to the device.
@@ -369,12 +414,14 @@ fn provision_certificates(
         if dice_cert_names.contains(cert.cert_name)
             && header.obj_type == ObjType::UnendorsedX509Cert
         {
-            dice_cert_chain.push(EndorsedCert {
+            let ec = EndorsedCert {
                 format: CertFormat::X509,
                 name: cert.cert_name.to_string(),
                 bytes: cert_bytes.clone(),
                 ignore_critical: true,
-            });
+            };
+            response.certs.insert(ec.name.clone(), ec.clone());
+            dice_cert_chain.push(ec);
         }
 
         // Ensure all certs parse with OpenSSL (even those that where endorsed on device).
@@ -387,9 +434,12 @@ fn provision_certificates(
         // info pages match those verified on the host.
         cert_hasher.update(cert_bytes);
     }
+    response.stats.log_elapsed_time("perso-process-blobs", t0);
 
     // Execute extension hook.
+    let t0 = Instant::now();
     endorsed_cert_concat = ft_ext(endorsed_cert_concat)?;
+    response.stats.log_elapsed_time("perso-ft-ext", t0);
 
     // Complete hash of all certs that will be sent back to the device and written to flash. This
     // is used as integrity check on what will be written to flash.
@@ -401,9 +451,11 @@ fn provision_certificates(
         next_free: endorsed_cert_concat.len(),
         body: endorsed_cert_concat,
     };
+    let t0 = Instant::now();
     let _ = UartConsole::wait_for(spi_console, r"Importing endorsed certificates ...", timeout)?;
     manuf_perso_data_back.send(spi_console)?;
     let _ = UartConsole::wait_for(spi_console, r"Finished importing certificates.", timeout)?;
+    response.stats.log_elapsed_time("perso-import-certs", t0);
 
     // Check the integrity of the certificates written to the device's flash by comparing a
     // SHA256 over all certificates computed on the host and device sides.
@@ -425,17 +477,30 @@ fn provision_certificates(
 
     // Validate the certificate endorsements with OpenSSL.
     // TODO(lowRISC/opentitan:#24281): Add CWT verifier
-    log::info!("Validating DICE certificate chain with OpenSSL ...");
-    validate_cert_chain(dice_ca_cert.to_str().unwrap(), &dice_cert_chain)?;
-    log::info!("Success.");
-    log::info!("Validating SKU-specific certificates with OpenSSL ...");
+    let t0 = Instant::now();
+    if !dice_cert_chain.is_empty() {
+        log::info!(
+            "Validating DICE certificate chain with OpenSSL (root CA: {:?}) ...",
+            dice_ca_cert
+        );
+        validate_cert_chain(dice_ca_cert.to_str().unwrap(), &dice_cert_chain)?;
+        log::info!("Success.");
+    }
+    response.stats.log_elapsed_time("perso-validate-dice", t0);
+
+    let t0 = Instant::now();
     if !sku_specific_certs.is_empty() {
+        let ext_ca_cert = &ca_cfgs["ext"].certificate;
+        log::info!(
+            "Validating SKU-specific certificates with OpenSSL (root CA: {:?}) ...",
+            ext_ca_cert
+        );
         for sku_specific_cert in sku_specific_certs.iter() {
             validate_cert_chain(ext_ca_cert.to_str().unwrap(), &[sku_specific_cert.clone()])?;
         }
+        log::info!("Success.");
     }
-    log::info!("Success.");
-
+    response.stats.log_elapsed_time("perso-validate-sku", t0);
     Ok(())
 }
 
@@ -450,52 +515,99 @@ pub fn run_ft_personalize(
     second_bootstrap: PathBuf,
     spi_console: &SpiConsoleDevice,
     timeout: Duration,
+    response: &mut PersonalizeResponse,
 ) -> Result<()> {
     // Bootstrap only personalization binary into ROM_EXT slot A in flash.
+    let t0 = Instant::now();
     init.bootstrap.init(transport)?;
+    response.stats.log_elapsed_time("first-bootstrap", t0);
 
     // Bootstrap personalization + ROM_EXT + Owner FW binaries into flash, since
     // flash scrambling seeds were provisioned in the previous step.
+    let t0 = Instant::now();
     let _ = UartConsole::wait_for(spi_console, r"Bootstrap requested.", timeout)?;
+    response.stats.log_elapsed_time("first-bootstrap-done", t0);
+
+    let t0 = Instant::now();
     init.bootstrap.load(transport, &second_bootstrap)?;
+    response.stats.log_elapsed_time("second-bootstrap", t0);
 
     // Send RMA unlock token digest to device.
+    let second_t0 = Instant::now();
+    let t0 = second_t0;
     send_rma_unlock_token_hash(rma_unlock_token, timeout, spi_console)?;
+    response.stats.log_elapsed_time("send-rma-unlock-token", t0);
 
     // Provision all device certificates.
-    provision_certificates(ca_cfgs, ca_keys, perso_certgen_inputs, timeout, spi_console)?;
+    let t0 = Instant::now();
+    provision_certificates(
+        ca_cfgs,
+        ca_keys,
+        perso_certgen_inputs,
+        timeout,
+        spi_console,
+        response,
+    )?;
+    response.stats.log_elapsed_time("perso-all-certs-done", t0);
 
     let _ = UartConsole::wait_for(spi_console, r"Personalization done.", timeout)?;
-
+    response
+        .stats
+        .log_elapsed_time("second-bootstrap-done", second_t0);
     Ok(())
 }
 
-pub fn check_rom_ext_boot_up(
+pub fn check_slot_b_boot_up(
     transport: &TransportWrapper,
     init: &InitializeTest,
     timeout: Duration,
+    response: &mut PersonalizeResponse,
+    owner_fw_success_string: Option<String>,
 ) -> Result<()> {
     transport.reset_target(init.bootstrap.options.reset_delay, true)?;
     let uart_console = transport.uart("console")?;
-    let _ = UartConsole::wait_for(&*uart_console, r"ROM_EXT:.*\r\n", timeout)?;
-
-    // Timeout for waiting for a potential error message indicating invalid UDS certificate.
-    // This value is tested on fpga cw340 and could be potentially fine-tuned.
-    const UDS_CERT_INVALID_TIMEOUT: Duration = Duration::from_millis(200);
-
-    let result = UartConsole::wait_for(
-        &*uart_console,
-        r".*UDS certificate not valid.",
-        UDS_CERT_INVALID_TIMEOUT,
+    let result = UartConsole::wait_for(&*uart_console, r"ROM_EXT:(.*)\r\n", timeout)?;
+    response.stats.log_string(
+        "rom_ext-version",
+        result
+            .get(1)
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("unknown"),
     );
+    let t0 = Instant::now();
+
+    // Timeout for waiting for a potential error message indicating invalid UDS
+    // certificate or for the Owner firmware successful startup.
+    //
+    // These values were tested on fpga cw340 and could be potentially fine-tuned.
+    let slot_b_startup_timeout: Duration =
+        Duration::from_millis(if owner_fw_success_string.is_none() {
+            200
+        } else {
+            1500
+        });
+
+    response.stats.log_elapsed_time("rom_ext-done", t0);
+    let rom_ext_failure_msg = r"Invalid UDS certificate detected!";
+    let anchor_text = if let Some(owner_anchor) = &owner_fw_success_string {
+        format!(r"({}|{})", rom_ext_failure_msg, owner_anchor)
+    } else {
+        rom_ext_failure_msg.to_string()
+    };
+
+    let result =
+        UartConsole::wait_for(&*uart_console, anchor_text.as_str(), slot_b_startup_timeout);
 
     match result {
-        Ok(_captures) => {
-            // Error message found.
-            bail!("Invalid UDS certificate detected!");
+        Ok(captures) => {
+            if captures[0] == *rom_ext_failure_msg {
+                // Error message found.
+                bail!("Invalid UDS certificate detected!");
+            }
         }
         Err(e) => {
-            if e.to_string().contains("Timed Out") {
+            if owner_fw_success_string.is_none() && e.to_string().contains("Timed Out") {
                 // Error message not found after timeout. This is the expected behavior.
             } else {
                 // An unexpected error occurred while waiting for the console output.

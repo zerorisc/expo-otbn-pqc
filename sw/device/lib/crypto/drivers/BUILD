@@ -1,3 +1,7 @@
+# Copyright zeroRISC Inc.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright lowRISC contributors (OpenTitan project).
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
@@ -17,6 +21,7 @@ load(
     "cw310_params",
     "fpga_params",
     "opentitan_test",
+    "qemu_params",
     "verilator_params",
 )
 load(
@@ -36,6 +41,7 @@ cc_library(
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:bitfield",
         "//sw/device/lib/base:hardened",
+        "//sw/device/lib/base:hardened_memory",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/crypto/impl:status",
     ],
@@ -89,6 +95,12 @@ opentitan_test(
             "//hw/top_earlgrey:fpga_cw310_sival_rom_ext": "broken",
         },
     ),
+    qemu = qemu_params(
+        globals = {
+            # Test uses rstmgr, keep running on fatal resets:
+            "ot-rstmgr.fatal_reset": 0,
+        },
+    ),
     verilator = verilator_params(
         timeout = "long",
     ),
@@ -118,6 +130,7 @@ cc_library(
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:bitfield",
         "//sw/device/lib/base:hardened",
+        "//sw/device/lib/base:hardened_memory",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/crypto/impl:status",
     ],
@@ -192,11 +205,14 @@ cc_library(
     srcs = ["hmac.c"],
     hdrs = ["hmac.h"],
     deps = [
+        ":entropy",
+        ":rv_core_ibex",
         "//hw/top:hmac_c_regs",
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:bitfield",
         "//sw/device/lib/base:hardened",
+        "//sw/device/lib/base:hardened_memory",
         "//sw/device/lib/base:macros",
         "//sw/device/lib/base:memory",
         "//sw/device/lib/crypto/impl:status",
@@ -251,7 +267,9 @@ cc_library(
         "//hw/top_earlgrey/sw/autogen:top_earlgrey",
         "//sw/device/lib/base:abs_mmio",
         "//sw/device/lib/base:bitfield",
+        "//sw/device/lib/base:crc32",
         "//sw/device/lib/base:hardened",
+        "//sw/device/lib/base:random_order",
         "//sw/device/lib/crypto/impl:status",
     ],
 )

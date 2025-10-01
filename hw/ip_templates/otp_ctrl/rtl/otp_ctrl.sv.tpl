@@ -22,7 +22,20 @@ module otp_ctrl
 #(
   // Enable asynchronous transitions on alerts.
   parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}},
-  // Compile time random constants, to be overriden by topgen.
+  // Number of cycles a differential skew is tolerated on the alert signal
+  parameter int unsigned AlertSkewCycles = 1,
+  // Compile time random constants, to be overridden by topgen.
+% for i in range(otp_mmap["scrambling"]["num_keys"]):
+  parameter key_t RndCnstScrmblKey${i} = '0,
+% endfor
+% for i in range(otp_mmap["scrambling"]["num_digests"]):
+  parameter digest_const_t RndCnstDigestConst${i} = '0,
+% endfor
+% for i in range(otp_mmap["scrambling"]["num_digests"]):
+  parameter digest_iv_t RndCnstDigestIV${i} = '0,
+% endfor
+<% offset = int(otp_mmap["partitions"][-1]["offset"]) + int(otp_mmap["partitions"][-1]["size"]) %>\
+  parameter logic [${offset * 8 - 1}:0] RndCnstPartInvDefault = '0,
   parameter lfsr_seed_t RndCnstLfsrSeed = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t RndCnstLfsrPerm = RndCnstLfsrPermDefault,
   parameter scrmbl_key_init_t RndCnstScrmblKeyInit = RndCnstScrmblKeyInitDefault
@@ -99,6 +112,42 @@ module otp_ctrl
                int'(MacroEccUncorrError) == int'(otp_ctrl_macro_pkg::MacroEccUncorrError))
   `ASSERT_INIT(OtpErrorCode4_A,
                int'(MacroWriteBlankError) == int'(otp_ctrl_macro_pkg::MacroWriteBlankError))
+  // Ensure that scrambling keys and digest constants are not all zero and defaults have been
+  // overwritten with a meaningful value.
+% for i in range(otp_mmap["scrambling"]["num_keys"]):
+  `ASSERT_INIT(ScrmblKeyNotAllZero_A${i}, RndCnstScrmblKey${i} != 0)
+% endfor
+% for i in range(otp_mmap["scrambling"]["num_digests"]):
+  `ASSERT_INIT(DigestConstNotAllZero_A${i}, RndCnstDigestConst${i} != 0)
+  `ASSERT_INIT(DigestIVNotAllZero_A${i}, RndCnstDigestIV${i} != 0)
+% endfor
+
+  ////////////////
+  // Parameters //
+  ////////////////
+
+  // Based on the flat random constant parameters, build up arrays
+  // SEC_CM: SECRET.MEM.SCRAMBLE
+  localparam key_array_t RndCnstKey = {
+% for i in range(otp_mmap["scrambling"]["num_keys"] - 1, -1, -1):
+    RndCnstScrmblKey${i}${"" if loop.last else ","}
+% endfor
+  };
+
+  // SEC_CM: PART.MEM.DIGEST
+  // Note: digest set 0 is used for computing the partition digests. Constants at
+  // higher indices are used to compute the scrambling keys.
+  localparam digest_const_array_t RndCnstDigestConst = {
+% for i in range(otp_mmap["scrambling"]["num_digests"] - 1, -1, -1):
+    RndCnstDigestConst${i}${"" if loop.last else ","}
+% endfor
+  };
+
+  localparam digest_iv_array_t RndCnstDigestIV = {
+% for i in range(otp_mmap["scrambling"]["num_digests"] - 1, -1, -1):
+    RndCnstDigestIV${i}${"" if loop.last else ","}
+% endfor
+  };
 
   /////////////
   // Regfile //
@@ -367,11 +416,13 @@ module otp_ctrl
                                    !reg2hw.direct_access_regwen.q) ? 1'b0 : direct_access_regwen_q;
 
   // Any write to this register triggers a DAI command.
-  assign dai_req = reg2hw.direct_access_cmd.digest.qe |
+  assign dai_req = reg2hw.direct_access_cmd.zeroize.qe |
+                   reg2hw.direct_access_cmd.digest.qe |
                    reg2hw.direct_access_cmd.wr.qe  |
                    reg2hw.direct_access_cmd.rd.qe;
 
-  assign dai_cmd = dai_cmd_e'({reg2hw.direct_access_cmd.digest.q,
+  assign dai_cmd = dai_cmd_e'({reg2hw.direct_access_cmd.zeroize.q,
+                               reg2hw.direct_access_cmd.digest.q,
                                reg2hw.direct_access_cmd.wr.q,
                                reg2hw.direct_access_cmd.rd.q});
 
@@ -599,6 +650,7 @@ end
   for (genvar k = 0; k < NumAlerts; k++) begin : gen_alert_tx
     prim_alert_sender #(
       .AsyncOn(AlertAsyncOn[k]),
+      .SkewCycles(AlertSkewCycles),
       .IsFatal(AlertIsFatal[k])
     ) u_prim_alert_sender (
       .clk_i,
@@ -820,7 +872,7 @@ end
   // I.e., each agent (e.g. the DAI or a partition) can request a lock on the mutex. Once granted,
   // the partition can keep the lock as long as needed for the transaction to complete. The
   // partition must yield its lock by deasserting the request signal for the arbiter to proceed.
-  // Since this scheme does not have built-in preemtion, it must be ensured that the agents
+  // Since this scheme does not have built-in preemption, it must be ensured that the agents
   // eventually release their locks for this to be fair.
   //
   // This is documented in ../README.md (generated from hw/ip_templates/otp_ctrl/README.md.tpl) see
@@ -873,7 +925,11 @@ end
 
   // SEC_CM: SECRET.MEM.SCRAMBLE
   // SEC_CM: PART.MEM.DIGEST
-  otp_ctrl_scrmbl u_otp_ctrl_scrmbl (
+  otp_ctrl_scrmbl #(
+    .RndCnstKey         ( RndCnstKey         ),
+    .RndCnstDigestConst ( RndCnstDigestConst ),
+    .RndCnstDigestIV    ( RndCnstDigestIV    )
+  ) u_otp_ctrl_scrmbl (
     .clk_i,
     .rst_ni,
     .cmd_i         ( scrmbl_req_bundle.cmd       ),
@@ -903,6 +959,8 @@ end
   logic                           part_init_req;
   logic [NumPart-1:0]             part_init_done;
   part_access_t [NumPart-1:0]     part_access_dai;
+  mubi8_t [NumPart-1:0]           part_zer_trigs;
+  mubi8_t [NumPart-1:0]           part_is_zer;
 
   // The init request comes from the power manager, which lives in the AON clock domain.
   logic pwr_otp_req_synced;
@@ -964,7 +1022,9 @@ end
     .scrmbl_valid_o   ( part_scrmbl_req_bundle[DaiIdx].valid  ),
     .scrmbl_ready_i   ( part_scrmbl_req_ready[DaiIdx]         ),
     .scrmbl_valid_i   ( part_scrmbl_rsp_valid[DaiIdx]         ),
-    .scrmbl_data_i    ( part_scrmbl_rsp_data                  )
+    .scrmbl_data_i    ( part_scrmbl_rsp_data                  ),
+    .zer_trigs_o      ( part_zer_trigs                        ),
+    .zer_i            ( part_is_zer                           )
   );
 
   ////////////////////////////////////
@@ -1072,7 +1132,7 @@ end
   // Partition Instances //
   /////////////////////////
 
-  logic [$bits(PartInvDefault)/8-1:0][7:0] part_buf_data;
+  logic [$bits(RndCnstPartInvDefault)/8-1:0][7:0] part_buf_data;
 
   for (genvar k = 0; k < NumPart; k ++) begin : gen_partitions
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1104,7 +1164,9 @@ end
         .otp_gnt_i     ( part_otp_arb_gnt[k]          ),
         .otp_rvalid_i  ( part_otp_rvalid[k]           ),
         .otp_rdata_i   ( part_otp_rdata               ),
-        .otp_err_i     ( part_otp_err                 )
+        .otp_err_i     ( part_otp_err                 ),
+        .zer_trig_i    ( part_zer_trigs[k]            ),
+        .zer_o         ( part_is_zer[k]               )
       );
 
       // Tie off unused connections.
@@ -1133,7 +1195,7 @@ end
     end else if (PartInfo[k].variant == Buffered) begin : gen_buffered
       otp_ctrl_part_buf #(
         .Info(PartInfo[k]),
-        .DataDefault(PartInvDefault[PartInfo[k].offset*8 +: PartInfo[k].size*8])
+        .DataDefault(RndCnstPartInvDefault[PartInfo[k].offset*8 +: PartInfo[k].size*8])
       ) u_part_buf (
         .clk_i,
         .rst_ni,
@@ -1170,7 +1232,9 @@ end
         .scrmbl_valid_o    ( part_scrmbl_req_bundle[k].valid ),
         .scrmbl_ready_i    ( part_scrmbl_req_ready[k]        ),
         .scrmbl_valid_i    ( part_scrmbl_rsp_valid[k]        ),
-        .scrmbl_data_i     ( part_scrmbl_rsp_data            )
+        .scrmbl_data_i     ( part_scrmbl_rsp_data            ),
+        .zer_trig_i        ( part_zer_trigs[k]               ),
+        .zer_o             ( part_is_zer[k]                  )
       );
 
       // Buffered partitions are not accessible via the TL-UL window.
@@ -1190,7 +1254,7 @@ end
     end else if (PartInfo[k].variant == LifeCycle) begin : gen_lifecycle
       otp_ctrl_part_buf #(
         .Info(PartInfo[k]),
-        .DataDefault(PartInvDefault[PartInfo[k].offset*8 +: PartInfo[k].size*8])
+        .DataDefault(RndCnstPartInvDefault[PartInfo[k].offset*8 +: PartInfo[k].size*8])
       ) u_part_buf (
         .clk_i,
         .rst_ni,
@@ -1230,7 +1294,9 @@ end
         .scrmbl_valid_o    (                                 ),
         .scrmbl_ready_i    ( 1'b0                            ),
         .scrmbl_valid_i    ( 1'b0                            ),
-        .scrmbl_data_i     ( '0                              )
+        .scrmbl_data_i     ( '0                              ),
+        .zer_trig_i        ( part_zer_trigs[k]               ),
+        .zer_o             ( part_is_zer[k]                  )
       );
 
       // Buffered partitions are not accessible via the TL-UL window.
@@ -1299,6 +1365,7 @@ end
   otp_keymgr_key_t otp_keymgr_key;
   assign otp_keymgr_key = named_keymgr_key_assign(part_digest,
                                                   part_buf_data,
+                                                  RndCnstPartInvDefault,
                                                   lc_seed_hw_rd_en);
 
   // Note regarding these breakouts: named_keymgr_key_assign will tie off unused key material /

@@ -2,18 +2,15 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+load("//rules:const.bzl", "CONST", "hex")
+load("//rules:manifest.bzl", "manifest")
 load(
     "//rules/opentitan:defs.bzl",
-    "CLEAR_KEY_SET",
     "DEFAULT_TEST_FAILURE_MSG",
     "DEFAULT_TEST_SUCCESS_MSG",
-    "EARLGREY_TEST_ENVS",
-    "cw310_params",
     "fpga_params",
     "opentitan_test",
 )
-load("//rules:const.bzl", "CONST", "hex")
-load("//rules:manifest.bzl", "manifest")
 load(
     "//rules:otp.bzl",
     "STD_OTP_OVERLAYS",
@@ -25,6 +22,8 @@ load(
 load(
     "//sw/device/silicon_creator/rom_ext/imm_section:defs.bzl",
     "IMMUTABLE_HASH_UNENFORCED_MSG",
+    "IMM_SECTION_MAJOR_VERSION",
+    "IMM_SECTION_MINOR_VERSION",
     "IMM_SECTION_VARIATIONS",
 )
 
@@ -69,75 +68,83 @@ filegroup(
 
 _POSITIONS = {
     "owner_slot_a": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_a",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "bl0_slot = AA__\r\n",
         "otp_img": None,
     },
     "owner_slot_b": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_a",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_b",
-        "owner_offset": "0x90000",
+        "owner_offset": "{owner_slot_b}",
         "success": "bl0_slot = __BB\r\n",
         "otp_img": None,
     },
     "owner_virtual_a": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_a",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_virtual",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "bl0_slot = AA__\r\n",
         "otp_img": None,
     },
     "owner_virtual_b": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_a",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_virtual",
-        "owner_offset": "0x90000",
+        "owner_offset": "{owner_slot_b}",
         "success": "bl0_slot = __BB\r\n",
         "otp_img": None,
     },
     "romext_slot_a": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_a",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_a",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "rom_ext_slot = AA__\r\n",
         "otp_img": None,
     },
     "romext_slot_b": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_b",
-        "romext_offset": "0x80000",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_b",
+        "romext_offset": "{rom_ext_slot_b}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "rom_ext_slot = __BB\r\n",
         "otp_img": None,
     },
     "romext_virtual_a": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_virtual",
-        "romext_offset": "0",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_virtual",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "rom_ext_slot = AA__\r\n",
         "otp_img": None,
     },
     "romext_virtual_b": {
-        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_slot_virtual",
-        "romext_offset": "0x80000",
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_virtual",
+        "romext_offset": "{rom_ext_slot_b}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "rom_ext_slot = __BB\r\n",
+        "otp_img": None,
+    },
+    "imm_section_virtual_a": {
+        "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_dice_x509_slot_virtual",
+        "romext_offset": "{rom_ext_slot_a}",
+        "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
+        "owner_offset": "{owner_slot_a}",
+        "success": "IMM_SECTION:{}.{}".format(IMM_SECTION_MAJOR_VERSION, IMM_SECTION_MINOR_VERSION),
         "otp_img": None,
     },
 } | {
     "romext_virtual_a_with_{}_imm_romext_enabled".format(name): {
         "romext": "//sw/device/silicon_creator/rom_ext:rom_ext_with_{}_imm_slot_virtual".format(name),
-        "romext_offset": "0",
+        "romext_offset": "{rom_ext_slot_a}",
         "linker_script": "//sw/device/lib/testing/test_framework:ottf_ld_silicon_owner_slot_a",
-        "owner_offset": "0x10000",
+        "owner_offset": "{owner_slot_a}",
         "success": "rom_ext_slot = AA__\r\n",
         "failure": IMMUTABLE_HASH_UNENFORCED_MSG,
         "otp_img": ":otp_img_with_{}_imm_romext_enabled".format(name),
@@ -151,7 +158,7 @@ _POSITIONS = {
         srcs = [":boot_test"],
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_rom_ext": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
         },
         fpga = fpga_params(
             assemble = "{romext}@{romext_offset} {firmware}@{owner_offset}",
@@ -194,7 +201,7 @@ opentitan_test(
     srcs = [":boot_test"],
     exec_env = {
         "//hw/top_earlgrey:fpga_cw340_rom_ext": None,
-        "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+        "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
     },
     fpga = fpga_params(
         exit_failure = "PASS|FAIL|FAULT|BFV:.{8}",
@@ -257,7 +264,7 @@ _KEYS = {
         ecdsa_key = keyinfo["ecdsa"],
         exec_env = {
             "//hw/top_earlgrey:fpga_cw340_rom_ext": None,
-            "//hw/top_earlgrey:fpga_hyper310_rom_ext": None,
+            "//hw/top_earlgrey:fpga_cw310_rom_ext": None,
         },
         fpga = fpga_params(
             exit_failure = keyinfo["exit_failure"],

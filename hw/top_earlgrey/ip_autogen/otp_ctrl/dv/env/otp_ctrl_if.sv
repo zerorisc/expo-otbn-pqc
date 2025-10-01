@@ -1,4 +1,5 @@
 // Copyright lowRISC contributors (OpenTitan project).
+// Copyright zeroRISC Inc.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 // This interface collect the broadcast output data from OTP,
@@ -40,6 +41,7 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
   import otp_ctrl_part_pkg::*;
   import otp_macro_pkg::*;
   import cip_base_pkg::*;
+  import top_earlgrey_rnd_cnst_pkg::RndCnstOtpCtrlPartInvDefault;
 
   // Output from DUT
   otp_broadcast_t    otp_broadcast_o;
@@ -56,7 +58,7 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
   otp_ast_rsp_t           otp_ast_pwr_seq_h_i;
   ast_pkg::ast_obs_ctrl_t obs_ctrl_i;
 
-  // Unused in prim_generic_otp memory.
+  // Unused in otp_macro memory.
   logic [OtpTestCtrlWidth-1:0]   otp_vendor_test_ctrl_i;
   logic [OtpTestStatusWidth-1:0] otp_vendor_test_status_o;
   logic [OtpTestVectWidth-1:0]   cio_test_o;
@@ -87,7 +89,7 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
   // Set this variable to 0 after a LC program request might cause otp checks to fail.
   bit lc_check_byp_en = 1;
 
-  // Internal veriable to track which sw partitions have ECC reg error.
+  // Internal variable to track which sw partitions have ECC reg error.
   bit [NumPartUnbuf-1:0] force_sw_parts_ecc_reg;
 
   // DUT configuration object
@@ -97,7 +99,7 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
   string msg_id = "otp_ctrl_if";
 
   // Lc_err could trigger during LC program, so check intr and status after lc_req is finished.
-  // Lc_err takes one clock cycle to propogate to intr signal. So avoid intr check if it happens
+  // Lc_err takes one clock cycle to propagate to intr signal. So avoid intr check if it happens
   // during the transition.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -214,7 +216,7 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
     end
   endtask
 
-  // Force prim_generic_otp input cmd_i to a invalid value.
+  // Force otp_macro input cmd_i to an invalid value.
   task automatic force_invalid_otp_cmd_i();
     @(posedge clk_i);
     force `PRIM_GENERIC_OTP_CMD_I_PATH = otp_ctrl_macro_pkg::cmd_e'(2'b10);
@@ -287,9 +289,12 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
 
 //  `ASSERT(CioTestOWithDftOn_A, lc_dft_en_i == lc_ctrl_pkg::On |->
 //                               ##[2:3] cio_test_o == `PRIM_GENERIC_OTP_PATH.test_vect_o)
-  `ASSERT(CioTestOWithDftOff_A, lc_dft_en_i != lc_ctrl_pkg::On |-> ##[2:3] cio_test_o == 0)
-  `ASSERT(CioTestEnOWithDftOn_A, lc_dft_en_i == lc_ctrl_pkg::On |-> ##[2:3] cio_test_en_o == '1)
-  `ASSERT(CioTestEnOWithDftOff_A, lc_dft_en_i != lc_ctrl_pkg::On |-> ##[2:3] cio_test_en_o == 0)
+  `ASSERT(CioTestOWithDftOff_A, lc_dft_en_i != lc_ctrl_pkg::On |->
+                                ##[2:3] lc_dft_en_i == lc_ctrl_pkg::On || cio_test_o == 0)
+  `ASSERT(CioTestEnOWithDftOn_A, lc_dft_en_i == lc_ctrl_pkg::On |->
+                                 ##[2:3] lc_dft_en_i != lc_ctrl_pkg::On || cio_test_en_o == '1)
+  `ASSERT(CioTestEnOWithDftOff_A, lc_dft_en_i != lc_ctrl_pkg::On |->
+                                  ##[2:3] lc_dft_en_i == lc_ctrl_pkg::On || cio_test_en_o == 0)
 
 
   `define OTP_ASSERT_WO_LC_ESC(NAME, SEQ) \
@@ -324,32 +329,34 @@ interface otp_ctrl_if(input clk_i, input rst_ni);
                        (pwr_otp_idle_o == 0 || $rose(lc_prog_err)) within lc_prog_req[*1:$])
 
   // During fatal alert, check if otp outputs revert back to default value.
-  // Wait three clock cycles until error propogates to each FSM states and regs.
+  // Wait three clock cycles until error propagates to each FSM states and regs.
   `define OTP_FATAL_ERR_ASSERT(NAME, SEQ) \
     `ASSERT(FatalErr``NAME``, alert_reqs |-> ##3 SEQ)
 
   `OTP_FATAL_ERR_ASSERT(LcDataValid_A, lc_data_o.valid == 0 && lc_data_o.error == 1)
   `OTP_FATAL_ERR_ASSERT(LcDataState_A, lc_data_o.state ==
-                        PartInvDefault[LcStateOffset*8+:LcStateSize*8])
+    RndCnstOtpCtrlPartInvDefault[LcStateOffset*8+:LcStateSize*8])
   `OTP_FATAL_ERR_ASSERT(LcDataCount_A, lc_data_o.count ==
-                        PartInvDefault[LcTransitionCntOffset*8+:LcTransitionCntSize*8])
+    RndCnstOtpCtrlPartInvDefault[LcTransitionCntOffset*8+:LcTransitionCntSize*8])
   `OTP_FATAL_ERR_ASSERT(LcDataTestUnlockToken_A, lc_data_o.test_unlock_token ==
-                        PartInvDefault[TestUnlockTokenOffset*8+:TestUnlockTokenSize*8])
+    RndCnstOtpCtrlPartInvDefault[TestUnlockTokenOffset*8+:TestUnlockTokenSize*8])
   `OTP_FATAL_ERR_ASSERT(LcDataTestExitToken_A, lc_data_o.test_exit_token ==
-                        PartInvDefault[TestExitTokenOffset*8+:TestExitTokenSize*8])
+    RndCnstOtpCtrlPartInvDefault[TestExitTokenOffset*8+:TestExitTokenSize*8])
   `OTP_FATAL_ERR_ASSERT(LcDataRmaToken_A, lc_data_o.rma_token ==
-                        PartInvDefault[RmaTokenOffset*8+:RmaTokenSize*8])
+    RndCnstOtpCtrlPartInvDefault[RmaTokenOffset*8+:RmaTokenSize*8])
 
   `OTP_FATAL_ERR_ASSERT(KeymgrKeyData_A, keymgr_key_o.creator_root_key_share0 ==
-                        PartInvDefault[CreatorRootKeyShare0Offset*8+:CreatorRootKeyShare0Size*8] &&
-                        keymgr_key_o.creator_root_key_share1 ==
-                        PartInvDefault[CreatorRootKeyShare1Offset*8+:CreatorRootKeyShare1Size*8])
+    RndCnstOtpCtrlPartInvDefault[CreatorRootKeyShare0Offset*8+:CreatorRootKeyShare0Size*8] &&
+    keymgr_key_o.creator_root_key_share1 ==
+    RndCnstOtpCtrlPartInvDefault[CreatorRootKeyShare1Offset*8+:CreatorRootKeyShare1Size*8])
 
   `OTP_FATAL_ERR_ASSERT(HwCfgOValid_A, otp_broadcast_o.valid == lc_ctrl_pkg::Off)
+  // The digests and optional zeroizable fields are excluded from the broadcast, so we exclude
+  // either 8 or 16 bytes from each hw_cfg partition.
   `OTP_FATAL_ERR_ASSERT(HwCfg0OData_A, otp_broadcast_o.hw_cfg0_data ==
-                        PartInvDefault[HwCfg0Offset*8+:HwCfg0Size*8])
+                        RndCnstOtpCtrlPartInvDefault[HwCfg0Offset*8+:(HwCfg0Size - 8)*8])
   `OTP_FATAL_ERR_ASSERT(HwCfg1OData_A, otp_broadcast_o.hw_cfg1_data ==
-                        PartInvDefault[HwCfg1Offset*8+:HwCfg1Size*8])
+                        RndCnstOtpCtrlPartInvDefault[HwCfg1Offset*8+:(HwCfg1Size - 8)*8])
 
   `OTP_FATAL_ERR_ASSERT(LcProgAck_A, lc_prog_ack == 0)
   `OTP_FATAL_ERR_ASSERT(FlashAcks_A, flash_acks == 0)

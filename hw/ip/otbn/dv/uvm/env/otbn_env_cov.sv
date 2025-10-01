@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Covergoups that are dependent on run-time parameters that may be available
+ * Covergroups that are dependent on run-time parameters that may be available
  * only in build_phase can be defined here
  * Covergroups may also be wrapped inside helper classes if needed.
  */
@@ -120,7 +120,7 @@ class otbn_env_cov extends cip_base_env_cov #(.CFG_T(otbn_env_cfg));
 
   // Cross one, two or three coverpoints with mnemonic_cp.
   //
-  // This is intentended to be used inside covergroups that support multiple instructions. In each
+  // This is intended to be used inside covergroups that support multiple instructions. In each
   // of these, we define a coverpoint called mnemonic_cp to track which instruction is being
   // sampled.
 `define DEF_MNEM_CROSS(BASENAME)                                         \
