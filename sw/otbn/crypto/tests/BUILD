@@ -860,6 +860,7 @@ otbn_sim_test(
         "primality_negative_test.s",
     ],
     exp = "primality_negative_test.exp",
+    tags = ["nightly"],  # slow, do not run in CI
     deps = [
         "//sw/otbn/crypto:montmul",
         "//sw/otbn/crypto:primality",
@@ -1267,6 +1268,7 @@ otbn_sim_test(
         "rsa_2048_dec_test.s",
     ],
     exp = "rsa_2048_dec_test.exp",
+    tags = ["nightly"],  # slow, do not run in CI
     deps = [
         "//sw/otbn/crypto:modexp",
         "//sw/otbn/crypto:montmul",

@@ -9,8 +9,11 @@ import argparse
 import subprocess
 import sys
 from enum import IntEnum
-from typing import List
+from typing import Dict, List
 import tempfile
+
+from elftools.elf.elffile import ELFFile  # type: ignore
+from elftools.elf.sections import SymbolTableSection  # type: ignore
 
 from shared.check import CheckResult
 from shared.elf import read_elf
@@ -52,6 +55,19 @@ def get_err_names(err: int) -> List[str]:
         if err & err_bit != 0:
             out.append(err_bit.name)
     return out
+
+
+def _get_symbol_addr_map(elf_file: ELFFile) -> Dict[int, str]:
+    section = elf_file.get_section_by_name('.symtab')
+
+    if not isinstance(section, SymbolTableSection):
+        return {}
+
+    # Filter lables and offsets from data section
+    return {
+        sym.name: sym.entry.st_value
+        for sym in section.iter_symbols() if sym.entry['st_shndx'] == 2
+    }
 
 
 def main() -> int:
@@ -168,20 +184,24 @@ def main() -> int:
                            f"  Expected: {expected_str}\n"
                            f"  Actual:   {actual_str}")
 
-        for label, value in expected_dmem.items():
-            try:
-                offset = symbols[label]
-                actual = actual_dmem[offset:offset + len(value)]
-                if actual != value:
-                    result.err(
-                        f"Mismatch for dmem {label}:\n"
-                        f"  Expected:     {value.hex()}\n"
-                        f"  Actual:       {actual.hex()}\n"
-                        f"  Expected(BE): {value[::-1].hex()}\n"
-                        f"  Actual(BE):   {actual[::-1].hex()}"
-                    )
-            except KeyError:
-                result.err(f'No label "{label}" found in elf-file.')
+        if args.expected_dmem is not None:
+            elf_file = ELFFile(open(args.elf, 'rb'))
+            symbol_addr_map = _get_symbol_addr_map(elf_file)
+
+            for label, value in expected_dmem.items():
+                try:
+                    offset = symbol_addr_map[label]
+                    for i in range(0, len(value), 4):
+                        actual = actual_dmem[offset + i: offset + i + 4]
+                        expected = value[i: i + 4]
+                        if actual != expected:
+                            result.err(
+                                f"Mismatch for dmem {label} at word {i // 4}:\n"
+                                f"  Expected: {expected.hex()}\n"
+                                f"  Actual:   {actual.hex()}"
+                            )
+                except KeyError:
+                    result.err(f'No label "{label}" found in elf-file.')
 
     if result.has_errors() or result.has_warnings() or args.verbose:
         print(result.report())
