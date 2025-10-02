@@ -12,7 +12,7 @@ from itertools import islice
 from tqdm import tqdm
 
 STACK_SIZE_MLKEM = 20000
-STACK_SIZE_MLDSA = 112000
+STACK_SIZE_MLDSA = 20000
 
 MLKEM512_CRYPTO_PUBLICKEYBYTES = 800
 MLKEM512_CRYPTO_SECRETKEYBYTES = 1632
@@ -91,13 +91,19 @@ def target_list(scheme, verbose):
         subprocess.run(query_cmd, stdout=subprocess.PIPE, text=True, shell=True, check=True)
     targets = results.stdout.strip().split('\n')
     targets = sorted(targets, key=lambda x: int(re.search(r'\d+', x).group()))
-    n = len(targets)
     # In case we want NOLD codesize, uncomment the following lines
-    # for i in range(0, n, 6):
-    #     targets[i + 1], targets[i + 2] = targets[i + 2], targets[i + 1]
-    #     targets[i + 3], targets[i + 4] = targets[i + 4], targets[i + 3]
+    # for i in range(0, n, 7):
+    #     targets[i + 0], targets[i + 1] = targets[i + 1], targets[i + 0]
+    #     targets[i + 2], targets[i + 3] = targets[i + 3], targets[i + 2]
+    #     targets[i + 4], targets[i + 5] = targets[i + 5], targets[i + 4]
 
     targets = [t for t in targets if 'nold' not in t]
+
+    # Sort so that ver0_base is before _ver0
+    n = len(targets)
+    for i in range(0, n, 5):
+        targets[i], targets[i + 1] = targets[i + 1], targets[i]
+
     return targets
 
 
@@ -138,7 +144,7 @@ def latex_print(cs, filename):
     )
     start = 0
     cs_len = len(cs)
-    for i in range(start, start + cs_len, 4):
+    for i in range(start, start + cs_len, 5):
         if 'mldsa44' in list(cs.keys())[i]:
             scheme = 'ML-DSA-44'
         elif 'mldsa65' in list(cs.keys())[i]:
@@ -156,7 +162,7 @@ def latex_print(cs, filename):
         const_lines = ""
         io_lines = ""
         imp_lines = ""
-        for k, v in islice(cs.items(), i, i + 4):
+        for k, v in islice(cs.items(), i, i + 5):
             k_split = k.rsplit(':', 1)
             var_name = k_split[1].replace('_', '-')
             text_name = var_name + '-textsize'
@@ -170,30 +176,39 @@ def latex_print(cs, filename):
         lines += text_lines + '\n' + const_lines + '\n' + io_lines + '\n'
         lines += '% Text size improvement vs BNMULV_VER0: VERX/VER0 %\n'
         lines += imp_lines + '\n'
-    start += 12
+    start += 15
 
     with filepath.open("a") as f:
         f.write(lines)
 
 
-def output_csv(cs, outdir):
+def output_csv(cs, outdir, round_const):
     filename = outdir + "/codesize.csv"
 
     del cs['TARGET']
     cs_list = [[
-        "Level", "Platform", "Text MLKEM", "Ratio MLKEM", "Const MLKEM", "IO MLKEM",
+        "Level", "Platform", "Text MLKEM", "Ratio MLKEM", "Const MLKEM", "IO MLKEM", "Empty",
         "Text MLDSA", "Ratio MLDSA", "Const MLDSA", "IO MLDSA"
     ]]
     # Change list to list of lists
     for k, v in cs.items():
         if 'ver1' in k:
-            platform = "\\otbnmulv"
+            if 'nold' in k:
+                platform = "\\otbnmulvnold"
+            else:
+                platform = "\\otbnmulv"
         elif 'ver2' in k:
-            platform = "\\otbnmulvacch"
+            if 'nold' in k:
+                platform = "\\otbnmulvacchnold"
+            else:
+                platform = "\\otbnmulvacch"
         elif 'ver3' in k:
             platform = "\\otbnmulvacchcond"
         else:
-            platform = "\\otbnbl"
+            if 'base' in k:
+                platform = "\\otbn"
+            else:
+                platform = "\\otbnbl"
         if 'mlkem512' in k:
             k = "\\mlkemlow"
         elif 'mlkem768' in k:
@@ -206,7 +221,7 @@ def output_csv(cs, outdir):
             k = "\\mldsamid"
         elif 'mldsa87' in k:
             k = "\\mldsahigh"
-        v[1] = "$\\times$" + str(v[1])
+        v[1] = f"$\\times${v[1]:.{round_const}f}"
         data = [k] + [platform] + v
         cs_list.append(data)
 
@@ -214,16 +229,18 @@ def output_csv(cs, outdir):
 
     # Remove repeated Level
     n = len(cs_list)
-    for i in range(1, n // 2, 4):
-        cs_list[i] += cs_list[i + 12][2:] # Append ML-DSA code size to ML-KEM code size
-        cs_list[i + 1] += cs_list[i + 13][2:] # Append ML-DSA code size to ML-KEM code size
-        cs_list[i + 2] += cs_list[i + 14][2:] # Append ML-DSA code size to ML-KEM code size
-        cs_list[i + 3] += cs_list[i + 15][2:] # Append ML-DSA code size to ML-KEM code size
+    for i in range(1, n // 2, 5):
+        cs_list[i] += ([""] + cs_list[i + 15][2:]) # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 1] += ([""] + cs_list[i + 16][2:]) # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 2] += ([""] + cs_list[i + 17][2:]) # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 3] += ([""] + cs_list[i + 18][2:]) # Append ML-DSA code size to ML-KEM code size
+        cs_list[i + 4] += ([""] + cs_list[i + 19][2:]) # Append ML-DSA code size to ML-KEM code size
         cs_list[i][0] = ""
-        cs_list[i + 2][0] = cs_list[i + 14][0]
-        cs_list[i + 3][0] = ""
+        cs_list[i + 2][0] = ""
+        cs_list[i + 3][0] = cs_list[i + 15][0]
+        cs_list[i + 4][0] = ""
 
-    cs_list = cs_list[:13]
+    cs_list = cs_list[:16]
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(cs_list)
@@ -375,23 +392,28 @@ def main() -> int:
         # Add code size to cs
         cs[target] = [int(codesize[0]), const_size, io_size]
 
-    # Once done, sort cs based on security level
     value_hr = cs.pop('TARGET')
     cs_sorted = {'TARGET': value_hr}
 
+    round_const = 3
     # Compare if given --compare
     if args.compare:
         cs_sorted['TARGET'].insert(1, 'VERX/VER0')
         cs_list = list(cs.items())
         cs_len = len(cs_list)
-        for i in range(0, cs_len, 4):
-            ki, vi = cs_list[i]
+        for i in range(0, cs_len, 5):
+            ki, vi = cs_list[i + 1]
             vi.insert(1, 1.000)
-            # Update cs_sorted
             cs[ki] = vi
-            for j in range(i + 1, i + 4):
+
+            kj, vj = cs_list[i]
+            cs_vji = round((vj[0] / vi[0]), round_const)
+            vj.insert(1, cs_vji)
+            # Update cs_sorted
+            cs[kj] = vj
+            for j in range(i + 2, i + 5):
                 kj, vj = cs_list[j]
-                cs_vji = round((vj[0] / vi[0]), 3)
+                cs_vji = round((vj[0] / vi[0]), round_const)
                 vj.insert(1, cs_vji)
                 # Update cs_sorted
                 cs[kj] = vj
@@ -405,7 +427,7 @@ def main() -> int:
         latex_print(cs_sorted, args.latex_filename)
     elif args.output_csv:
         print_info('INFO: Create CSV file')
-        output_csv(cs_sorted, args.csv_outdir)
+        output_csv(cs_sorted, args.csv_outdir, round_const)
     else:
         print_info('INFO: Print out code size')
         dict_print(cs_sorted)
