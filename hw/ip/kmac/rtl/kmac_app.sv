@@ -825,11 +825,13 @@ module kmac_app
         sw_ready_o   = kmac_ready_i ;
       end
 
+    `ifdef TOWARDS_KMAC
       SelDynamicAppCfg: begin
         // Ready to consume next word on app iface,
         // since the first word sets only the config
         app_data_ready = 1'b1;
       end
+    `endif // TOWARDS_KMAC
 
       default: begin // Incl. SelNone
         kmac_valid_o = 1'b 0;
