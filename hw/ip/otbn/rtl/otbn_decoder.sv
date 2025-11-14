@@ -16,7 +16,10 @@
  */
 module otbn_decoder
   import otbn_pkg::*;
-(
+#(
+  // Enabling PQC hardware support with vector ISA extension
+  parameter bit OtbnPQCEn = 1'b1
+) (
   // For assertions only.
   input logic clk_i,
   input logic rst_ni,
@@ -91,16 +94,6 @@ module otbn_decoder
   logic       mac_shift_out_bignum;
   logic       mac_en_bignum;
 
-`ifdef OTBN_PQC
-  logic       mac_mulv;
-  logic       mac_data_type;
-  logic       mac_sel;
-  logic       mac_lane_mode;
-  logic       mac_lane_word_32;
-  logic       mac_lane_word_16;
-  logic [1:0] mac_exec_mode;
-`endif
-
   logic rf_ren_a_base;
   logic rf_ren_b_base;
 
@@ -130,28 +123,13 @@ module otbn_decoder
   logic [$clog2(WLEN)-1:0] shift_amt_a_type_bignum;
   // Shift amount for BN.RSHI
   logic [$clog2(WLEN)-1:0] shift_amt_s_type_bignum;
-`ifdef OTBN_PQC
-  // Shift amount for BN.SHV
-  logic [$clog2(WLEN)-1:0] shift_amt_v_type_bignum;
-`endif
 
   assign shift_amt_a_type_bignum = {insn[29:25], 3'b0};
   assign shift_amt_s_type_bignum = {insn[31:25], insn[14]};
-`ifdef OTBN_PQC
-  assign shift_amt_v_type_bignum = {3'b0, insn[29:25]};
-`endif
-
 
   logic alu_shift_right_bignum;
 
   assign alu_shift_right_bignum = insn[30];
-
-`ifdef OTBN_PQC
-  alu_vector_type_t alu_vector_type_bignum;
-  logic             alu_vector_sel_bignum;
-  alu_trn_type_t    alu_trn_type_bignum;
-  assign            alu_trn_type_bignum = alu_trn_type_t'(insn[27:25]);
-`endif
 
   flag_group_t alu_flag_group_bignum;
 
@@ -184,11 +162,30 @@ module otbn_decoder
   assign mac_wr_hw_sel_upper_bignum = insn[29];
   assign mac_pre_acc_shift_bignum   = insn[14:13];
 
-`ifdef OTBN_PQC
-  assign mac_sel        = insn[27];
-  assign mac_lane_mode  = insn[25];
-  assign mac_exec_mode  = insn[31:30];
-`endif
+  generate
+    if (OtbnPQCEn) begin : gen_mac_nets_pqc
+      logic       mac_mulv;
+      logic       mac_data_type;
+      logic       mac_sel;
+      logic       mac_lane_mode;
+      logic       mac_lane_word_32;
+      logic       mac_lane_word_16;
+      logic [1:0] mac_exec_mode;
+
+      alu_vector_type_t alu_vector_type_bignum;
+      logic             alu_vector_sel_bignum;
+      alu_trn_type_t    alu_trn_type_bignum;
+      assign            alu_trn_type_bignum = alu_trn_type_t'(insn[27:25]);
+
+      // Shift amount for BN.SHV
+      logic [$clog2(WLEN)-1:0] shift_amt_v_type_bignum;
+      assign shift_amt_v_type_bignum = {3'b0, insn[29:25]};
+
+      assign mac_sel        = insn[27];
+      assign mac_lane_mode  = insn[25];
+      assign mac_exec_mode  = insn[31:30];
+    end
+  endgenerate
 
   logic d_inc_bignum;
   logic a_inc_bignum;
@@ -224,17 +221,28 @@ module otbn_decoder
   end
 
   logic [$clog2(WLEN)-1:0] alu_shift_amt_bignum;
-  always_comb begin
-    unique case (shift_amt_mux_sel_bignum)
-      ShamtSelBignumA:    alu_shift_amt_bignum = shift_amt_a_type_bignum;
-      ShamtSelBignumS:    alu_shift_amt_bignum = shift_amt_s_type_bignum;
-    `ifdef OTBN_PQC
-      ShamtSelBignumV:    alu_shift_amt_bignum = shift_amt_v_type_bignum;
-    `endif
-      ShamtSelBignumZero: alu_shift_amt_bignum = '0;
-      default:            alu_shift_amt_bignum = shift_amt_a_type_bignum;
-    endcase
-  end
+  generate
+    if (OtbnPQCEn) begin : gen_shift_mux_bignum_pqc
+      always_comb begin
+        unique case (shift_amt_mux_sel_bignum)
+          ShamtSelBignumA:    alu_shift_amt_bignum = shift_amt_a_type_bignum;
+          ShamtSelBignumS:    alu_shift_amt_bignum = shift_amt_s_type_bignum;
+          ShamtSelBignumV:    alu_shift_amt_bignum = gen_mac_nets_pqc.shift_amt_v_type_bignum;
+          ShamtSelBignumZero: alu_shift_amt_bignum = '0;
+          default:            alu_shift_amt_bignum = shift_amt_a_type_bignum;
+        endcase
+      end
+    end else begin : gen_shift_mux_bignum
+      always_comb begin
+        unique case (shift_amt_mux_sel_bignum)
+          ShamtSelBignumA:    alu_shift_amt_bignum = shift_amt_a_type_bignum;
+          ShamtSelBignumS:    alu_shift_amt_bignum = shift_amt_s_type_bignum;
+          ShamtSelBignumZero: alu_shift_amt_bignum = '0;
+          default:            alu_shift_amt_bignum = shift_amt_a_type_bignum;
+        endcase
+      end
+    end
+  endgenerate
 
   assign insn_valid_o   = insn_fetch_resp_valid_i & ~illegal_insn;
   assign insn_illegal_o = insn_fetch_resp_valid_i & illegal_insn;
@@ -256,53 +264,101 @@ module otbn_decoder
     loop_immediate: loop_immediate_base
   };
 
-  assign insn_dec_bignum_o = '{
-    a:                   insn_rs1,
-    b:                   insn_rs2,
-    d:                   insn_rd,
-    i:                   imm_i_type_bignum,
-    rf_a_indirect:       rf_a_indirect_bignum,
-    rf_b_indirect:       rf_b_indirect_bignum,
-    rf_d_indirect:       rf_d_indirect_bignum,
-    d_inc:               d_inc_bignum,
-    a_inc:               a_inc_bignum,
-    a_wlen_word_inc:     a_wlen_word_inc_bignum,
-    b_inc:               b_inc_bignum,
-    alu_shift_amt:       alu_shift_amt_bignum,
-    alu_shift_right:     alu_shift_right_bignum,
-    alu_flag_group:      alu_flag_group_bignum,
-    alu_sel_flag:        alu_sel_flag_bignum,
-    alu_flag_en:         alu_flag_en_bignum,
-    mac_flag_en:         mac_flag_en_bignum,
-    alu_op:              alu_operator_bignum,
-  `ifdef OTBN_PQC
-    vector_type:         alu_vector_type_bignum,
-    vector_sel:          alu_vector_sel_bignum,
-    alu_trn_type:        alu_trn_type_bignum,
-  `endif
-    alu_op_b_sel:        alu_op_b_mux_sel_bignum,
-    mac_op_a_qw_sel:     mac_op_a_qw_sel_bignum,
-    mac_op_b_qw_sel:     mac_op_b_qw_sel_bignum,
-    mac_wr_hw_sel_upper: mac_wr_hw_sel_upper_bignum,
-    mac_pre_acc_shift:   mac_pre_acc_shift_bignum,
-    mac_zero_acc:        mac_zero_acc_bignum,
-    mac_shift_out:       mac_shift_out_bignum,
-  `ifdef OTBN_PQC
-    mac_mulv:            mac_mulv,
-    mac_data_type:       mac_data_type,
-    mac_sel:             mac_sel,
-    mac_lane_mode:       mac_lane_mode,
-    mac_lane_word_32:    mac_lane_word_32,
-    mac_lane_word_16:    mac_lane_word_16,
-    mac_exec_mode:       mac_exec_mode,
-  `endif
-    mac_en:              mac_en_bignum,
-    rf_we:               rf_we_bignum,
-    rf_wdata_sel:        rf_wdata_sel_bignum,
-    rf_ren_a:            rf_ren_a_bignum,
-    rf_ren_b:            rf_ren_b_bignum,
-    sel_insn:            sel_insn_bignum
-  };
+  generate
+    if (OtbnPQCEn) begin : gen_insn_dec_bignum_pqc
+      assign insn_dec_bignum_o = '{
+        a:                   insn_rs1,
+        b:                   insn_rs2,
+        d:                   insn_rd,
+        i:                   imm_i_type_bignum,
+        rf_a_indirect:       rf_a_indirect_bignum,
+        rf_b_indirect:       rf_b_indirect_bignum,
+        rf_d_indirect:       rf_d_indirect_bignum,
+        d_inc:               d_inc_bignum,
+        a_inc:               a_inc_bignum,
+        a_wlen_word_inc:     a_wlen_word_inc_bignum,
+        b_inc:               b_inc_bignum,
+        alu_shift_amt:       alu_shift_amt_bignum,
+        alu_shift_right:     alu_shift_right_bignum,
+        alu_flag_group:      alu_flag_group_bignum,
+        alu_sel_flag:        alu_sel_flag_bignum,
+        alu_flag_en:         alu_flag_en_bignum,
+        mac_flag_en:         mac_flag_en_bignum,
+        alu_op:              alu_operator_bignum,
+        vector_type:         gen_mac_nets_pqc.alu_vector_type_bignum,
+        vector_sel:          gen_mac_nets_pqc.alu_vector_sel_bignum,
+        alu_trn_type:        gen_mac_nets_pqc.alu_trn_type_bignum,
+        alu_op_b_sel:        alu_op_b_mux_sel_bignum,
+        mac_op_a_qw_sel:     mac_op_a_qw_sel_bignum,
+        mac_op_b_qw_sel:     mac_op_b_qw_sel_bignum,
+        mac_wr_hw_sel_upper: mac_wr_hw_sel_upper_bignum,
+        mac_pre_acc_shift:   mac_pre_acc_shift_bignum,
+        mac_zero_acc:        mac_zero_acc_bignum,
+        mac_shift_out:       mac_shift_out_bignum,
+        mac_mulv:            gen_mac_nets_pqc.mac_mulv,
+        mac_data_type:       gen_mac_nets_pqc.mac_data_type,
+        mac_sel:             gen_mac_nets_pqc.mac_sel,
+        mac_lane_mode:       gen_mac_nets_pqc.mac_lane_mode,
+        mac_lane_word_32:    gen_mac_nets_pqc.mac_lane_word_32,
+        mac_lane_word_16:    gen_mac_nets_pqc.mac_lane_word_16,
+        mac_exec_mode:       gen_mac_nets_pqc.mac_exec_mode,
+        mac_en:              mac_en_bignum,
+        rf_we:               rf_we_bignum,
+        rf_wdata_sel:        rf_wdata_sel_bignum,
+        rf_ren_a:            rf_ren_a_bignum,
+        rf_ren_b:            rf_ren_b_bignum,
+        sel_insn:            sel_insn_bignum
+      };
+    end else begin : gen_insn_dec_bignum
+      assign insn_dec_bignum_o = '{
+        a:                   insn_rs1,
+        b:                   insn_rs2,
+        d:                   insn_rd,
+        i:                   imm_i_type_bignum,
+        rf_a_indirect:       rf_a_indirect_bignum,
+        rf_b_indirect:       rf_b_indirect_bignum,
+        rf_d_indirect:       rf_d_indirect_bignum,
+        d_inc:               d_inc_bignum,
+        a_inc:               a_inc_bignum,
+        a_wlen_word_inc:     a_wlen_word_inc_bignum,
+        b_inc:               b_inc_bignum,
+        alu_shift_amt:       alu_shift_amt_bignum,
+        alu_shift_right:     alu_shift_right_bignum,
+        alu_flag_group:      alu_flag_group_bignum,
+        alu_sel_flag:        alu_sel_flag_bignum,
+        alu_flag_en:         alu_flag_en_bignum,
+        mac_flag_en:         mac_flag_en_bignum,
+        alu_op:              alu_operator_bignum,
+        // Default vector assignments
+        vector_type:         alu_vector_type_t'(2'b0),
+        vector_sel:          1'b0,
+        alu_trn_type:        alu_trn_type_t'(3'b0),
+        // Normal assignments
+        alu_op_b_sel:        alu_op_b_mux_sel_bignum,
+        mac_op_a_qw_sel:     mac_op_a_qw_sel_bignum,
+        mac_op_b_qw_sel:     mac_op_b_qw_sel_bignum,
+        mac_wr_hw_sel_upper: mac_wr_hw_sel_upper_bignum,
+        mac_pre_acc_shift:   mac_pre_acc_shift_bignum,
+        mac_zero_acc:        mac_zero_acc_bignum,
+        mac_shift_out:       mac_shift_out_bignum,
+        // Default vector assignments
+        mac_mulv:            1'b0,
+        mac_data_type:       1'b0,
+        mac_sel:             1'b0,
+        mac_lane_mode:       1'b0,
+        mac_lane_word_32:    1'b0,
+        mac_lane_word_16:    1'b0,
+        mac_exec_mode:       2'b00,
+        // Normal assignments
+        mac_en:              mac_en_bignum,
+        rf_we:               rf_we_bignum,
+        rf_wdata_sel:        rf_wdata_sel_bignum,
+        rf_ren_a:            rf_ren_a_bignum,
+        rf_ren_b:            rf_ren_b_bignum,
+        sel_insn:            sel_insn_bignum
+      };
+    end
+  endgenerate
 
   assign insn_dec_shared_o = '{
     subset:        insn_subset,
@@ -322,805 +378,1465 @@ module otbn_decoder
   // Decoder //
   /////////////
 
-  always_comb begin
-    insn_subset            = InsnSubsetBase;
+  generate
+    if (OtbnPQCEn) begin : gen_decoder_pqc
+      always_comb begin
+        insn_subset            = InsnSubsetBase;
 
-    rf_wdata_sel_base      = RfWdSelEx;
-    rf_we_base             = 1'b0;
+        rf_wdata_sel_base      = RfWdSelEx;
+        rf_we_base             = 1'b0;
 
-    rf_wdata_sel_bignum    = RfWdSelEx;
-    rf_we_bignum           = 1'b0;
+        rf_wdata_sel_bignum    = RfWdSelEx;
+        rf_we_bignum           = 1'b0;
 
-    rf_ren_a_base          = 1'b0;
-    rf_ren_b_base          = 1'b0;
-    rf_ren_a_bignum        = 1'b0;
-    rf_ren_b_bignum        = 1'b0;
-    mac_en_bignum          = 1'b0;
+        rf_ren_a_base          = 1'b0;
+        rf_ren_b_base          = 1'b0;
+        rf_ren_a_bignum        = 1'b0;
+        rf_ren_b_bignum        = 1'b0;
+        mac_en_bignum          = 1'b0;
 
-  `ifdef OTBN_PQC
-    mac_mulv               = 1'b0;
-    mac_data_type          = 1'b0;
-    mac_lane_word_32       = 1'b0;
-    mac_lane_word_16       = 1'b0;
-  `endif
+        gen_mac_nets_pqc.mac_mulv         = 1'b0;
+        gen_mac_nets_pqc.mac_data_type    = 1'b0;
+        gen_mac_nets_pqc.mac_lane_word_32 = 1'b0;
+        gen_mac_nets_pqc.mac_lane_word_16 = 1'b0;
 
-    insn_rs2               = insn[24:20];
-    mac_op_b_qw_sel_bignum = insn[28:27];
-    mac_zero_acc_bignum    = insn[12];
-    mac_shift_out_bignum   = insn[30];
+        insn_rs2               = insn[24:20];
+        mac_op_b_qw_sel_bignum = insn[28:27];
+        mac_zero_acc_bignum    = insn[12];
+        mac_shift_out_bignum   = insn[30];
 
-    rf_a_indirect_bignum   = 1'b0;
-    rf_b_indirect_bignum   = 1'b0;
-    rf_d_indirect_bignum   = 1'b0;
+        rf_a_indirect_bignum   = 1'b0;
+        rf_b_indirect_bignum   = 1'b0;
+        rf_d_indirect_bignum   = 1'b0;
 
-    d_inc_bignum           = 1'b0;
-    a_inc_bignum           = 1'b0;
-    a_wlen_word_inc_bignum = 1'b0;
-    b_inc_bignum           = 1'b0;
+        d_inc_bignum           = 1'b0;
+        a_inc_bignum           = 1'b0;
+        a_wlen_word_inc_bignum = 1'b0;
+        b_inc_bignum           = 1'b0;
 
-    illegal_insn           = 1'b0;
-    ecall_insn             = 1'b0;
-    ld_insn                = 1'b0;
-    st_insn                = 1'b0;
-    branch_insn            = 1'b0;
-    jump_insn              = 1'b0;
-    loop_insn              = 1'b0;
-    ispr_rd_insn           = 1'b0;
-    ispr_wr_insn           = 1'b0;
-    ispr_rs_insn           = 1'b0;
-    ispr_flags_wr          = '0;
+        illegal_insn           = 1'b0;
+        ecall_insn             = 1'b0;
+        ld_insn                = 1'b0;
+        st_insn                = 1'b0;
+        branch_insn            = 1'b0;
+        jump_insn              = 1'b0;
+        loop_insn              = 1'b0;
+        ispr_rd_insn           = 1'b0;
+        ispr_wr_insn           = 1'b0;
+        ispr_rs_insn           = 1'b0;
+        ispr_flags_wr          = '0;
 
-    sel_insn_bignum        = 1'b0;
+        sel_insn_bignum        = 1'b0;
 
-    opcode                 = insn_opcode_e'(insn[6:0]);
+        opcode                 = insn_opcode_e'(insn[6:0]);
 
-  `ifdef OTBN_PQC
-    alu_vector_type_bignum = alu_vector_type_t'(insn[27:26]);
-  `endif
+        gen_mac_nets_pqc.alu_vector_type_bignum = alu_vector_type_t'(insn[27:26]);
 
-    unique case (opcode)
-      //////////////
-      // Base ALU //
-      //////////////
+        unique case (opcode)
+          //////////////
+          // Base ALU //
+          //////////////
 
-      InsnOpcodeBaseLui: begin  // Load Upper Immediate
-        insn_subset = InsnSubsetBase;
-        rf_we_base  = 1'b1;
-      end
-
-      InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
-        insn_subset   = InsnSubsetBase;
-        rf_ren_a_base = 1'b1;
-        rf_we_base    = 1'b1;
-
-        unique case (insn[14:12])
-          3'b000,  // addi
-          3'b100,  // xori
-          3'b110,  // ori
-          3'b111:  // andi
-            illegal_insn = 1'b0;
-
-          3'b001: begin
-            unique case (insn[31:25])
-              7'b0000000: illegal_insn = 1'b0;  // slli
-              default: illegal_insn = 1'b1;
-            endcase
+          InsnOpcodeBaseLui: begin  // Load Upper Immediate
+            insn_subset = InsnSubsetBase;
+            rf_we_base  = 1'b1;
           end
 
-          3'b101: begin
-            unique case (insn[31:25])
-              7'b0000000,                      // srli
-              7'b0100000: illegal_insn = 1'b0; // srai
-
-              default: illegal_insn = 1'b1;
-            endcase
-          end
-
-          default: illegal_insn = 1'b1;
-        endcase
-      end
-
-      InsnOpcodeBaseOp: begin  // Register-Register ALU operation
-        insn_subset   = InsnSubsetBase;
-        rf_ren_a_base = 1'b1;
-        rf_ren_b_base = 1'b1;
-        rf_we_base    = 1'b1;
-        // Look at the funct7 and funct3 fields.
-        unique case ({insn[31:25], insn[14:12]})
-          {7'b000_0000, 3'b000},  // ADD
-          {7'b010_0000, 3'b000},  // SUB
-          {7'b000_0000, 3'b100},  // XOR
-          {7'b000_0000, 3'b110},  // OR
-          {7'b000_0000, 3'b111},  // AND
-          {7'b000_0000, 3'b001},  // SLL
-          {7'b000_0000, 3'b101},  // SRL
-          {7'b010_0000, 3'b101}:  // SRA
-            illegal_insn = 1'b0;
-
-          default: begin
-            illegal_insn = 1'b1;
-          end
-        endcase
-      end
-
-      ///////////////////////
-      // Base Loads/Stores //
-      ///////////////////////
-
-      InsnOpcodeBaseLoad: begin
-        insn_subset       = InsnSubsetBase;
-        ld_insn           = 1'b1;
-        rf_ren_a_base     = 1'b1;
-        rf_we_base        = 1'b1;
-        rf_wdata_sel_base = RfWdSelLsu;
-
-        if (insn[14:12] != 3'b010) begin
-          illegal_insn = 1'b1;
-        end
-      end
-
-      InsnOpcodeBaseStore: begin
-        insn_subset   = InsnSubsetBase;
-        st_insn       = 1'b1;
-        rf_ren_a_base = 1'b1;
-        rf_ren_b_base = 1'b1;
-
-        if (insn[14:12] != 3'b010) begin
-          illegal_insn = 1'b1;
-        end
-      end
-
-      //////////////////////
-      // Base Branch/Jump //
-      //////////////////////
-
-      InsnOpcodeBaseBranch: begin
-        insn_subset   = InsnSubsetBase;
-        branch_insn   = 1'b1;
-        rf_ren_a_base = 1'b1;
-        rf_ren_b_base = 1'b1;
-
-        // Only EQ & NE comparisons allowed
-        if (insn[14:13] != 2'b00) begin
-          illegal_insn = 1'b1;
-        end
-      end
-
-      InsnOpcodeBaseJal: begin
-        insn_subset       = InsnSubsetBase;
-        jump_insn         = 1'b1;
-        rf_we_base        = 1'b1;
-        rf_wdata_sel_base = RfWdSelNextPc;
-      end
-
-      InsnOpcodeBaseJalr: begin
-        insn_subset       = InsnSubsetBase;
-        jump_insn         = 1'b1;
-        rf_ren_a_base     = 1'b1;
-        rf_we_base        = 1'b1;
-        rf_wdata_sel_base = RfWdSelNextPc;
-
-        if (insn[14:12] != 3'b000) begin
-          illegal_insn = 1'b1;
-        end
-      end
-
-      //////////////////
-      // Base Special //
-      //////////////////
-
-      InsnOpcodeBaseSystem: begin
-        insn_subset = InsnSubsetBase;
-        if (insn[14:12] == 3'b000) begin
-          // non CSR related SYSTEM instructions
-          unique case (insn[31:20])
-            12'h000:  // ECALL
-              ecall_insn = 1'b1;
-
-            default:
-              illegal_insn = 1'b1;
-          endcase
-
-          // rs1 and rd must be 0
-          if (insn_rs1 != 5'b0 || insn_rd != 5'b0) begin
-            illegal_insn = 1'b1;
-          end
-        end else begin
-          rf_we_base        = 1'b1;
-          rf_wdata_sel_base = RfWdSelIspr;
-          rf_ren_a_base     = 1'b1;
-
-          if (insn[14:12] == 3'b001) begin
-            // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
-            // a single ISPR so to write one group the other must be read to write it back
-            // unchanged.
-            ispr_rd_insn  = (insn_rd != 5'b0)            |
-                            (imm_b_base[11:0] == CsrFg0) |
-                            (imm_b_base[11:0] == CsrFg1);
-            ispr_wr_insn  = 1'b1;
-            ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
-                            {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
-          end else if (insn[14:12] == 3'b010) begin
-            // Read and set if source register isn't x0, otherwise read only
-            if (insn_rs1 != 5'b0) begin
-              ispr_rs_insn  = 1'b1;
-              ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
-                              {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
-            end else begin
-              ispr_rd_insn = 1'b1;
-            end
-          end else begin
-            illegal_insn = 1'b1;
-          end
-        end
-      end
-
-      ////////////////
-      // Bignum ALU //
-      ////////////////
-
-      InsnOpcodeBignumArith: begin
-        insn_subset     = InsnSubsetBignum;
-        rf_we_bignum    = 1'b1;
-        rf_ren_a_bignum = 1'b1;
-
-        if (insn[14:12] != 3'b100) begin
-          // All Alu instructions other than BN.ADDI/BN.SUBI
-          rf_ren_b_bignum = 1'b1;
-        end
-
-        unique case(insn[14:12])
-          3'b110,
-          3'b111: illegal_insn = 1'b1;
-          default: ;
-        endcase
-      end
-
-      ///////////////////////////////////////
-      // Bignum logical/BN.RSHI/LOOP/LOOPI //
-      ///////////////////////////////////////
-
-      InsnOpcodeBignumBaseMisc: begin
-        unique case (insn[14:12])
-          3'b000, 3'b001: begin  // LOOP[I]
+          InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
             insn_subset   = InsnSubsetBase;
-            rf_ren_a_base = ~insn[12];
-            loop_insn     = 1'b1;
-          end
-          3'b010, 3'b011, 3'b100, 3'b110, 3'b111: begin  // BN.RHSI/BN.AND/BN.OR/BN.XOR
-            insn_subset     = InsnSubsetBignum;
-            rf_we_bignum    = 1'b1;
-            rf_ren_a_bignum = 1'b1;
-            rf_ren_b_bignum = 1'b1;
-          end
-          3'b101: begin  // BN.NOT
-            insn_subset     = InsnSubsetBignum;
-            rf_we_bignum    = 1'b1;
-            rf_ren_b_bignum = 1'b1;
-          end
-          default: illegal_insn = 1'b1;
-        endcase
-      end
+            rf_ren_a_base = 1'b1;
+            rf_we_base    = 1'b1;
 
-      ///////////////////////////////////////////////
-      // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
-      ///////////////////////////////////////////////
+            unique case (insn[14:12])
+              3'b000,  // addi
+              3'b100,  // xori
+              3'b110,  // ori
+              3'b111:  // andi
+                illegal_insn = 1'b0;
 
-      InsnOpcodeBignumMisc: begin
-        insn_subset = InsnSubsetBignum;
+              3'b001: begin
+                unique case (insn[31:25])
+                  7'b0000000: illegal_insn = 1'b0;  // slli
+                  default: illegal_insn = 1'b1;
+                endcase
+              end
 
-        unique case (insn[14:12])
-          3'b000: begin  // BN.SEL
-            rf_we_bignum        = 1'b1;
-            rf_ren_a_bignum     = 1'b1;
-            rf_ren_b_bignum     = 1'b1;
-            rf_wdata_sel_bignum = RfWdSelMovSel;
-            sel_insn_bignum     = 1'b1;
+              3'b101: begin
+                unique case (insn[31:25])
+                  7'b0000000,                      // srli
+                  7'b0100000: illegal_insn = 1'b0; // srai
+
+                  default: illegal_insn = 1'b1;
+                endcase
+              end
+
+              default: illegal_insn = 1'b1;
+            endcase
           end
-          3'b011, 3'b001: begin  // BN.CMP[B]
-            rf_ren_a_bignum = 1'b1;
-            rf_ren_b_bignum = 1'b1;
-          end
-          3'b100: begin  // BN.LID
-            ld_insn              = 1'b1;
-            rf_we_bignum         = 1'b1;
-            rf_ren_a_base        = 1'b1;
-            rf_ren_b_base        = 1'b1;
-            rf_wdata_sel_bignum  = RfWdSelLsu;
-            rf_d_indirect_bignum = 1'b1;
 
-            if (insn[8]) begin
-              a_wlen_word_inc_bignum = 1'b1;
-              rf_we_base             = 1'b1;
-              rf_wdata_sel_base      = RfWdSelIncr;
+          InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+            insn_subset   = InsnSubsetBase;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+            rf_we_base    = 1'b1;
+            // Look at the funct7 and funct3 fields.
+            unique case ({insn[31:25], insn[14:12]})
+              {7'b000_0000, 3'b000},  // ADD
+              {7'b010_0000, 3'b000},  // SUB
+              {7'b000_0000, 3'b100},  // XOR
+              {7'b000_0000, 3'b110},  // OR
+              {7'b000_0000, 3'b111},  // AND
+              {7'b000_0000, 3'b001},  // SLL
+              {7'b000_0000, 3'b101},  // SRL
+              {7'b010_0000, 3'b101}:  // SRA
+                illegal_insn = 1'b0;
+
+              default: begin
+                illegal_insn = 1'b1;
+              end
+            endcase
+          end
+
+          ///////////////////////
+          // Base Loads/Stores //
+          ///////////////////////
+
+          InsnOpcodeBaseLoad: begin
+            insn_subset       = InsnSubsetBase;
+            ld_insn           = 1'b1;
+            rf_ren_a_base     = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelLsu;
+
+            if (insn[14:12] != 3'b010) begin
+              illegal_insn = 1'b1;
             end
+          end
 
-            if (insn[7]) begin
-              d_inc_bignum      = 1'b1;
+          InsnOpcodeBaseStore: begin
+            insn_subset   = InsnSubsetBase;
+            st_insn       = 1'b1;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+
+            if (insn[14:12] != 3'b010) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          //////////////////////
+          // Base Branch/Jump //
+          //////////////////////
+
+          InsnOpcodeBaseBranch: begin
+            insn_subset   = InsnSubsetBase;
+            branch_insn   = 1'b1;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+
+            // Only EQ & NE comparisons allowed
+            if (insn[14:13] != 2'b00) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          InsnOpcodeBaseJal: begin
+            insn_subset       = InsnSubsetBase;
+            jump_insn         = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelNextPc;
+          end
+
+          InsnOpcodeBaseJalr: begin
+            insn_subset       = InsnSubsetBase;
+            jump_insn         = 1'b1;
+            rf_ren_a_base     = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelNextPc;
+
+            if (insn[14:12] != 3'b000) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          //////////////////
+          // Base Special //
+          //////////////////
+
+          InsnOpcodeBaseSystem: begin
+            insn_subset = InsnSubsetBase;
+            if (insn[14:12] == 3'b000) begin
+              // non CSR related SYSTEM instructions
+              unique case (insn[31:20])
+                12'h000:  // ECALL
+                  ecall_insn = 1'b1;
+
+                default:
+                  illegal_insn = 1'b1;
+              endcase
+
+              // rs1 and rd must be 0
+              if (insn_rs1 != 5'b0 || insn_rd != 5'b0) begin
+                illegal_insn = 1'b1;
+              end
+            end else begin
               rf_we_base        = 1'b1;
-              rf_wdata_sel_base = RfWdSelIncr;
-            end
+              rf_wdata_sel_base = RfWdSelIspr;
+              rf_ren_a_base     = 1'b1;
 
-            if (insn[8] & insn[7]) begin
-              // Avoid violating unique constraint for inc selection mux on an illegal instruction
-              a_wlen_word_inc_bignum = 1'b0;
-              d_inc_bignum           = 1'b0;
-              illegal_insn           = 1'b1;
-            end
-          end
-          3'b101: begin  // BN.SID
-            st_insn              = 1'b1;
-            rf_ren_a_base        = 1'b1;
-            rf_ren_b_base        = 1'b1;
-            rf_ren_b_bignum      = 1'b1;
-            rf_b_indirect_bignum = 1'b1;
-
-            if (insn[8]) begin
-              a_wlen_word_inc_bignum = 1'b1;
-              rf_we_base             = 1'b1;
-              rf_wdata_sel_base      = RfWdSelIncr;
-            end
-
-            if (insn[7]) begin
-              b_inc_bignum = 1'b1;
-              rf_we_base   = 1'b1;
-              rf_wdata_sel_base = RfWdSelIncr;
-            end
-
-            if (insn[8] & insn[7]) begin
-              // Avoid violating unique constraint for inc selection mux on an illegal instruction
-              a_wlen_word_inc_bignum = 1'b0;
-              b_inc_bignum           = 1'b0;
-              illegal_insn           = 1'b1;
-            end
-          end
-          3'b110: begin  // BN.MOV/BN.MOVR
-            insn_subset         = InsnSubsetBignum;
-            rf_we_bignum        = 1'b1;
-            rf_ren_a_bignum     = 1'b1;
-            rf_wdata_sel_bignum = RfWdSelMovSel;
-
-            if (insn[31]) begin  // BN.MOVR
-              rf_a_indirect_bignum = 1'b1;
-              rf_d_indirect_bignum = 1'b1;
-              rf_ren_a_base        = 1'b1;
-              rf_ren_b_base        = 1'b1;
-
-              if (insn[9]) begin
-                a_inc_bignum      = 1'b1;
-                rf_we_base        = 1'b1;
-                rf_wdata_sel_base = RfWdSelIncr;
-              end
-
-              if (insn[7]) begin
-                d_inc_bignum      = 1'b1;
-                rf_we_base        = 1'b1;
-                rf_wdata_sel_base = RfWdSelIncr;
-              end
-
-              if (insn[9] & insn[7]) begin
-                // Avoid violating unique constraint for inc selection mux on an illegal instruction
-                a_inc_bignum = 1'b0;
-                d_inc_bignum = 1'b0;
+              if (insn[14:12] == 3'b001) begin
+                // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
+                // a single ISPR so to write one group the other must be read to write it back
+                // unchanged.
+                ispr_rd_insn  = (insn_rd != 5'b0)            |
+                                (imm_b_base[11:0] == CsrFg0) |
+                                (imm_b_base[11:0] == CsrFg1);
+                ispr_wr_insn  = 1'b1;
+                ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
+                                {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
+              end else if (insn[14:12] == 3'b010) begin
+                // Read and set if source register isn't x0, otherwise read only
+                if (insn_rs1 != 5'b0) begin
+                  ispr_rs_insn  = 1'b1;
+                  ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
+                                  {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
+                end else begin
+                  ispr_rd_insn = 1'b1;
+                end
+              end else begin
                 illegal_insn = 1'b1;
               end
             end
           end
-          3'b111: begin
-            if (insn[31]) begin  // BN.WSRW
-              rf_ren_a_bignum = 1'b1;
-              ispr_wr_insn    = 1'b1;
-            end else begin  // BN.WSRR
-              rf_we_bignum        = 1'b1;
-              rf_wdata_sel_bignum = RfWdSelIspr;
-              ispr_rd_insn        = 1'b1;
+
+          ////////////////
+          // Bignum ALU //
+          ////////////////
+
+          InsnOpcodeBignumArith: begin
+            insn_subset     = InsnSubsetBignum;
+            rf_we_bignum    = 1'b1;
+            rf_ren_a_bignum = 1'b1;
+
+            if (insn[14:12] != 3'b100) begin
+              // All Alu instructions other than BN.ADDI/BN.SUBI
+              rf_ren_b_bignum = 1'b1;
+            end
+
+            unique case(insn[14:12])
+              3'b110,
+              3'b111: illegal_insn = 1'b1;
+              default: ;
+            endcase
+          end
+
+          ///////////////////////////////////////
+          // Bignum logical/BN.RSHI/LOOP/LOOPI //
+          ///////////////////////////////////////
+
+          InsnOpcodeBignumBaseMisc: begin
+            unique case (insn[14:12])
+              3'b000, 3'b001: begin  // LOOP[I]
+                insn_subset   = InsnSubsetBase;
+                rf_ren_a_base = ~insn[12];
+                loop_insn     = 1'b1;
+              end
+              3'b010, 3'b011, 3'b100, 3'b110, 3'b111: begin  // BN.RHSI/BN.AND/BN.OR/BN.XOR
+                insn_subset     = InsnSubsetBignum;
+                rf_we_bignum    = 1'b1;
+                rf_ren_a_bignum = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              3'b101: begin  // BN.NOT
+                insn_subset     = InsnSubsetBignum;
+                rf_we_bignum    = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              default: illegal_insn = 1'b1;
+            endcase
+          end
+
+          ///////////////////////////////////////////////
+          // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
+          ///////////////////////////////////////////////
+
+          InsnOpcodeBignumMisc: begin
+            insn_subset = InsnSubsetBignum;
+
+            unique case (insn[14:12])
+              3'b000: begin  // BN.SEL
+                rf_we_bignum        = 1'b1;
+                rf_ren_a_bignum     = 1'b1;
+                rf_ren_b_bignum     = 1'b1;
+                rf_wdata_sel_bignum = RfWdSelMovSel;
+                sel_insn_bignum     = 1'b1;
+              end
+              3'b011, 3'b001: begin  // BN.CMP[B]
+                rf_ren_a_bignum = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              3'b100: begin  // BN.LID
+                ld_insn              = 1'b1;
+                rf_we_bignum         = 1'b1;
+                rf_ren_a_base        = 1'b1;
+                rf_ren_b_base        = 1'b1;
+                rf_wdata_sel_bignum  = RfWdSelLsu;
+                rf_d_indirect_bignum = 1'b1;
+
+                if (insn[8]) begin
+                  a_wlen_word_inc_bignum = 1'b1;
+                  rf_we_base             = 1'b1;
+                  rf_wdata_sel_base      = RfWdSelIncr;
+                end
+
+                if (insn[7]) begin
+                  d_inc_bignum      = 1'b1;
+                  rf_we_base        = 1'b1;
+                  rf_wdata_sel_base = RfWdSelIncr;
+                end
+
+                if (insn[8] & insn[7]) begin
+                  // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                  a_wlen_word_inc_bignum = 1'b0;
+                  d_inc_bignum           = 1'b0;
+                  illegal_insn           = 1'b1;
+                end
+              end
+              3'b101: begin  // BN.SID
+                st_insn              = 1'b1;
+                rf_ren_a_base        = 1'b1;
+                rf_ren_b_base        = 1'b1;
+                rf_ren_b_bignum      = 1'b1;
+                rf_b_indirect_bignum = 1'b1;
+
+                if (insn[8]) begin
+                  a_wlen_word_inc_bignum = 1'b1;
+                  rf_we_base             = 1'b1;
+                  rf_wdata_sel_base      = RfWdSelIncr;
+                end
+
+                if (insn[7]) begin
+                  b_inc_bignum = 1'b1;
+                  rf_we_base   = 1'b1;
+                  rf_wdata_sel_base = RfWdSelIncr;
+                end
+
+                if (insn[8] & insn[7]) begin
+                  // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                  a_wlen_word_inc_bignum = 1'b0;
+                  b_inc_bignum           = 1'b0;
+                  illegal_insn           = 1'b1;
+                end
+              end
+              3'b110: begin  // BN.MOV/BN.MOVR
+                insn_subset         = InsnSubsetBignum;
+                rf_we_bignum        = 1'b1;
+                rf_ren_a_bignum     = 1'b1;
+                rf_wdata_sel_bignum = RfWdSelMovSel;
+
+                if (insn[31]) begin  // BN.MOVR
+                  rf_a_indirect_bignum = 1'b1;
+                  rf_d_indirect_bignum = 1'b1;
+                  rf_ren_a_base        = 1'b1;
+                  rf_ren_b_base        = 1'b1;
+
+                  if (insn[9]) begin
+                    a_inc_bignum      = 1'b1;
+                    rf_we_base        = 1'b1;
+                    rf_wdata_sel_base = RfWdSelIncr;
+                  end
+
+                  if (insn[7]) begin
+                    d_inc_bignum      = 1'b1;
+                    rf_we_base        = 1'b1;
+                    rf_wdata_sel_base = RfWdSelIncr;
+                  end
+
+                  if (insn[9] & insn[7]) begin
+                    // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                    a_inc_bignum = 1'b0;
+                    d_inc_bignum = 1'b0;
+                    illegal_insn = 1'b1;
+                  end
+                end
+              end
+              3'b111: begin
+                if (insn[31]) begin  // BN.WSRW
+                  rf_ren_a_bignum = 1'b1;
+                  ispr_wr_insn    = 1'b1;
+                end else begin  // BN.WSRR
+                  rf_we_bignum        = 1'b1;
+                  rf_wdata_sel_bignum = RfWdSelIspr;
+                  ispr_rd_insn        = 1'b1;
+                end
+              end
+              default: illegal_insn = 1'b1;
+            endcase
+          end
+
+          ////////////////////////////////////////////
+          // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumMulqacc: begin
+            insn_subset         = InsnSubsetBignum;
+            rf_ren_a_bignum     = 1'b1;
+            rf_ren_b_bignum     = 1'b1;
+            rf_wdata_sel_bignum = RfWdSelMac;
+            mac_en_bignum       = 1'b1;
+
+            if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
+              rf_we_bignum = 1'b1;
             end
           end
+
+          ///////////////////////////////////////////
+          //            BN.MULV/BN.MULV.L          //
+          ///////////////////////////////////////////
+
+          InsnOpcodeBignumMulv: begin
+            unique case (insn_alu[14:12])
+              3'b110: begin
+                insn_subset          = InsnSubsetBignum;
+                rf_ren_a_bignum      = 1'b1;
+                rf_ren_b_bignum      = 1'b1;
+                rf_wdata_sel_bignum  = RfWdSelMac;
+                rf_we_bignum         = 1'b1;
+
+                mac_en_bignum        = insn_alu[29:28] == 2'b00 ? 1'b0 : 1'b1;
+                mac_shift_out_bignum = 1'b0;
+                mac_zero_acc_bignum  = insn_alu[29:28] == 2'b10 ? 1'b1 : 1'b0;
+
+                gen_mac_nets_pqc.mac_mulv = 1'b1;
+                gen_mac_nets_pqc.mac_data_type = insn[26];
+
+                if (insn[25] == 1'b1) begin  // lane mode
+                  insn_rs2 = {{4'b1000}, insn[24]};
+
+                  if (gen_mac_nets_pqc.mac_data_type == 1'b0) begin
+                    mac_op_b_qw_sel_bignum = insn[23:22];
+                    gen_mac_nets_pqc.mac_lane_word_32 = insn[21];
+                    gen_mac_nets_pqc.mac_lane_word_16 = insn[20];
+                  end else begin
+                    mac_op_b_qw_sel_bignum = insn[22:21];
+                    gen_mac_nets_pqc.mac_lane_word_32 = insn[20];
+                  end
+                end
+              end
+              default: ;
+            endcase
+          end
+
+          ////////////////////////////////////////////
+          //                 BN.SHV                 //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumShiftv: begin
+            insn_subset            = InsnSubsetBignum;
+            rf_ren_b_bignum        = 1'b1;
+            rf_wdata_sel_bignum    = RfWdSelEx;
+            rf_we_bignum           = 1'b1;
+            gen_mac_nets_pqc.alu_vector_type_bignum = alu_vector_type_t'({2'b01, insn[16]});
+          end
+
+          ////////////////////////////////////////////
+          //                 BN.TRN                 //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumTrn: begin
+            insn_subset         = InsnSubsetBignum;
+            rf_ren_a_bignum     = 1'b1;
+            rf_ren_b_bignum     = 1'b1;
+            rf_wdata_sel_bignum = RfWdSelEx;
+            rf_we_bignum        = 1'b1;
+          end
+
           default: illegal_insn = 1'b1;
         endcase
-      end
 
-      ////////////////////////////////////////////
-      // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
-      ////////////////////////////////////////////
 
-      InsnOpcodeBignumMulqacc: begin
-        insn_subset         = InsnSubsetBignum;
-        rf_ren_a_bignum     = 1'b1;
-        rf_ren_b_bignum     = 1'b1;
-        rf_wdata_sel_bignum = RfWdSelMac;
-        mac_en_bignum       = 1'b1;
-
-        if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
-          rf_we_bignum = 1'b1;
+        // make sure illegal instructions detected in the decoder do not propagate from decoder
+        // NOTE: instructions can also be detected to be illegal inside the CSRs (upon accesses with
+        // insufficient privileges). These cases are not handled here.
+        if (illegal_insn) begin
+          rf_we_base   = 1'b0;
+          rf_we_bignum = 1'b0;
         end
       end
+    end else begin : gen_decoder
+      always_comb begin
+        insn_subset            = InsnSubsetBase;
 
-    `ifdef OTBN_PQC
-      ///////////////////////////////////////////
-      //            BN.MULV/BN.MULV.L          //
-      ///////////////////////////////////////////
+        rf_wdata_sel_base      = RfWdSelEx;
+        rf_we_base             = 1'b0;
 
-      InsnOpcodeBignumMulv: begin
-        unique case (insn_alu[14:12])
-          3'b110: begin
-            insn_subset          = InsnSubsetBignum;
-            rf_ren_a_bignum      = 1'b1;
-            rf_ren_b_bignum      = 1'b1;
-            rf_wdata_sel_bignum  = RfWdSelMac;
-            rf_we_bignum         = 1'b1;
+        rf_wdata_sel_bignum    = RfWdSelEx;
+        rf_we_bignum           = 1'b0;
 
-            mac_en_bignum        = insn_alu[29:28] == 2'b00 ? 1'b0 : 1'b1;
-            mac_shift_out_bignum = 1'b0;
-            mac_zero_acc_bignum  = insn_alu[29:28] == 2'b10 ? 1'b1 : 1'b0;
+        rf_ren_a_base          = 1'b0;
+        rf_ren_b_base          = 1'b0;
+        rf_ren_a_bignum        = 1'b0;
+        rf_ren_b_bignum        = 1'b0;
+        mac_en_bignum          = 1'b0;
 
-            mac_mulv      = 1'b1;
-            mac_data_type = insn[26];
+        insn_rs2               = insn[24:20];
+        mac_op_b_qw_sel_bignum = insn[28:27];
+        mac_zero_acc_bignum    = insn[12];
+        mac_shift_out_bignum   = insn[30];
 
-            if (insn[25] == 1'b1) begin  // lane mode
-              insn_rs2 = {{4'b1000}, insn[24]};
+        rf_a_indirect_bignum   = 1'b0;
+        rf_b_indirect_bignum   = 1'b0;
+        rf_d_indirect_bignum   = 1'b0;
 
-              if (mac_data_type == 1'b0) begin
-                mac_op_b_qw_sel_bignum = insn[23:22];
-                mac_lane_word_32       = insn[21];
-                mac_lane_word_16       = insn[20];
+        d_inc_bignum           = 1'b0;
+        a_inc_bignum           = 1'b0;
+        a_wlen_word_inc_bignum = 1'b0;
+        b_inc_bignum           = 1'b0;
+
+        illegal_insn           = 1'b0;
+        ecall_insn             = 1'b0;
+        ld_insn                = 1'b0;
+        st_insn                = 1'b0;
+        branch_insn            = 1'b0;
+        jump_insn              = 1'b0;
+        loop_insn              = 1'b0;
+        ispr_rd_insn           = 1'b0;
+        ispr_wr_insn           = 1'b0;
+        ispr_rs_insn           = 1'b0;
+        ispr_flags_wr          = '0;
+
+        sel_insn_bignum        = 1'b0;
+
+        opcode                 = insn_opcode_e'(insn[6:0]);
+
+        unique case (opcode)
+          //////////////
+          // Base ALU //
+          //////////////
+
+          InsnOpcodeBaseLui: begin  // Load Upper Immediate
+            insn_subset = InsnSubsetBase;
+            rf_we_base  = 1'b1;
+          end
+
+          InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
+            insn_subset   = InsnSubsetBase;
+            rf_ren_a_base = 1'b1;
+            rf_we_base    = 1'b1;
+
+            unique case (insn[14:12])
+              3'b000,  // addi
+              3'b100,  // xori
+              3'b110,  // ori
+              3'b111:  // andi
+                illegal_insn = 1'b0;
+
+              3'b001: begin
+                unique case (insn[31:25])
+                  7'b0000000: illegal_insn = 1'b0;  // slli
+                  default: illegal_insn = 1'b1;
+                endcase
+              end
+
+              3'b101: begin
+                unique case (insn[31:25])
+                  7'b0000000,                      // srli
+                  7'b0100000: illegal_insn = 1'b0; // srai
+
+                  default: illegal_insn = 1'b1;
+                endcase
+              end
+
+              default: illegal_insn = 1'b1;
+            endcase
+          end
+
+          InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+            insn_subset   = InsnSubsetBase;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+            rf_we_base    = 1'b1;
+            // Look at the funct7 and funct3 fields.
+            unique case ({insn[31:25], insn[14:12]})
+              {7'b000_0000, 3'b000},  // ADD
+              {7'b010_0000, 3'b000},  // SUB
+              {7'b000_0000, 3'b100},  // XOR
+              {7'b000_0000, 3'b110},  // OR
+              {7'b000_0000, 3'b111},  // AND
+              {7'b000_0000, 3'b001},  // SLL
+              {7'b000_0000, 3'b101},  // SRL
+              {7'b010_0000, 3'b101}:  // SRA
+                illegal_insn = 1'b0;
+
+              default: begin
+                illegal_insn = 1'b1;
+              end
+            endcase
+          end
+
+          ///////////////////////
+          // Base Loads/Stores //
+          ///////////////////////
+
+          InsnOpcodeBaseLoad: begin
+            insn_subset       = InsnSubsetBase;
+            ld_insn           = 1'b1;
+            rf_ren_a_base     = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelLsu;
+
+            if (insn[14:12] != 3'b010) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          InsnOpcodeBaseStore: begin
+            insn_subset   = InsnSubsetBase;
+            st_insn       = 1'b1;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+
+            if (insn[14:12] != 3'b010) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          //////////////////////
+          // Base Branch/Jump //
+          //////////////////////
+
+          InsnOpcodeBaseBranch: begin
+            insn_subset   = InsnSubsetBase;
+            branch_insn   = 1'b1;
+            rf_ren_a_base = 1'b1;
+            rf_ren_b_base = 1'b1;
+
+            // Only EQ & NE comparisons allowed
+            if (insn[14:13] != 2'b00) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          InsnOpcodeBaseJal: begin
+            insn_subset       = InsnSubsetBase;
+            jump_insn         = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelNextPc;
+          end
+
+          InsnOpcodeBaseJalr: begin
+            insn_subset       = InsnSubsetBase;
+            jump_insn         = 1'b1;
+            rf_ren_a_base     = 1'b1;
+            rf_we_base        = 1'b1;
+            rf_wdata_sel_base = RfWdSelNextPc;
+
+            if (insn[14:12] != 3'b000) begin
+              illegal_insn = 1'b1;
+            end
+          end
+
+          //////////////////
+          // Base Special //
+          //////////////////
+
+          InsnOpcodeBaseSystem: begin
+            insn_subset = InsnSubsetBase;
+            if (insn[14:12] == 3'b000) begin
+              // non CSR related SYSTEM instructions
+              unique case (insn[31:20])
+                12'h000:  // ECALL
+                  ecall_insn = 1'b1;
+
+                default:
+                  illegal_insn = 1'b1;
+              endcase
+
+              // rs1 and rd must be 0
+              if (insn_rs1 != 5'b0 || insn_rd != 5'b0) begin
+                illegal_insn = 1'b1;
+              end
+            end else begin
+              rf_we_base        = 1'b1;
+              rf_wdata_sel_base = RfWdSelIspr;
+              rf_ren_a_base     = 1'b1;
+
+              if (insn[14:12] == 3'b001) begin
+                // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
+                // a single ISPR so to write one group the other must be read to write it back
+                // unchanged.
+                ispr_rd_insn  = (insn_rd != 5'b0)            |
+                                (imm_b_base[11:0] == CsrFg0) |
+                                (imm_b_base[11:0] == CsrFg1);
+                ispr_wr_insn  = 1'b1;
+                ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
+                                {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
+              end else if (insn[14:12] == 3'b010) begin
+                // Read and set if source register isn't x0, otherwise read only
+                if (insn_rs1 != 5'b0) begin
+                  ispr_rs_insn  = 1'b1;
+                  ispr_flags_wr = {(imm_b_base[11:0] == CsrFg1), (imm_b_base[11:0] == CsrFg0)} |
+                                  {NFlagGroups{imm_b_base[11:0] == CsrFlags}};
+                end else begin
+                  ispr_rd_insn = 1'b1;
+                end
               end else begin
-                mac_op_b_qw_sel_bignum = insn[22:21];
-                mac_lane_word_32       = insn[20];
+                illegal_insn = 1'b1;
               end
             end
           end
-          default: ;
+
+          ////////////////
+          // Bignum ALU //
+          ////////////////
+
+          InsnOpcodeBignumArith: begin
+            insn_subset     = InsnSubsetBignum;
+            rf_we_bignum    = 1'b1;
+            rf_ren_a_bignum = 1'b1;
+
+            if (insn[14:12] != 3'b100) begin
+              // All Alu instructions other than BN.ADDI/BN.SUBI
+              rf_ren_b_bignum = 1'b1;
+            end
+
+            unique case(insn[14:12])
+              3'b110,
+              3'b111: illegal_insn = 1'b1;
+              default: ;
+            endcase
+          end
+
+          ///////////////////////////////////////
+          // Bignum logical/BN.RSHI/LOOP/LOOPI //
+          ///////////////////////////////////////
+
+          InsnOpcodeBignumBaseMisc: begin
+            unique case (insn[14:12])
+              3'b000, 3'b001: begin  // LOOP[I]
+                insn_subset   = InsnSubsetBase;
+                rf_ren_a_base = ~insn[12];
+                loop_insn     = 1'b1;
+              end
+              3'b010, 3'b011, 3'b100, 3'b110, 3'b111: begin  // BN.RHSI/BN.AND/BN.OR/BN.XOR
+                insn_subset     = InsnSubsetBignum;
+                rf_we_bignum    = 1'b1;
+                rf_ren_a_bignum = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              3'b101: begin  // BN.NOT
+                insn_subset     = InsnSubsetBignum;
+                rf_we_bignum    = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              default: illegal_insn = 1'b1;
+            endcase
+          end
+
+          ///////////////////////////////////////////////
+          // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
+          ///////////////////////////////////////////////
+
+          InsnOpcodeBignumMisc: begin
+            insn_subset = InsnSubsetBignum;
+
+            unique case (insn[14:12])
+              3'b000: begin  // BN.SEL
+                rf_we_bignum        = 1'b1;
+                rf_ren_a_bignum     = 1'b1;
+                rf_ren_b_bignum     = 1'b1;
+                rf_wdata_sel_bignum = RfWdSelMovSel;
+                sel_insn_bignum     = 1'b1;
+              end
+              3'b011, 3'b001: begin  // BN.CMP[B]
+                rf_ren_a_bignum = 1'b1;
+                rf_ren_b_bignum = 1'b1;
+              end
+              3'b100: begin  // BN.LID
+                ld_insn              = 1'b1;
+                rf_we_bignum         = 1'b1;
+                rf_ren_a_base        = 1'b1;
+                rf_ren_b_base        = 1'b1;
+                rf_wdata_sel_bignum  = RfWdSelLsu;
+                rf_d_indirect_bignum = 1'b1;
+
+                if (insn[8]) begin
+                  a_wlen_word_inc_bignum = 1'b1;
+                  rf_we_base             = 1'b1;
+                  rf_wdata_sel_base      = RfWdSelIncr;
+                end
+
+                if (insn[7]) begin
+                  d_inc_bignum      = 1'b1;
+                  rf_we_base        = 1'b1;
+                  rf_wdata_sel_base = RfWdSelIncr;
+                end
+
+                if (insn[8] & insn[7]) begin
+                  // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                  a_wlen_word_inc_bignum = 1'b0;
+                  d_inc_bignum           = 1'b0;
+                  illegal_insn           = 1'b1;
+                end
+              end
+              3'b101: begin  // BN.SID
+                st_insn              = 1'b1;
+                rf_ren_a_base        = 1'b1;
+                rf_ren_b_base        = 1'b1;
+                rf_ren_b_bignum      = 1'b1;
+                rf_b_indirect_bignum = 1'b1;
+
+                if (insn[8]) begin
+                  a_wlen_word_inc_bignum = 1'b1;
+                  rf_we_base             = 1'b1;
+                  rf_wdata_sel_base      = RfWdSelIncr;
+                end
+
+                if (insn[7]) begin
+                  b_inc_bignum = 1'b1;
+                  rf_we_base   = 1'b1;
+                  rf_wdata_sel_base = RfWdSelIncr;
+                end
+
+                if (insn[8] & insn[7]) begin
+                  // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                  a_wlen_word_inc_bignum = 1'b0;
+                  b_inc_bignum           = 1'b0;
+                  illegal_insn           = 1'b1;
+                end
+              end
+              3'b110: begin  // BN.MOV/BN.MOVR
+                insn_subset         = InsnSubsetBignum;
+                rf_we_bignum        = 1'b1;
+                rf_ren_a_bignum     = 1'b1;
+                rf_wdata_sel_bignum = RfWdSelMovSel;
+
+                if (insn[31]) begin  // BN.MOVR
+                  rf_a_indirect_bignum = 1'b1;
+                  rf_d_indirect_bignum = 1'b1;
+                  rf_ren_a_base        = 1'b1;
+                  rf_ren_b_base        = 1'b1;
+
+                  if (insn[9]) begin
+                    a_inc_bignum      = 1'b1;
+                    rf_we_base        = 1'b1;
+                    rf_wdata_sel_base = RfWdSelIncr;
+                  end
+
+                  if (insn[7]) begin
+                    d_inc_bignum      = 1'b1;
+                    rf_we_base        = 1'b1;
+                    rf_wdata_sel_base = RfWdSelIncr;
+                  end
+
+                  if (insn[9] & insn[7]) begin
+                    // Avoid violating unique constraint for inc selection mux on an illegal instruction
+                    a_inc_bignum = 1'b0;
+                    d_inc_bignum = 1'b0;
+                    illegal_insn = 1'b1;
+                  end
+                end
+              end
+              3'b111: begin
+                if (insn[31]) begin  // BN.WSRW
+                  rf_ren_a_bignum = 1'b1;
+                  ispr_wr_insn    = 1'b1;
+                end else begin  // BN.WSRR
+                  rf_we_bignum        = 1'b1;
+                  rf_wdata_sel_bignum = RfWdSelIspr;
+                  ispr_rd_insn        = 1'b1;
+                end
+              end
+              default: illegal_insn = 1'b1;
+            endcase
+          end
+
+          ////////////////////////////////////////////
+          // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumMulqacc: begin
+            insn_subset         = InsnSubsetBignum;
+            rf_ren_a_bignum     = 1'b1;
+            rf_ren_b_bignum     = 1'b1;
+            rf_wdata_sel_bignum = RfWdSelMac;
+            mac_en_bignum       = 1'b1;
+
+            if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
+              rf_we_bignum = 1'b1;
+            end
+          end
+
+          default: illegal_insn = 1'b1;
         endcase
+
+
+        // make sure illegal instructions detected in the decoder do not propagate from decoder
+        // NOTE: instructions can also be detected to be illegal inside the CSRs (upon accesses with
+        // insufficient privileges). These cases are not handled here.
+        if (illegal_insn) begin
+          rf_we_base   = 1'b0;
+          rf_we_bignum = 1'b0;
+        end
       end
-
-      ////////////////////////////////////////////
-      //                 BN.SHV                 //
-      ////////////////////////////////////////////
-
-      InsnOpcodeBignumShiftv: begin
-        insn_subset            = InsnSubsetBignum;
-        rf_ren_b_bignum        = 1'b1;
-        rf_wdata_sel_bignum    = RfWdSelEx;
-        rf_we_bignum           = 1'b1;
-	      alu_vector_type_bignum = alu_vector_type_t'({2'b01, insn[16]});
-      end
-
-      ////////////////////////////////////////////
-      //                 BN.TRN                 //
-      ////////////////////////////////////////////
-
-      InsnOpcodeBignumTrn: begin
-        insn_subset         = InsnSubsetBignum;
-        rf_ren_a_bignum     = 1'b1;
-        rf_ren_b_bignum     = 1'b1;
-        rf_wdata_sel_bignum = RfWdSelEx;
-        rf_we_bignum        = 1'b1;
-      end
-    `endif
-
-      default: illegal_insn = 1'b1;
-    endcase
-
-
-    // make sure illegal instructions detected in the decoder do not propagate from decoder
-    // NOTE: instructions can also be detected to be illegal inside the CSRs (upon accesses with
-    // insufficient privileges). These cases are not handled here.
-    if (illegal_insn) begin
-      rf_we_base   = 1'b0;
-      rf_we_bignum = 1'b0;
     end
-  end
+  endgenerate
 
   /////////////////////////////
   // Decoder for ALU control //
   /////////////////////////////
 
-  always_comb begin
-    alu_operator_base        = AluOpBaseAdd;
-    comparison_operator_base = ComparisonOpBaseEq;
-
-    alu_op_a_mux_sel_base    = OpASelRegister;
-    alu_op_b_mux_sel_base    = OpBSelImmediate;
-
-    imm_b_mux_sel_base       = ImmBaseBI;
-
-    alu_operator_bignum      = AluOpBignumNone;
-    alu_op_b_mux_sel_bignum  = OpBSelImmediate;
-
-    shift_amt_mux_sel_bignum = ShamtSelBignumA;
-
-    opcode_alu               = insn_opcode_e'(insn_alu[6:0]);
-
-    alu_flag_en_bignum       = 1'b0;
-    mac_flag_en_bignum       = 1'b0;
-  `ifdef OTBN_PQC
-    alu_vector_sel_bignum    = 1'b0;
-  `endif
-
-    unique case (opcode_alu)
-      //////////////
-      // Base ALU //
-      //////////////
-
-      InsnOpcodeBaseLui: begin  // Load Upper Immediate
-        alu_op_a_mux_sel_base = OpASelZero;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        imm_b_mux_sel_base    = ImmBaseBU;
-        alu_operator_base     = AluOpBaseAdd;
-      end
-
-      InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
-        alu_op_a_mux_sel_base = OpASelRegister;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        imm_b_mux_sel_base    = ImmBaseBI;
-
-        unique case (insn_alu[14:12])
-          3'b000: alu_operator_base = AluOpBaseAdd;  // Add Immediate
-          3'b100: alu_operator_base = AluOpBaseXor;  // Exclusive Or with Immediate
-          3'b110: alu_operator_base = AluOpBaseOr;   // Or with Immediate
-          3'b111: alu_operator_base = AluOpBaseAnd;  // And with Immediate
-
-          3'b001: begin
-            alu_operator_base = AluOpBaseSll;  // Shift Left Logical by Immediate
-          end
-
-          3'b101: begin
-            if (insn_alu[31:27] == 5'b0_0000) begin
-              alu_operator_base = AluOpBaseSrl;  // Shift Right Logical by Immediate
-            end else if (insn_alu[31:27] == 5'b0_1000) begin
-              alu_operator_base = AluOpBaseSra;  // Shift Right Arithmetically by Immediate
-            end
-          end
-
-          default: ;
-        endcase
-      end
-
-      InsnOpcodeBaseOp: begin  // Register-Register ALU operation
-        alu_op_a_mux_sel_base = OpASelRegister;
-        alu_op_b_mux_sel_base = OpBSelRegister;
-
-        if (!insn_alu[26]) begin
-          unique case ({insn_alu[31:25], insn_alu[14:12]})
-            // RV32I ALU operations
-            {7'b000_0000, 3'b000}: alu_operator_base = AluOpBaseAdd;   // Add
-            {7'b010_0000, 3'b000}: alu_operator_base = AluOpBaseSub;   // Sub
-            {7'b000_0000, 3'b100}: alu_operator_base = AluOpBaseXor;   // Xor
-            {7'b000_0000, 3'b110}: alu_operator_base = AluOpBaseOr;    // Or
-            {7'b000_0000, 3'b111}: alu_operator_base = AluOpBaseAnd;   // And
-            {7'b000_0000, 3'b001}: alu_operator_base = AluOpBaseSll;   // Shift Left Logical
-            {7'b000_0000, 3'b101}: alu_operator_base = AluOpBaseSrl;   // Shift Right Logical
-            {7'b010_0000, 3'b101}: alu_operator_base = AluOpBaseSra;   // Shift Right Arithmetic
-            default: ;
-          endcase
-        end
-      end
-
-      ///////////////////////
-      // Base Loads/Stores //
-      ///////////////////////
-
-      InsnOpcodeBaseLoad: begin
-        alu_op_a_mux_sel_base = OpASelRegister;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        alu_operator_base     = AluOpBaseAdd;
-        imm_b_mux_sel_base    = ImmBaseBI;
-      end
-
-      InsnOpcodeBaseStore: begin
-        alu_op_a_mux_sel_base = OpASelRegister;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        alu_operator_base     = AluOpBaseAdd;
-        imm_b_mux_sel_base    = ImmBaseBS;
-      end
-
-      //////////////////////
-      // Base Branch/Jump //
-      //////////////////////
-
-      InsnOpcodeBaseBranch: begin
-        alu_op_a_mux_sel_base    = OpASelCurrPc;
-        alu_op_b_mux_sel_base    = OpBSelImmediate;
+  generate
+    if (OtbnPQCEn) begin : gen_decoder_alu_pqc
+      always_comb begin
         alu_operator_base        = AluOpBaseAdd;
-        imm_b_mux_sel_base       = ImmBaseBB;
-        comparison_operator_base = insn_alu[12] ? ComparisonOpBaseNeq : ComparisonOpBaseEq;
-      end
+        comparison_operator_base = ComparisonOpBaseEq;
 
-      InsnOpcodeBaseJal: begin
-        alu_op_a_mux_sel_base = OpASelCurrPc;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        alu_operator_base     = AluOpBaseAdd;
-        imm_b_mux_sel_base    = ImmBaseBJ;
-      end
+        alu_op_a_mux_sel_base    = OpASelRegister;
+        alu_op_b_mux_sel_base    = OpBSelImmediate;
 
-      InsnOpcodeBaseJalr: begin
-        alu_op_a_mux_sel_base = OpASelRegister;
-        alu_op_b_mux_sel_base = OpBSelImmediate;
-        alu_operator_base     = AluOpBaseAdd;
-        imm_b_mux_sel_base    = ImmBaseBI;
-      end
+        imm_b_mux_sel_base       = ImmBaseBI;
 
-      //////////////////
-      // Base Special //
-      //////////////////
+        alu_operator_bignum      = AluOpBignumNone;
+        alu_op_b_mux_sel_bignum  = OpBSelImmediate;
 
-      InsnOpcodeBaseSystem: begin
-        // The only instructions with System opcode that care about operands are CSR access
-        alu_op_a_mux_sel_base = OpASelRegister;
-        imm_b_mux_sel_base    = ImmBaseBI;
-      end
+        shift_amt_mux_sel_bignum = ShamtSelBignumA;
 
-      ////////////////
-      // Bignum ALU //
-      ////////////////
+        opcode_alu               = insn_opcode_e'(insn_alu[6:0]);
 
-      InsnOpcodeBignumArith: begin
-        alu_flag_en_bignum = 1'b1;
+        alu_flag_en_bignum                     = 1'b0;
+        mac_flag_en_bignum                     = 1'b0;
+        gen_mac_nets_pqc.alu_vector_sel_bignum = 1'b0;
 
-        unique case (insn_alu[14:12])
-          3'b000: alu_operator_bignum = AluOpBignumAdd;
-          3'b001: alu_operator_bignum = AluOpBignumSub;
-          3'b010: alu_operator_bignum = AluOpBignumAddc;
-          3'b011: alu_operator_bignum = AluOpBignumSubb;
-          3'b100: begin
-            if (insn_alu[30]) begin
-              alu_operator_bignum = AluOpBignumSub;
-            end else begin
-              alu_operator_bignum = AluOpBignumAdd;
+        unique case (opcode_alu)
+          //////////////
+          // Base ALU //
+          //////////////
+
+          InsnOpcodeBaseLui: begin  // Load Upper Immediate
+            alu_op_a_mux_sel_base = OpASelZero;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            imm_b_mux_sel_base    = ImmBaseBU;
+            alu_operator_base     = AluOpBaseAdd;
+          end
+
+          InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            imm_b_mux_sel_base    = ImmBaseBI;
+
+            unique case (insn_alu[14:12])
+              3'b000: alu_operator_base = AluOpBaseAdd;  // Add Immediate
+              3'b100: alu_operator_base = AluOpBaseXor;  // Exclusive Or with Immediate
+              3'b110: alu_operator_base = AluOpBaseOr;   // Or with Immediate
+              3'b111: alu_operator_base = AluOpBaseAnd;  // And with Immediate
+
+              3'b001: begin
+                alu_operator_base = AluOpBaseSll;  // Shift Left Logical by Immediate
+              end
+
+              3'b101: begin
+                if (insn_alu[31:27] == 5'b0_0000) begin
+                  alu_operator_base = AluOpBaseSrl;  // Shift Right Logical by Immediate
+                end else if (insn_alu[31:27] == 5'b0_1000) begin
+                  alu_operator_base = AluOpBaseSra;  // Shift Right Arithmetically by Immediate
+                end
+              end
+
+              default: ;
+            endcase
+          end
+
+          InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelRegister;
+
+            if (!insn_alu[26]) begin
+              unique case ({insn_alu[31:25], insn_alu[14:12]})
+                // RV32I ALU operations
+                {7'b000_0000, 3'b000}: alu_operator_base = AluOpBaseAdd;   // Add
+                {7'b010_0000, 3'b000}: alu_operator_base = AluOpBaseSub;   // Sub
+                {7'b000_0000, 3'b100}: alu_operator_base = AluOpBaseXor;   // Xor
+                {7'b000_0000, 3'b110}: alu_operator_base = AluOpBaseOr;    // Or
+                {7'b000_0000, 3'b111}: alu_operator_base = AluOpBaseAnd;   // And
+                {7'b000_0000, 3'b001}: alu_operator_base = AluOpBaseSll;   // Shift Left Logical
+                {7'b000_0000, 3'b101}: alu_operator_base = AluOpBaseSrl;   // Shift Right Logical
+                {7'b010_0000, 3'b101}: alu_operator_base = AluOpBaseSra;   // Shift Right Arithmetic
+                default: ;
+              endcase
             end
           end
-          3'b101: begin
-            if (insn_alu[30]) begin
-            `ifndef OTBN_PQC
-              alu_operator_bignum = AluOpBignumSubm;
-            `else
-              if (insn_alu[25]) begin
-                if (insn[27]) begin
-                  alu_operator_bignum = AluOpBignumSubvm;
-                end else begin
-                  alu_operator_bignum = AluOpBignumSubv;
-                end
-                alu_vector_sel_bignum = insn[25];
-              end else begin
-                alu_operator_bignum = AluOpBignumSubm;
-              end
-            `endif
-            end else begin
-            `ifndef OTBN_PQC
-              alu_operator_bignum = AluOpBignumAddm;
-            `else
-              if (insn_alu[25]) begin
-                if (insn[27]) begin
-                  alu_operator_bignum = AluOpBignumAddvm;
-                end else begin
-                  alu_operator_bignum = AluOpBignumAddv;
-                end
-                alu_vector_sel_bignum = insn[25];
-              end else begin
-                alu_operator_bignum = AluOpBignumAddm;
-              end
-            `endif
-            end
-          end
-          default: ;
-        endcase
 
-        if (insn_alu[14:12] != 3'b100) begin
-          alu_op_b_mux_sel_bignum  = OpBSelRegister;
-          shift_amt_mux_sel_bignum = ShamtSelBignumA;
-        end else begin
-          alu_op_b_mux_sel_bignum  = OpBSelImmediate;
-          shift_amt_mux_sel_bignum = ShamtSelBignumZero;
-        end
-      end
+          ///////////////////////
+          // Base Loads/Stores //
+          ///////////////////////
 
-      ///////////////////////////////////////
-      // Bignum logical/BN.RSHI/LOOP/LOOPI //
-      ///////////////////////////////////////
-
-      InsnOpcodeBignumBaseMisc: begin
-        // LOOPI uses L type immediate, base immediate irrelevant for everything else
-        imm_b_mux_sel_base      = ImmBaseBL;
-        alu_op_b_mux_sel_bignum = OpBSelRegister;
-
-        unique case (insn_alu[14:12])
-          3'b010: begin
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_operator_bignum      = AluOpBignumAnd;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b100: begin
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_operator_bignum      = AluOpBignumOr;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b101: begin
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_operator_bignum      = AluOpBignumNot;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b110: begin
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_operator_bignum      = AluOpBignumXor;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b011,
-          3'b111: begin
-            shift_amt_mux_sel_bignum = ShamtSelBignumS;
-            alu_operator_bignum      = AluOpBignumRshi;
-          end
-          default: ;
-        endcase
-      end
-
-      ///////////////////////////////////////////
-      // Bignum Misc LID/SID/MOV[R]/CMP[B]/SEL //
-      ///////////////////////////////////////////
-
-      InsnOpcodeBignumMisc: begin
-        unique case (insn[14:12])
-          3'b001: begin  // BN.CMP
-            alu_operator_bignum      = AluOpBignumSub;
-            alu_op_b_mux_sel_bignum  = OpBSelRegister;
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b011: begin  // BN.CMPB
-            alu_operator_bignum      = AluOpBignumSubb;
-            alu_op_b_mux_sel_bignum  = OpBSelRegister;
-            shift_amt_mux_sel_bignum = ShamtSelBignumA;
-            alu_flag_en_bignum       = 1'b1;
-          end
-          3'b100,
-          3'b101: begin  // BN.LID/BN.SID
-            // Calculate memory address using base ALU
+          InsnOpcodeBaseLoad: begin
             alu_op_a_mux_sel_base = OpASelRegister;
             alu_op_b_mux_sel_base = OpBSelImmediate;
             alu_operator_base     = AluOpBaseAdd;
-            imm_b_mux_sel_base    = ImmBaseBX;
+            imm_b_mux_sel_base    = ImmBaseBI;
           end
+
+          InsnOpcodeBaseStore: begin
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBS;
+          end
+
+          //////////////////////
+          // Base Branch/Jump //
+          //////////////////////
+
+          InsnOpcodeBaseBranch: begin
+            alu_op_a_mux_sel_base    = OpASelCurrPc;
+            alu_op_b_mux_sel_base    = OpBSelImmediate;
+            alu_operator_base        = AluOpBaseAdd;
+            imm_b_mux_sel_base       = ImmBaseBB;
+            comparison_operator_base = insn_alu[12] ? ComparisonOpBaseNeq : ComparisonOpBaseEq;
+          end
+
+          InsnOpcodeBaseJal: begin
+            alu_op_a_mux_sel_base = OpASelCurrPc;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBJ;
+          end
+
+          InsnOpcodeBaseJalr: begin
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBI;
+          end
+
+          //////////////////
+          // Base Special //
+          //////////////////
+
+          InsnOpcodeBaseSystem: begin
+            // The only instructions with System opcode that care about operands are CSR access
+            alu_op_a_mux_sel_base = OpASelRegister;
+            imm_b_mux_sel_base    = ImmBaseBI;
+          end
+
+          ////////////////
+          // Bignum ALU //
+          ////////////////
+
+          InsnOpcodeBignumArith: begin
+            alu_flag_en_bignum = 1'b1;
+
+            unique case (insn_alu[14:12])
+              3'b000: alu_operator_bignum = AluOpBignumAdd;
+              3'b001: alu_operator_bignum = AluOpBignumSub;
+              3'b010: alu_operator_bignum = AluOpBignumAddc;
+              3'b011: alu_operator_bignum = AluOpBignumSubb;
+              3'b100: begin
+                if (insn_alu[30]) begin
+                  alu_operator_bignum = AluOpBignumSub;
+                end else begin
+                  alu_operator_bignum = AluOpBignumAdd;
+                end
+              end
+              3'b101: begin
+                if (insn_alu[30]) begin
+                  if (insn_alu[25]) begin
+                    if (insn[27]) begin
+                      alu_operator_bignum = AluOpBignumSubvm;
+                    end else begin
+                      alu_operator_bignum = AluOpBignumSubv;
+                    end
+                    gen_mac_nets_pqc.alu_vector_sel_bignum = insn[25];
+                  end else begin
+                    alu_operator_bignum = AluOpBignumSubm;
+                  end
+                end else begin
+                  if (insn_alu[25]) begin
+                    if (insn[27]) begin
+                      alu_operator_bignum = AluOpBignumAddvm;
+                    end else begin
+                      alu_operator_bignum = AluOpBignumAddv;
+                    end
+                    gen_mac_nets_pqc.alu_vector_sel_bignum = insn[25];
+                  end else begin
+                    alu_operator_bignum = AluOpBignumAddm;
+                  end
+                end
+              end
+              default: ;
+            endcase
+
+            if (insn_alu[14:12] != 3'b100) begin
+              alu_op_b_mux_sel_bignum  = OpBSelRegister;
+              shift_amt_mux_sel_bignum = ShamtSelBignumA;
+            end else begin
+              alu_op_b_mux_sel_bignum  = OpBSelImmediate;
+              shift_amt_mux_sel_bignum = ShamtSelBignumZero;
+            end
+          end
+
+          ///////////////////////////////////////
+          // Bignum logical/BN.RSHI/LOOP/LOOPI //
+          ///////////////////////////////////////
+
+          InsnOpcodeBignumBaseMisc: begin
+            // LOOPI uses L type immediate, base immediate irrelevant for everything else
+            imm_b_mux_sel_base      = ImmBaseBL;
+            alu_op_b_mux_sel_bignum = OpBSelRegister;
+
+            unique case (insn_alu[14:12])
+              3'b010: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumAnd;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b100: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumOr;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b101: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumNot;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b110: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumXor;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b011,
+              3'b111: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumS;
+                alu_operator_bignum      = AluOpBignumRshi;
+              end
+              default: ;
+            endcase
+          end
+
+          ///////////////////////////////////////////
+          // Bignum Misc LID/SID/MOV[R]/CMP[B]/SEL //
+          ///////////////////////////////////////////
+
+          InsnOpcodeBignumMisc: begin
+            unique case (insn[14:12])
+              3'b001: begin  // BN.CMP
+                alu_operator_bignum      = AluOpBignumSub;
+                alu_op_b_mux_sel_bignum  = OpBSelRegister;
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b011: begin  // BN.CMPB
+                alu_operator_bignum      = AluOpBignumSubb;
+                alu_op_b_mux_sel_bignum  = OpBSelRegister;
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b100,
+              3'b101: begin  // BN.LID/BN.SID
+                // Calculate memory address using base ALU
+                alu_op_a_mux_sel_base = OpASelRegister;
+                alu_op_b_mux_sel_base = OpBSelImmediate;
+                alu_operator_base     = AluOpBaseAdd;
+                imm_b_mux_sel_base    = ImmBaseBX;
+              end
+              default: ;
+            endcase
+          end
+
+          ////////////////////////////////////////////
+          // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumMulqacc: begin
+            if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
+              mac_flag_en_bignum = 1'b1;
+            end
+          end
+
+          ////////////////////////////////////////////
+          //                 BN.SHV                 //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumShiftv: begin
+            shift_amt_mux_sel_bignum = ShamtSelBignumV;
+            alu_operator_bignum      = AluOpBignumShv;
+            alu_op_b_mux_sel_bignum  = OpBSelRegister;
+            alu_flag_en_bignum       = 1'b1;
+            gen_mac_nets_pqc.alu_vector_sel_bignum = 1'b1;
+          end
+
+          ////////////////////////////////////////////
+          //                 BN.TRN                 //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumTrn: begin
+            alu_op_b_mux_sel_bignum  = OpBSelRegister;
+            alu_operator_bignum      = AluOpBignumTrn;
+          end
+
           default: ;
         endcase
+
       end
+    end else begin : gen_decoder_alu
+      always_comb begin
+        alu_operator_base        = AluOpBaseAdd;
+        comparison_operator_base = ComparisonOpBaseEq;
 
-      ////////////////////////////////////////////
-      // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
-      ////////////////////////////////////////////
+        alu_op_a_mux_sel_base    = OpASelRegister;
+        alu_op_b_mux_sel_base    = OpBSelImmediate;
 
-      InsnOpcodeBignumMulqacc: begin
-        if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
-          mac_flag_en_bignum = 1'b1;
-        end
+        imm_b_mux_sel_base       = ImmBaseBI;
+
+        alu_operator_bignum      = AluOpBignumNone;
+        alu_op_b_mux_sel_bignum  = OpBSelImmediate;
+
+        shift_amt_mux_sel_bignum = ShamtSelBignumA;
+
+        opcode_alu    = insn_opcode_e'(insn_alu[6:0]);
+
+        alu_flag_en_bignum       = 1'b0;
+        mac_flag_en_bignum       = 1'b0;
+
+        unique case (opcode_alu)
+          //////////////
+          // Base ALU //
+          //////////////
+
+          InsnOpcodeBaseLui: begin  // Load Upper Immediate
+            alu_op_a_mux_sel_base = OpASelZero;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            imm_b_mux_sel_base    = ImmBaseBU;
+            alu_operator_base     = AluOpBaseAdd;
+          end
+
+          InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            imm_b_mux_sel_base    = ImmBaseBI;
+
+            unique case (insn_alu[14:12])
+              3'b000: alu_operator_base = AluOpBaseAdd;  // Add Immediate
+              3'b100: alu_operator_base = AluOpBaseXor;  // Exclusive Or with Immediate
+              3'b110: alu_operator_base = AluOpBaseOr;   // Or with Immediate
+              3'b111: alu_operator_base = AluOpBaseAnd;  // And with Immediate
+
+              3'b001: begin
+                alu_operator_base = AluOpBaseSll;  // Shift Left Logical by Immediate
+              end
+
+              3'b101: begin
+                if (insn_alu[31:27] == 5'b0_0000) begin
+                  alu_operator_base = AluOpBaseSrl;  // Shift Right Logical by Immediate
+                end else if (insn_alu[31:27] == 5'b0_1000) begin
+                  alu_operator_base = AluOpBaseSra;  // Shift Right Arithmetically by Immediate
+                end
+              end
+
+              default: ;
+            endcase
+          end
+
+          InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelRegister;
+
+            if (!insn_alu[26]) begin
+              unique case ({insn_alu[31:25], insn_alu[14:12]})
+                // RV32I ALU operations
+                {7'b000_0000, 3'b000}: alu_operator_base = AluOpBaseAdd;   // Add
+                {7'b010_0000, 3'b000}: alu_operator_base = AluOpBaseSub;   // Sub
+                {7'b000_0000, 3'b100}: alu_operator_base = AluOpBaseXor;   // Xor
+                {7'b000_0000, 3'b110}: alu_operator_base = AluOpBaseOr;    // Or
+                {7'b000_0000, 3'b111}: alu_operator_base = AluOpBaseAnd;   // And
+                {7'b000_0000, 3'b001}: alu_operator_base = AluOpBaseSll;   // Shift Left Logical
+                {7'b000_0000, 3'b101}: alu_operator_base = AluOpBaseSrl;   // Shift Right Logical
+                {7'b010_0000, 3'b101}: alu_operator_base = AluOpBaseSra;   // Shift Right Arithmetic
+                default: ;
+              endcase
+            end
+          end
+
+          ///////////////////////
+          // Base Loads/Stores //
+          ///////////////////////
+
+          InsnOpcodeBaseLoad: begin
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBI;
+          end
+
+          InsnOpcodeBaseStore: begin
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBS;
+          end
+
+          //////////////////////
+          // Base Branch/Jump //
+          //////////////////////
+
+          InsnOpcodeBaseBranch: begin
+            alu_op_a_mux_sel_base    = OpASelCurrPc;
+            alu_op_b_mux_sel_base    = OpBSelImmediate;
+            alu_operator_base        = AluOpBaseAdd;
+            imm_b_mux_sel_base       = ImmBaseBB;
+            comparison_operator_base = insn_alu[12] ? ComparisonOpBaseNeq : ComparisonOpBaseEq;
+          end
+
+          InsnOpcodeBaseJal: begin
+            alu_op_a_mux_sel_base = OpASelCurrPc;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBJ;
+          end
+
+          InsnOpcodeBaseJalr: begin
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBI;
+          end
+
+          //////////////////
+          // Base Special //
+          //////////////////
+
+          InsnOpcodeBaseSystem: begin
+            // The only instructions with System opcode that care about operands are CSR access
+            alu_op_a_mux_sel_base = OpASelRegister;
+            imm_b_mux_sel_base    = ImmBaseBI;
+          end
+
+          ////////////////
+          // Bignum ALU //
+          ////////////////
+
+          InsnOpcodeBignumArith: begin
+            alu_flag_en_bignum = 1'b1;
+
+            unique case (insn_alu[14:12])
+              3'b000: alu_operator_bignum = AluOpBignumAdd;
+              3'b001: alu_operator_bignum = AluOpBignumSub;
+              3'b010: alu_operator_bignum = AluOpBignumAddc;
+              3'b011: alu_operator_bignum = AluOpBignumSubb;
+              3'b100: begin
+                if (insn_alu[30]) begin
+                  alu_operator_bignum = AluOpBignumSub;
+                end else begin
+                  alu_operator_bignum = AluOpBignumAdd;
+                end
+              end
+              3'b101: begin
+                if (insn_alu[30]) begin
+                  alu_operator_bignum = AluOpBignumSubm;
+                end else begin
+                  alu_operator_bignum = AluOpBignumAddm;
+                end
+              end
+              default: ;
+            endcase
+
+            if (insn_alu[14:12] != 3'b100) begin
+              alu_op_b_mux_sel_bignum  = OpBSelRegister;
+              shift_amt_mux_sel_bignum = ShamtSelBignumA;
+            end else begin
+              alu_op_b_mux_sel_bignum  = OpBSelImmediate;
+              shift_amt_mux_sel_bignum = ShamtSelBignumZero;
+            end
+          end
+
+          ///////////////////////////////////////
+          // Bignum logical/BN.RSHI/LOOP/LOOPI //
+          ///////////////////////////////////////
+
+          InsnOpcodeBignumBaseMisc: begin
+            // LOOPI uses L type immediate, base immediate irrelevant for everything else
+            imm_b_mux_sel_base      = ImmBaseBL;
+            alu_op_b_mux_sel_bignum = OpBSelRegister;
+
+            unique case (insn_alu[14:12])
+              3'b010: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumAnd;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b100: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumOr;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b101: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumNot;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b110: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_operator_bignum      = AluOpBignumXor;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b011,
+              3'b111: begin
+                shift_amt_mux_sel_bignum = ShamtSelBignumS;
+                alu_operator_bignum      = AluOpBignumRshi;
+              end
+              default: ;
+            endcase
+          end
+
+          ///////////////////////////////////////////
+          // Bignum Misc LID/SID/MOV[R]/CMP[B]/SEL //
+          ///////////////////////////////////////////
+
+          InsnOpcodeBignumMisc: begin
+            unique case (insn[14:12])
+              3'b001: begin  // BN.CMP
+                alu_operator_bignum      = AluOpBignumSub;
+                alu_op_b_mux_sel_bignum  = OpBSelRegister;
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b011: begin  // BN.CMPB
+                alu_operator_bignum      = AluOpBignumSubb;
+                alu_op_b_mux_sel_bignum  = OpBSelRegister;
+                shift_amt_mux_sel_bignum = ShamtSelBignumA;
+                alu_flag_en_bignum       = 1'b1;
+              end
+              3'b100,
+              3'b101: begin  // BN.LID/BN.SID
+                // Calculate memory address using base ALU
+                alu_op_a_mux_sel_base = OpASelRegister;
+                alu_op_b_mux_sel_base = OpBSelImmediate;
+                alu_operator_base     = AluOpBaseAdd;
+                imm_b_mux_sel_base    = ImmBaseBX;
+              end
+              default: ;
+            endcase
+          end
+
+          ////////////////////////////////////////////
+          // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+          ////////////////////////////////////////////
+
+          InsnOpcodeBignumMulqacc: begin
+            if (insn[30] == 1'b1 || insn[29] == 1'b1) begin  // BN.MULQACC.WO/BN.MULQACC.SO
+              mac_flag_en_bignum = 1'b1;
+            end
+          end
+
+          default: ;
+        endcase
+
       end
-
-    `ifdef OTBN_PQC
-      ////////////////////////////////////////////
-      //                 BN.SHV                 //
-      ////////////////////////////////////////////
-
-      InsnOpcodeBignumShiftv: begin
-        shift_amt_mux_sel_bignum = ShamtSelBignumV;
-        alu_operator_bignum      = AluOpBignumShv;
-        alu_op_b_mux_sel_bignum  = OpBSelRegister;
-        alu_flag_en_bignum       = 1'b1;
-        alu_vector_sel_bignum    = 1'b1;
-      end
-
-      ////////////////////////////////////////////
-      //                 BN.TRN                 //
-      ////////////////////////////////////////////
-
-      InsnOpcodeBignumTrn: begin
-        alu_op_b_mux_sel_bignum  = OpBSelRegister;
-        alu_operator_bignum      = AluOpBignumTrn;
-      end
-    `endif
-
-      default: ;
-    endcase
-
-  end
+    end
+  endgenerate
 
   // clk_i and rst_ni are only used by assertions
   logic unused_clk;
@@ -1135,7 +1851,13 @@ module otbn_decoder
 
 
   // Selectors must be known/valid.
-  `ASSERT(IbexRegImmAluOpBaseKnown, (opcode == InsnOpcodeBaseOpImm) |-> !$isunknown(insn[14:12]))
+  generate
+    if (OtbnPQCEn) begin : gen_assert_known_selctor_pqc
+      `ASSERT(IbexRegImmAluOpBaseKnown, (opcode == InsnOpcodeBaseOpImm) |-> !$isunknown(insn[14:12]))
+    end else begin : gen_assert_known_selector
+      `ASSERT(IbexRegImmAluOpBaseKnown, (opcode == InsnOpcodeBaseOpImm) |-> !$isunknown(insn[14:12]))
+    end
+  endgenerate
 
   // Can only do a single inc. Selection mux in controller doesn't factor in instruction valid (to
   // ease timing), so these must always be one-hot to 0 to avoid violating unique constraint for mux

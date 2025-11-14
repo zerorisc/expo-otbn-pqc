@@ -15,6 +15,8 @@ module otbn_predecode
   import otbn_pkg::*;
 #(
   parameter int ImemSizeByte = 4096,
+  // Enabling PQC hardware support with vector ISA extension
+  parameter bit OtbnPQCEn = 1'b1,
 
   localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte)
 ) (
@@ -66,12 +68,6 @@ module otbn_predecode
   logic alu_bignum_logic_a_en;
   logic alu_bignum_logic_shifter_en;
   logic [3:0] alu_bignum_logic_res_sel;
-
-`ifdef OTBN_PQC
-  alu_vector_type_t alu_bignum_vector_type;
-  logic             alu_bignum_vector_sel;
-  alu_trn_type_t    alu_bignum_trn_type;
-`endif
 
   flag_group_t flag_group;
   logic [NFlagGroups-1:0] flag_group_sel;
@@ -133,17 +129,9 @@ module otbn_predecode
   logic [$clog2(WLEN)-1:0] shift_amt_a_type_bignum;
   // Shift amount for BN.RSHI
   logic [$clog2(WLEN)-1:0] shift_amt_s_type_bignum;
-`ifdef OTBN_PQC
-  // Shift amount for BN.SHV
-  logic [$clog2(WLEN)-1:0] shift_amt_v_type_bignum;
-`endif
-
 
   assign shift_amt_a_type_bignum = {imem_rdata_i[29:25], 3'b0};
   assign shift_amt_s_type_bignum = {imem_rdata_i[31:25], imem_rdata_i[14]};
-`ifdef OTBN_PQC
-  assign shift_amt_v_type_bignum = {3'b0, imem_rdata_i[29:25]};
-`endif
 
   assign flag_group     = imem_rdata_i[31];
   assign flag_group_sel = {(flag_group == 1'b1), (flag_group == 1'b0)};
@@ -154,447 +142,826 @@ module otbn_predecode
 
   assign flags_keep = ~(flags_adder_update | flags_logic_update | flags_mac_update | flags_ispr_wr);
 
-  always_comb begin
-    rf_ren_a_base   = 1'b0;
-    rf_ren_b_base   = 1'b0;
-    rf_we_a_base    = 1'b0;
-    rf_we_b_base    = 1'b0;
-    rf_we_d_base    = 1'b0;
+  generate
+    if (OtbnPQCEn) begin : gen_alu_vec_pqc
+      alu_vector_type_t alu_bignum_vector_type;
+      logic             alu_bignum_vector_sel;
+      alu_trn_type_t    alu_bignum_trn_type;
 
-    rf_ren_a_bignum = 1'b0;
-    rf_ren_b_bignum = 1'b0;
-    rf_we_bignum    = 1'b0;
+      // Shift amount for BN.SHV
+      logic [$clog2(WLEN)-1:0] shift_amt_v_type_bignum;
 
-    alu_bignum_adder_x_en            = 1'b0;
-    alu_bignum_x_res_operand_a_sel   = 1'b0;
-    alu_bignum_adder_y_op_a_en       = 1'b0;
-    alu_bignum_adder_y_op_shifter_en = 1'b0;
-    alu_bignum_shifter_a_en          = 1'b0;
-    alu_bignum_shifter_b_en          = 1'b0;
-    alu_bignum_shift_right           = 1'b0;
-    alu_bignum_shift_amt             = shift_amt_a_type_bignum;
-    alu_bignum_shift_mod_sel         = 1'b1;
-    alu_bignum_logic_a_en            = 1'b0;
-    alu_bignum_logic_shifter_en      = 1'b0;
-    alu_bignum_logic_res_sel         = '0;
-  `ifdef OTBN_PQC
-    alu_bignum_vector_type           = alu_vector_type_t'('0);
-    alu_bignum_vector_sel            = 1'b0;
-    alu_bignum_trn_type              = alu_trn_type_t'('0);
-  `endif
+      assign shift_amt_v_type_bignum = {3'b0, imem_rdata_i[29:25]};
+    end
+  endgenerate
 
-    flags_adder_update = '0;
-    flags_logic_update = '0;
-    flags_mac_update   = '0;
-    flags_ispr_wr      = '0;
+  generate
+    if (OtbnPQCEn) begin : gen_decode_pqc
+      always_comb begin
+        rf_ren_a_base   = 1'b0;
+        rf_ren_b_base   = 1'b0;
+        rf_we_a_base    = 1'b0;
+        rf_we_b_base    = 1'b0;
+        rf_we_d_base    = 1'b0;
 
-    mac_bignum_op_en     = 1'b0;
-    mac_bignum_acc_rd_en = 1'b0;
+        rf_ren_a_bignum = 1'b0;
+        rf_ren_b_bignum = 1'b0;
+        rf_we_bignum    = 1'b0;
 
-    ispr_rd_en = 1'b0;
-    ispr_wr_en = 1'b0;
+        alu_bignum_adder_x_en            = 1'b0;
+        alu_bignum_x_res_operand_a_sel   = 1'b0;
+        alu_bignum_adder_y_op_a_en       = 1'b0;
+        alu_bignum_adder_y_op_shifter_en = 1'b0;
+        alu_bignum_shifter_a_en          = 1'b0;
+        alu_bignum_shifter_b_en          = 1'b0;
+        alu_bignum_shift_right           = 1'b0;
+        alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+        alu_bignum_shift_mod_sel         = 1'b1;
+        alu_bignum_logic_a_en            = 1'b0;
+        alu_bignum_logic_shifter_en      = 1'b0;
+        alu_bignum_logic_res_sel         = '0;
 
-    insn_rs2   = imem_rdata_i[24:20];
+        gen_alu_vec_pqc.alu_bignum_vector_type = alu_vector_type_t'('0);
+        gen_alu_vec_pqc.alu_bignum_vector_sel  = 1'b0;
+        gen_alu_vec_pqc.alu_bignum_trn_type    = alu_trn_type_t'('0);
 
-    csr_addr_sel = 1'b0;
+        flags_adder_update = '0;
+        flags_logic_update = '0;
+        flags_mac_update   = '0;
+        flags_ispr_wr      = '0;
 
-    lsu_addr_en_predec_o = 1'b0;
+        mac_bignum_op_en     = 1'b0;
+        mac_bignum_acc_rd_en = 1'b0;
 
-    branch_insn = 1'b0;
-    jump_insn   = 1'b0;
-    loop_insn   = 1'b0;
-    sel_insn    = 1'b0;
+        ispr_rd_en = 1'b0;
+        ispr_wr_en = 1'b0;
 
-    ctrl_flow_target_predec_o = '0;
+        insn_rs2   = imem_rdata_i[24:20];
 
-    if (imem_rvalid_i) begin
-      unique case (imem_rdata_i[6:0])
+        csr_addr_sel = 1'b0;
 
-        //////////////
-        // Base ALU //
-        //////////////
+        lsu_addr_en_predec_o = 1'b0;
 
-        InsnOpcodeBaseLui: begin  // Load Upper Immediate
-          rf_we_d_base = 1'b1;
-        end
+        branch_insn = 1'b0;
+        jump_insn   = 1'b0;
+        loop_insn   = 1'b0;
+        sel_insn    = 1'b0;
 
-        InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
-          rf_ren_a_base = 1'b1;
-          rf_we_d_base  = 1'b1;
-        end
+        ctrl_flow_target_predec_o = '0;
 
-        InsnOpcodeBaseOp: begin  // Register-Register ALU operation
-          rf_ren_a_base = 1'b1;
-          rf_ren_b_base = 1'b1;
-          rf_we_d_base  = 1'b1;
-        end
+        if (imem_rvalid_i) begin
+          unique case (imem_rdata_i[6:0])
 
-        ///////////////////////
-        // Base Load / Store //
-        ///////////////////////
+            //////////////
+            // Base ALU //
+            //////////////
 
-        InsnOpcodeBaseLoad: begin
-          rf_ren_a_base = 1'b1;
-          rf_we_d_base  = 1'b1;
-
-          if (imem_rdata_i[14:12] == 3'b010) begin
-            lsu_addr_en_predec_o = 1'b1;
-          end
-        end
-
-        InsnOpcodeBaseStore: begin
-          rf_ren_a_base = 1'b1;
-          rf_ren_b_base = 1'b1;
-
-          if (imem_rdata_i[14:12] == 3'b010) begin
-            lsu_addr_en_predec_o = 1'b1;
-          end
-        end
-
-
-        ////////////////////////
-        // Base Jump / Branch //
-        ////////////////////////
-
-        InsnOpcodeBaseBranch: begin
-          rf_ren_a_base             = 1'b1;
-          rf_ren_b_base             = 1'b1;
-          branch_insn               = 1'b1;
-          ctrl_flow_target_predec_o = imem_raddr_i + imm_b_type_base[ImemAddrWidth-1:0];
-        end
-
-        InsnOpcodeBaseJal: begin
-          rf_we_d_base              = 1'b1;
-          jump_insn                 = 1'b1;
-          ctrl_flow_target_predec_o = imem_raddr_i + imm_j_type_base[ImemAddrWidth-1:0];
-        end
-
-        InsnOpcodeBaseJalr: begin
-          rf_ren_a_base = 1'b1;
-          rf_we_d_base  = 1'b1;
-          jump_insn     = 1'b1;
-        end
-
-        //////////////
-        // Base CSR //
-        //////////////
-
-        InsnOpcodeBaseSystem: begin
-          csr_addr_sel = 1'b1;
-
-          if (imem_rdata_i[14:12] != 3'b000) begin
-            // Any CSR access
-            rf_ren_a_base = 1'b1;
-            rf_we_d_base  = 1'b1;
-          end
-
-          if (csr_addr == CsrRndPrefetch) begin
-            // Prefetch CSR does not access any ISPR
-            ispr_rd_en = 1'b0;
-            ispr_wr_en = 1'b0;
-          end else if (imem_rdata_i[14:12] == 3'b001) begin
-            // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
-            // a single ISPR so to write one group the other must be read to write it back
-            // unchanged.
-            ispr_rd_en    = (imem_rdata_i[11:7] != 5'b0) | (csr_addr == CsrFg0) |
-                                                           (csr_addr == CsrFg1);
-            ispr_wr_en    = 1'b1;
-            flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
-                            {NFlagGroups{csr_addr == CsrFlags}};
-          end else if (imem_rdata_i[14:12] == 3'b010) begin
-            // Read and set if source register isn't x0, otherwise read only
-            if (imem_rdata_i[19:15] != 5'b0) begin
-              ispr_rd_en    = 1'b1;
-              ispr_wr_en    = 1'b1;
-              flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
-                              {NFlagGroups{csr_addr == CsrFlags}};
-            end else begin
-              ispr_rd_en = 1'b1;
+            InsnOpcodeBaseLui: begin  // Load Upper Immediate
+              rf_we_d_base = 1'b1;
             end
-          end
-        end
 
-        ////////////////
-        // Bignum ALU //
-        ////////////////
+            InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+            end
 
-        InsnOpcodeBignumArith: begin
-          unique case (imem_rdata_i[14:12])
-            3'b000, 3'b001, 3'b010, 3'b011:  begin
-              // BN.ADD/BN.SUB/BN.ADDC/BN.SUBB
-              rf_ren_a_bignum                  = 1'b1;
-              rf_ren_b_bignum                  = 1'b1;
-              rf_we_bignum                     = 1'b1;
-              alu_bignum_shifter_b_en          = 1'b1;
-              alu_bignum_shift_right           = imem_rdata_i[30];
-              alu_bignum_shift_amt             = shift_amt_a_type_bignum;
-              alu_bignum_adder_y_op_a_en       = 1'b1;
-              alu_bignum_adder_y_op_shifter_en = 1'b1;
-              flags_adder_update[flag_group]   = 1'b1;
+            InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+              rf_ren_a_base = 1'b1;
+              rf_ren_b_base = 1'b1;
+              rf_we_d_base  = 1'b1;
             end
-            3'b100: begin
-              // BN.ADDI/BN.SUBI
-              rf_ren_a_bignum                  = 1'b1;
-              rf_we_bignum                     = 1'b1;
-              alu_bignum_shifter_b_en          = 1'b1;
-              alu_bignum_shift_right           = imem_rdata_i[30];
-              alu_bignum_shift_amt             = '0;
-              alu_bignum_adder_y_op_a_en       = 1'b1;
-              alu_bignum_adder_y_op_shifter_en = 1'b1;
-              flags_adder_update[flag_group]   = 1'b1;
-            end
-            3'b101: begin
-              // BN.ADDM/BN.SUBM
-              rf_ren_a_bignum                = 1'b1;
-              rf_ren_b_bignum                = 1'b1;
-              rf_we_bignum                   = 1'b1;
-              alu_bignum_shift_amt           = shift_amt_a_type_bignum;
-              alu_bignum_adder_x_en          = 1'b1;
-              alu_bignum_x_res_operand_a_sel = 1'b1;
-              alu_bignum_shift_mod_sel       = 1'b0;
-            `ifdef OTBN_PQC
-              alu_bignum_vector_type         = alu_vector_type_t'(imem_rdata_i[27:26]);
-              alu_bignum_vector_sel          = imem_rdata_i[25];
-            `endif
-            end
-            default: ;
-          endcase
-        end
 
-        ////////////////////////////
-        // Bignum logical/BN.RSHI //
-        ////////////////////////////
+            ///////////////////////
+            // Base Load / Store //
+            ///////////////////////
 
-        InsnOpcodeBignumBaseMisc: begin
-          unique case (imem_rdata_i[14:12])
-            3'b000, 3'b001: begin // BN.LOOP[I]
-              rf_ren_a_base             = ~imem_rdata_i[12];
-              loop_insn                 = 1'b1;
-              ctrl_flow_target_predec_o = loop_end_addr[ImemAddrWidth-1:0];
-            end
-            3'b010, 3'b100, 3'b110:  begin  // BN.AND/BN.OR/BN.XOR
-              rf_we_bignum                            = 1'b1;
-              rf_ren_a_bignum                         = 1'b1;
-              rf_ren_b_bignum                         = 1'b1;
-              alu_bignum_shifter_b_en                 = 1'b1;
-              alu_bignum_shift_right                  = imem_rdata_i[30];
-              alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
-              alu_bignum_logic_a_en                   = 1'b1;
-              alu_bignum_logic_shifter_en             = 1'b1;
-              alu_bignum_logic_res_sel[AluOpLogicXor] = imem_rdata_i[14:12] == 3'b110;
-              alu_bignum_logic_res_sel[AluOpLogicOr]  = imem_rdata_i[14:12] == 3'b100;
-              alu_bignum_logic_res_sel[AluOpLogicAnd] = imem_rdata_i[14:12] == 3'b010;
-              flags_logic_update[flag_group]          = 1'b1;
-            end
-            3'b111, 3'b011: begin // BN.RSHI
-              rf_we_bignum            = 1'b1;
-              rf_ren_a_bignum         = 1'b1;
-              rf_ren_b_bignum         = 1'b1;
-              alu_bignum_shifter_a_en = 1'b1;
-              alu_bignum_shifter_b_en = 1'b1;
-              alu_bignum_shift_right  = 1'b1;
-              alu_bignum_shift_amt    = shift_amt_s_type_bignum;
-            end
-            3'b101: begin // BN.NOT
-              rf_we_bignum                            = 1'b1;
-              rf_ren_b_bignum                         = 1'b1;
-              alu_bignum_shifter_b_en                 = 1'b1;
-              alu_bignum_shift_right                  = imem_rdata_i[30];
-              alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
-              alu_bignum_logic_shifter_en             = 1'b1;
-              alu_bignum_logic_res_sel[AluOpLogicNot] = 1'b1;
-              flags_logic_update[flag_group]          = 1'b1;
-            end
-            default: ;
-          endcase
-        end
+            InsnOpcodeBaseLoad: begin
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
 
-        ///////////////////////////////////////////////
-        // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
-        ///////////////////////////////////////////////
-
-        InsnOpcodeBignumMisc: begin
-          unique case (imem_rdata_i[14:12])
-            3'b000: begin // BN.SEL
-              rf_we_bignum    = 1'b1;
-              rf_ren_a_bignum = 1'b1;
-              rf_ren_b_bignum = 1'b1;
-              sel_insn        = 1'b1;
-            end
-            3'b011, 3'b001: begin // BN.CMP[B]
-              rf_ren_a_bignum                  = 1'b1;
-              rf_ren_b_bignum                  = 1'b1;
-              alu_bignum_shifter_b_en          = 1'b1;
-              alu_bignum_shift_right           = imem_rdata_i[30];
-              alu_bignum_shift_amt             = shift_amt_a_type_bignum;
-              alu_bignum_adder_y_op_a_en       = 1'b1;
-              alu_bignum_adder_y_op_shifter_en = 1'b1;
-              flags_adder_update[flag_group]   = 1'b1;
-            end
-            3'b100, 3'b101: begin  // BN.LID, BN.SID
-              rf_ren_a_base        = 1'b1;
-              rf_ren_b_base        = 1'b1;
-              lsu_addr_en_predec_o = 1'b1;
-
-              if (imem_rdata_i[8]) begin
-                rf_we_a_base = 1'b1;
-              end
-
-              if (imem_rdata_i[7]) begin
-                rf_we_b_base = 1'b1;
+              if (imem_rdata_i[14:12] == 3'b010) begin
+                lsu_addr_en_predec_o = 1'b1;
               end
             end
-            3'b110: begin
-              if (imem_rdata_i[31]) begin // BN.MOVR
-                // bignum RF read and write occur in the following cycle due to the indirect
-                // register access so aren't set here. otbn_controller sets the appropriate read and
-                // write enables directly in the instruction fetch stage in the first cycle of the
-                // instruction's execution (so they can be used in the second cycle which performs
-                // the bignum RF access).
-                rf_ren_a_base   = 1'b1;
-                rf_ren_b_base   = 1'b1;
 
-                if (imem_rdata_i[9]) begin
-                  rf_we_a_base = 1'b1;
-                end else if (imem_rdata_i[7]) begin
-                  rf_we_b_base = 1'b1;
+            InsnOpcodeBaseStore: begin
+              rf_ren_a_base = 1'b1;
+              rf_ren_b_base = 1'b1;
+
+              if (imem_rdata_i[14:12] == 3'b010) begin
+                lsu_addr_en_predec_o = 1'b1;
+              end
+            end
+
+
+            ////////////////////////
+            // Base Jump / Branch //
+            ////////////////////////
+
+            InsnOpcodeBaseBranch: begin
+              rf_ren_a_base             = 1'b1;
+              rf_ren_b_base             = 1'b1;
+              branch_insn               = 1'b1;
+              ctrl_flow_target_predec_o = imem_raddr_i + imm_b_type_base[ImemAddrWidth-1:0];
+            end
+
+            InsnOpcodeBaseJal: begin
+              rf_we_d_base              = 1'b1;
+              jump_insn                 = 1'b1;
+              ctrl_flow_target_predec_o = imem_raddr_i + imm_j_type_base[ImemAddrWidth-1:0];
+            end
+
+            InsnOpcodeBaseJalr: begin
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+              jump_insn     = 1'b1;
+            end
+
+            //////////////
+            // Base CSR //
+            //////////////
+
+            InsnOpcodeBaseSystem: begin
+              csr_addr_sel = 1'b1;
+
+              if (imem_rdata_i[14:12] != 3'b000) begin
+                // Any CSR access
+                rf_ren_a_base = 1'b1;
+                rf_we_d_base  = 1'b1;
+              end
+
+              if (csr_addr == CsrRndPrefetch) begin
+                // Prefetch CSR does not access any ISPR
+                ispr_rd_en = 1'b0;
+                ispr_wr_en = 1'b0;
+              end else if (imem_rdata_i[14:12] == 3'b001) begin
+                // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
+                // a single ISPR so to write one group the other must be read to write it back
+                // unchanged.
+                ispr_rd_en    = (imem_rdata_i[11:7] != 5'b0) | (csr_addr == CsrFg0) |
+                                                              (csr_addr == CsrFg1);
+                ispr_wr_en    = 1'b1;
+                flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
+                                {NFlagGroups{csr_addr == CsrFlags}};
+              end else if (imem_rdata_i[14:12] == 3'b010) begin
+                // Read and set if source register isn't x0, otherwise read only
+                if (imem_rdata_i[19:15] != 5'b0) begin
+                  ispr_rd_en    = 1'b1;
+                  ispr_wr_en    = 1'b1;
+                  flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
+                                  {NFlagGroups{csr_addr == CsrFlags}};
+                end else begin
+                  ispr_rd_en = 1'b1;
                 end
-              end else begin // BN.MOV
-                rf_we_bignum    = 1'b1;
-                rf_ren_a_bignum = 1'b1;
               end
             end
-            3'b111: begin
-              if (imem_rdata_i[31]) begin  // BN.WSRW
-                rf_ren_a_bignum = 1'b1;
-                ispr_wr_en      = 1'b1;
-              end else begin  // BN.WSRR
-                rf_we_bignum = 1'b1;
-                ispr_rd_en   = 1'b1;
-              end
+
+            ////////////////
+            // Bignum ALU //
+            ////////////////
+
+            InsnOpcodeBignumArith: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000, 3'b001, 3'b010, 3'b011:  begin
+                  // BN.ADD/BN.SUB/BN.ADDC/BN.SUBB
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_ren_b_bignum                  = 1'b1;
+                  rf_we_bignum                     = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b100: begin
+                  // BN.ADDI/BN.SUBI
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_we_bignum                     = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = '0;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b101: begin
+                  // BN.ADDM/BN.SUBM
+                  rf_ren_a_bignum                = 1'b1;
+                  rf_ren_b_bignum                = 1'b1;
+                  rf_we_bignum                   = 1'b1;
+                  alu_bignum_shift_amt           = shift_amt_a_type_bignum;
+                  alu_bignum_adder_x_en          = 1'b1;
+                  alu_bignum_x_res_operand_a_sel = 1'b1;
+                  alu_bignum_shift_mod_sel       = 1'b0;
+                  gen_alu_vec_pqc.alu_bignum_vector_type = alu_vector_type_t'(imem_rdata_i[27:26]);
+                  gen_alu_vec_pqc.alu_bignum_vector_sel  = imem_rdata_i[25];
+                end
+                default: ;
+              endcase
             end
-            default: ;
-          endcase
-        end
 
-        ////////////////////////////////////////////
-        // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
-        ////////////////////////////////////////////
+            ////////////////////////////
+            // Bignum logical/BN.RSHI //
+            ////////////////////////////
 
-        InsnOpcodeBignumMulqacc: begin
-          rf_ren_a_bignum  = 1'b1;
-          rf_ren_b_bignum  = 1'b1;
-          mac_bignum_op_en = 1'b1;
+            InsnOpcodeBignumBaseMisc: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000, 3'b001: begin // BN.LOOP[I]
+                  rf_ren_a_base             = ~imem_rdata_i[12];
+                  loop_insn                 = 1'b1;
+                  ctrl_flow_target_predec_o = loop_end_addr[ImemAddrWidth-1:0];
+                end
+                3'b010, 3'b100, 3'b110:  begin  // BN.AND/BN.OR/BN.XOR
+                  rf_we_bignum                            = 1'b1;
+                  rf_ren_a_bignum                         = 1'b1;
+                  rf_ren_b_bignum                         = 1'b1;
+                  alu_bignum_shifter_b_en                 = 1'b1;
+                  alu_bignum_shift_right                  = imem_rdata_i[30];
+                  alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
+                  alu_bignum_logic_a_en                   = 1'b1;
+                  alu_bignum_logic_shifter_en             = 1'b1;
+                  alu_bignum_logic_res_sel[AluOpLogicXor] = imem_rdata_i[14:12] == 3'b110;
+                  alu_bignum_logic_res_sel[AluOpLogicOr]  = imem_rdata_i[14:12] == 3'b100;
+                  alu_bignum_logic_res_sel[AluOpLogicAnd] = imem_rdata_i[14:12] == 3'b010;
+                  flags_logic_update[flag_group]          = 1'b1;
+                end
+                3'b111, 3'b011: begin // BN.RSHI
+                  rf_we_bignum            = 1'b1;
+                  rf_ren_a_bignum         = 1'b1;
+                  rf_ren_b_bignum         = 1'b1;
+                  alu_bignum_shifter_a_en = 1'b1;
+                  alu_bignum_shifter_b_en = 1'b1;
+                  alu_bignum_shift_right  = 1'b1;
+                  alu_bignum_shift_amt    = shift_amt_s_type_bignum;
+                end
+                3'b101: begin // BN.NOT
+                  rf_we_bignum                            = 1'b1;
+                  rf_ren_b_bignum                         = 1'b1;
+                  alu_bignum_shifter_b_en                 = 1'b1;
+                  alu_bignum_shift_right                  = imem_rdata_i[30];
+                  alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
+                  alu_bignum_logic_shifter_en             = 1'b1;
+                  alu_bignum_logic_res_sel[AluOpLogicNot] = 1'b1;
+                  flags_logic_update[flag_group]          = 1'b1;
+                end
+                default: ;
+              endcase
+            end
 
-          // BN.MULQACC.WO/BN.MULQACC.SO
-          if (imem_rdata_i[30] == 1'b1 || imem_rdata_i[29] == 1'b1) begin
-            rf_we_bignum                 = 1'b1;
-            flags_mac_update[flag_group] = 1'b1;
-          end
+            ///////////////////////////////////////////////
+            // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
+            ///////////////////////////////////////////////
 
-          if (imem_rdata_i[12] == 1'b0) begin
-            // zero_acc not set
-            mac_bignum_acc_rd_en = 1'b1;
-          end
-        end
+            InsnOpcodeBignumMisc: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000: begin // BN.SEL
+                  rf_we_bignum    = 1'b1;
+                  rf_ren_a_bignum = 1'b1;
+                  rf_ren_b_bignum = 1'b1;
+                  sel_insn        = 1'b1;
+                end
+                3'b011, 3'b001: begin // BN.CMP[B]
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_ren_b_bignum                  = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b100, 3'b101: begin  // BN.LID, BN.SID
+                  rf_ren_a_base        = 1'b1;
+                  rf_ren_b_base        = 1'b1;
+                  lsu_addr_en_predec_o = 1'b1;
 
-      `ifdef OTBN_PQC
-        ///////////////////////////////////////////
-        //            BN.MULV/BN.MULV.L          //
-        ///////////////////////////////////////////
+                  if (imem_rdata_i[8]) begin
+                    rf_we_a_base = 1'b1;
+                  end
 
-        InsnOpcodeBignumMulv: begin
-          unique case (imem_rdata_i[14:12])
-            3'b110: begin
+                  if (imem_rdata_i[7]) begin
+                    rf_we_b_base = 1'b1;
+                  end
+                end
+                3'b110: begin
+                  if (imem_rdata_i[31]) begin // BN.MOVR
+                    // bignum RF read and write occur in the following cycle due to the indirect
+                    // register access so aren't set here. otbn_controller sets the appropriate read and
+                    // write enables directly in the instruction fetch stage in the first cycle of the
+                    // instruction's execution (so they can be used in the second cycle which performs
+                    // the bignum RF access).
+                    rf_ren_a_base   = 1'b1;
+                    rf_ren_b_base   = 1'b1;
+
+                    if (imem_rdata_i[9]) begin
+                      rf_we_a_base = 1'b1;
+                    end else if (imem_rdata_i[7]) begin
+                      rf_we_b_base = 1'b1;
+                    end
+                  end else begin // BN.MOV
+                    rf_we_bignum    = 1'b1;
+                    rf_ren_a_bignum = 1'b1;
+                  end
+                end
+                3'b111: begin
+                  if (imem_rdata_i[31]) begin  // BN.WSRW
+                    rf_ren_a_bignum = 1'b1;
+                    ispr_wr_en      = 1'b1;
+                  end else begin  // BN.WSRR
+                    rf_we_bignum = 1'b1;
+                    ispr_rd_en   = 1'b1;
+                  end
+                end
+                default: ;
+              endcase
+            end
+
+            ////////////////////////////////////////////
+            // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+            ////////////////////////////////////////////
+
+            InsnOpcodeBignumMulqacc: begin
               rf_ren_a_bignum  = 1'b1;
               rf_ren_b_bignum  = 1'b1;
               mac_bignum_op_en = 1'b1;
-              rf_we_bignum     = 1'b1;
 
-              if (imem_rdata_i[25] == 1'b1) begin  // lane mode
-                insn_rs2 = {{4'b1000}, imem_rdata_i[24]};
+              // BN.MULQACC.WO/BN.MULQACC.SO
+              if (imem_rdata_i[30] == 1'b1 || imem_rdata_i[29] == 1'b1) begin
+                rf_we_bignum                 = 1'b1;
+                flags_mac_update[flag_group] = 1'b1;
               end
 
-              if (imem_rdata_i[29:28] == 2'b01) begin
+              if (imem_rdata_i[12] == 1'b0) begin
                 // zero_acc not set
                 mac_bignum_acc_rd_en = 1'b1;
               end
             end
+
+            ///////////////////////////////////////////
+            //            BN.MULV/BN.MULV.L          //
+            ///////////////////////////////////////////
+
+            InsnOpcodeBignumMulv: begin
+              unique case (imem_rdata_i[14:12])
+                3'b110: begin
+                  rf_ren_a_bignum  = 1'b1;
+                  rf_ren_b_bignum  = 1'b1;
+                  mac_bignum_op_en = 1'b1;
+                  rf_we_bignum     = 1'b1;
+
+                  if (imem_rdata_i[25] == 1'b1) begin  // lane mode
+                    insn_rs2 = {{4'b1000}, imem_rdata_i[24]};
+                  end
+
+                  if (imem_rdata_i[29:28] == 2'b01) begin
+                    // zero_acc not set
+                    mac_bignum_acc_rd_en = 1'b1;
+                  end
+                end
+                default: ;
+              endcase
+            end
+
+            ////////////////////////////////////////////
+            //                 BN.SHV                 //
+            ////////////////////////////////////////////
+
+            InsnOpcodeBignumShiftv: begin
+              rf_we_bignum                = 1'b1;
+              rf_ren_b_bignum             = 1'b1;
+              alu_bignum_shifter_b_en     = 1'b1;
+              gen_alu_vec_pqc.alu_bignum_vector_type      = alu_vector_type_t'({2'b01, imem_rdata_i[16]});
+              alu_bignum_shift_right      = imem_rdata_i[30];
+              alu_bignum_shift_amt        = gen_alu_vec_pqc.shift_amt_v_type_bignum;
+              alu_bignum_logic_shifter_en = 1'b1;
+              gen_alu_vec_pqc.alu_bignum_vector_sel       = 1'b1;
+            end
+
+            ////////////////////////////////////////////
+            //                 BN.TRN                 //
+            ////////////////////////////////////////////
+
+            InsnOpcodeBignumTrn: begin
+              rf_ren_a_bignum          = 1'b1;
+              rf_ren_b_bignum          = 1'b1;
+              rf_we_bignum             = 1'b1;
+              gen_alu_vec_pqc.alu_bignum_trn_type      = alu_trn_type_t'(imem_rdata_i[27:25]);
+            end
+
             default: ;
           endcase
         end
+      end
+    end else begin : gen_decode
+      always_comb begin
+        rf_ren_a_base   = 1'b0;
+        rf_ren_b_base   = 1'b0;
+        rf_we_a_base    = 1'b0;
+        rf_we_b_base    = 1'b0;
+        rf_we_d_base    = 1'b0;
 
-        ////////////////////////////////////////////
-        //                 BN.SHV                 //
-        ////////////////////////////////////////////
+        rf_ren_a_bignum = 1'b0;
+        rf_ren_b_bignum = 1'b0;
+        rf_we_bignum    = 1'b0;
 
-        InsnOpcodeBignumShiftv: begin
-          rf_we_bignum                = 1'b1;
-          rf_ren_b_bignum             = 1'b1;
-          alu_bignum_shifter_b_en     = 1'b1;
-          alu_bignum_vector_type      = alu_vector_type_t'({2'b01, imem_rdata_i[16]});
-          alu_bignum_shift_right      = imem_rdata_i[30];
-          alu_bignum_shift_amt        = shift_amt_v_type_bignum;
-          alu_bignum_logic_shifter_en = 1'b1;
-          alu_bignum_vector_sel       = 1'b1;
+        alu_bignum_adder_x_en            = 1'b0;
+        alu_bignum_x_res_operand_a_sel   = 1'b0;
+        alu_bignum_adder_y_op_a_en       = 1'b0;
+        alu_bignum_adder_y_op_shifter_en = 1'b0;
+        alu_bignum_shifter_a_en          = 1'b0;
+        alu_bignum_shifter_b_en          = 1'b0;
+        alu_bignum_shift_right           = 1'b0;
+        alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+        alu_bignum_shift_mod_sel         = 1'b1;
+        alu_bignum_logic_a_en            = 1'b0;
+        alu_bignum_logic_shifter_en      = 1'b0;
+        alu_bignum_logic_res_sel         = '0;
+
+        flags_adder_update = '0;
+        flags_logic_update = '0;
+        flags_mac_update   = '0;
+        flags_ispr_wr      = '0;
+
+        mac_bignum_op_en     = 1'b0;
+        mac_bignum_acc_rd_en = 1'b0;
+
+        ispr_rd_en = 1'b0;
+        ispr_wr_en = 1'b0;
+
+        insn_rs2   = imem_rdata_i[24:20];
+
+        csr_addr_sel = 1'b0;
+
+        lsu_addr_en_predec_o = 1'b0;
+
+        branch_insn = 1'b0;
+        jump_insn   = 1'b0;
+        loop_insn   = 1'b0;
+        sel_insn    = 1'b0;
+
+        ctrl_flow_target_predec_o = '0;
+
+        if (imem_rvalid_i) begin
+          unique case (imem_rdata_i[6:0])
+
+            //////////////
+            // Base ALU //
+            //////////////
+
+            InsnOpcodeBaseLui: begin  // Load Upper Immediate
+              rf_we_d_base = 1'b1;
+            end
+
+            InsnOpcodeBaseOpImm: begin  // Register-Immediate ALU Operations
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+            end
+
+            InsnOpcodeBaseOp: begin  // Register-Register ALU operation
+              rf_ren_a_base = 1'b1;
+              rf_ren_b_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+            end
+
+            ///////////////////////
+            // Base Load / Store //
+            ///////////////////////
+
+            InsnOpcodeBaseLoad: begin
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+
+              if (imem_rdata_i[14:12] == 3'b010) begin
+                lsu_addr_en_predec_o = 1'b1;
+              end
+            end
+
+            InsnOpcodeBaseStore: begin
+              rf_ren_a_base = 1'b1;
+              rf_ren_b_base = 1'b1;
+
+              if (imem_rdata_i[14:12] == 3'b010) begin
+                lsu_addr_en_predec_o = 1'b1;
+              end
+            end
+
+
+            ////////////////////////
+            // Base Jump / Branch //
+            ////////////////////////
+
+            InsnOpcodeBaseBranch: begin
+              rf_ren_a_base             = 1'b1;
+              rf_ren_b_base             = 1'b1;
+              branch_insn               = 1'b1;
+              ctrl_flow_target_predec_o = imem_raddr_i + imm_b_type_base[ImemAddrWidth-1:0];
+            end
+
+            InsnOpcodeBaseJal: begin
+              rf_we_d_base              = 1'b1;
+              jump_insn                 = 1'b1;
+              ctrl_flow_target_predec_o = imem_raddr_i + imm_j_type_base[ImemAddrWidth-1:0];
+            end
+
+            InsnOpcodeBaseJalr: begin
+              rf_ren_a_base = 1'b1;
+              rf_we_d_base  = 1'b1;
+              jump_insn     = 1'b1;
+            end
+
+            //////////////
+            // Base CSR //
+            //////////////
+
+            InsnOpcodeBaseSystem: begin
+              csr_addr_sel = 1'b1;
+
+              if (imem_rdata_i[14:12] != 3'b000) begin
+                // Any CSR access
+                rf_ren_a_base = 1'b1;
+                rf_we_d_base  = 1'b1;
+              end
+
+              if (csr_addr == CsrRndPrefetch) begin
+                // Prefetch CSR does not access any ISPR
+                ispr_rd_en = 1'b0;
+                ispr_wr_en = 1'b0;
+              end else if (imem_rdata_i[14:12] == 3'b001) begin
+                // No read if destination is x0 unless read is to flags CSR. Both flag groups are in
+                // a single ISPR so to write one group the other must be read to write it back
+                // unchanged.
+                ispr_rd_en    = (imem_rdata_i[11:7] != 5'b0) | (csr_addr == CsrFg0) |
+                                                              (csr_addr == CsrFg1);
+                ispr_wr_en    = 1'b1;
+                flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
+                                {NFlagGroups{csr_addr == CsrFlags}};
+              end else if (imem_rdata_i[14:12] == 3'b010) begin
+                // Read and set if source register isn't x0, otherwise read only
+                if (imem_rdata_i[19:15] != 5'b0) begin
+                  ispr_rd_en    = 1'b1;
+                  ispr_wr_en    = 1'b1;
+                  flags_ispr_wr = {(csr_addr == CsrFg1), (csr_addr == CsrFg0)} |
+                                  {NFlagGroups{csr_addr == CsrFlags}};
+                end else begin
+                  ispr_rd_en = 1'b1;
+                end
+              end
+            end
+
+            ////////////////
+            // Bignum ALU //
+            ////////////////
+
+            InsnOpcodeBignumArith: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000, 3'b001, 3'b010, 3'b011:  begin
+                  // BN.ADD/BN.SUB/BN.ADDC/BN.SUBB
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_ren_b_bignum                  = 1'b1;
+                  rf_we_bignum                     = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b100: begin
+                  // BN.ADDI/BN.SUBI
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_we_bignum                     = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = '0;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b101: begin
+                  // BN.ADDM/BN.SUBM
+                  rf_ren_a_bignum                = 1'b1;
+                  rf_ren_b_bignum                = 1'b1;
+                  rf_we_bignum                   = 1'b1;
+                  alu_bignum_shift_amt           = shift_amt_a_type_bignum;
+                  alu_bignum_adder_x_en          = 1'b1;
+                  alu_bignum_x_res_operand_a_sel = 1'b1;
+                  alu_bignum_shift_mod_sel       = 1'b0;
+                end
+                default: ;
+              endcase
+            end
+
+            ////////////////////////////
+            // Bignum logical/BN.RSHI //
+            ////////////////////////////
+
+            InsnOpcodeBignumBaseMisc: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000, 3'b001: begin // BN.LOOP[I]
+                  rf_ren_a_base             = ~imem_rdata_i[12];
+                  loop_insn                 = 1'b1;
+                  ctrl_flow_target_predec_o = loop_end_addr[ImemAddrWidth-1:0];
+                end
+                3'b010, 3'b100, 3'b110:  begin  // BN.AND/BN.OR/BN.XOR
+                  rf_we_bignum                            = 1'b1;
+                  rf_ren_a_bignum                         = 1'b1;
+                  rf_ren_b_bignum                         = 1'b1;
+                  alu_bignum_shifter_b_en                 = 1'b1;
+                  alu_bignum_shift_right                  = imem_rdata_i[30];
+                  alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
+                  alu_bignum_logic_a_en                   = 1'b1;
+                  alu_bignum_logic_shifter_en             = 1'b1;
+                  alu_bignum_logic_res_sel[AluOpLogicXor] = imem_rdata_i[14:12] == 3'b110;
+                  alu_bignum_logic_res_sel[AluOpLogicOr]  = imem_rdata_i[14:12] == 3'b100;
+                  alu_bignum_logic_res_sel[AluOpLogicAnd] = imem_rdata_i[14:12] == 3'b010;
+                  flags_logic_update[flag_group]          = 1'b1;
+                end
+                3'b111, 3'b011: begin // BN.RSHI
+                  rf_we_bignum            = 1'b1;
+                  rf_ren_a_bignum         = 1'b1;
+                  rf_ren_b_bignum         = 1'b1;
+                  alu_bignum_shifter_a_en = 1'b1;
+                  alu_bignum_shifter_b_en = 1'b1;
+                  alu_bignum_shift_right  = 1'b1;
+                  alu_bignum_shift_amt    = shift_amt_s_type_bignum;
+                end
+                3'b101: begin // BN.NOT
+                  rf_we_bignum                            = 1'b1;
+                  rf_ren_b_bignum                         = 1'b1;
+                  alu_bignum_shifter_b_en                 = 1'b1;
+                  alu_bignum_shift_right                  = imem_rdata_i[30];
+                  alu_bignum_shift_amt                    = shift_amt_a_type_bignum;
+                  alu_bignum_logic_shifter_en             = 1'b1;
+                  alu_bignum_logic_res_sel[AluOpLogicNot] = 1'b1;
+                  flags_logic_update[flag_group]          = 1'b1;
+                end
+                default: ;
+              endcase
+            end
+
+            ///////////////////////////////////////////////
+            // Bignum Misc WSR/LID/SID/MOV[R]/CMP[B]/SEL //
+            ///////////////////////////////////////////////
+
+            InsnOpcodeBignumMisc: begin
+              unique case (imem_rdata_i[14:12])
+                3'b000: begin // BN.SEL
+                  rf_we_bignum    = 1'b1;
+                  rf_ren_a_bignum = 1'b1;
+                  rf_ren_b_bignum = 1'b1;
+                  sel_insn        = 1'b1;
+                end
+                3'b011, 3'b001: begin // BN.CMP[B]
+                  rf_ren_a_bignum                  = 1'b1;
+                  rf_ren_b_bignum                  = 1'b1;
+                  alu_bignum_shifter_b_en          = 1'b1;
+                  alu_bignum_shift_right           = imem_rdata_i[30];
+                  alu_bignum_shift_amt             = shift_amt_a_type_bignum;
+                  alu_bignum_adder_y_op_a_en       = 1'b1;
+                  alu_bignum_adder_y_op_shifter_en = 1'b1;
+                  flags_adder_update[flag_group]   = 1'b1;
+                end
+                3'b100, 3'b101: begin  // BN.LID, BN.SID
+                  rf_ren_a_base        = 1'b1;
+                  rf_ren_b_base        = 1'b1;
+                  lsu_addr_en_predec_o = 1'b1;
+
+                  if (imem_rdata_i[8]) begin
+                    rf_we_a_base = 1'b1;
+                  end
+
+                  if (imem_rdata_i[7]) begin
+                    rf_we_b_base = 1'b1;
+                  end
+                end
+                3'b110: begin
+                  if (imem_rdata_i[31]) begin // BN.MOVR
+                    // bignum RF read and write occur in the following cycle due to the indirect
+                    // register access so aren't set here. otbn_controller sets the appropriate read and
+                    // write enables directly in the instruction fetch stage in the first cycle of the
+                    // instruction's execution (so they can be used in the second cycle which performs
+                    // the bignum RF access).
+                    rf_ren_a_base   = 1'b1;
+                    rf_ren_b_base   = 1'b1;
+
+                    if (imem_rdata_i[9]) begin
+                      rf_we_a_base = 1'b1;
+                    end else if (imem_rdata_i[7]) begin
+                      rf_we_b_base = 1'b1;
+                    end
+                  end else begin // BN.MOV
+                    rf_we_bignum    = 1'b1;
+                    rf_ren_a_bignum = 1'b1;
+                  end
+                end
+                3'b111: begin
+                  if (imem_rdata_i[31]) begin  // BN.WSRW
+                    rf_ren_a_bignum = 1'b1;
+                    ispr_wr_en      = 1'b1;
+                  end else begin  // BN.WSRR
+                    rf_we_bignum = 1'b1;
+                    ispr_rd_en   = 1'b1;
+                  end
+                end
+                default: ;
+              endcase
+            end
+
+            ////////////////////////////////////////////
+            // BN.MULQACC/BN.MULQACC.WO/BN.MULQACC.SO //
+            ////////////////////////////////////////////
+
+            InsnOpcodeBignumMulqacc: begin
+              rf_ren_a_bignum  = 1'b1;
+              rf_ren_b_bignum  = 1'b1;
+              mac_bignum_op_en = 1'b1;
+
+              // BN.MULQACC.WO/BN.MULQACC.SO
+              if (imem_rdata_i[30] == 1'b1 || imem_rdata_i[29] == 1'b1) begin
+                rf_we_bignum                 = 1'b1;
+                flags_mac_update[flag_group] = 1'b1;
+              end
+
+              if (imem_rdata_i[12] == 1'b0) begin
+                // zero_acc not set
+                mac_bignum_acc_rd_en = 1'b1;
+              end
+            end
+
+            default: ;
+          endcase
         end
+      end
+    end
+  endgenerate
 
-        ////////////////////////////////////////////
-        //                 BN.TRN                 //
-        ////////////////////////////////////////////
+  generate
+    if (OtbnPQCEn) begin : ispr_mapping_pqc
+      always_comb begin
+        ispr_addr = IsprMod;
 
-        InsnOpcodeBignumTrn: begin
-          rf_ren_a_bignum          = 1'b1;
-          rf_ren_b_bignum          = 1'b1;
-          rf_we_bignum             = 1'b1;
-          alu_bignum_trn_type      = alu_trn_type_t'(imem_rdata_i[27:25]);
+        if (csr_addr_sel) begin
+          unique case (csr_addr)
+            CsrMod0, CsrMod1, CsrMod2, CsrMod3,
+            CsrMod4, CsrMod5, CsrMod6, CsrMod7: ispr_addr = IsprMod;
+            CsrKmacCfg:                         ispr_addr = IsprKmacCfg;
+            CsrKmacPartialW:                    ispr_addr = IsprKmacPartialW;
+            CsrKmacStatus:                      ispr_addr = IsprKmacStatus;
+            CsrKmacDigestW0, CsrKmacDigestW1, CsrKmacDigestW2, CsrKmacDigestW3, CsrKmacDigestW4,
+            CsrKmacDigestW5, CsrKmacDigestW6, CsrKmacDigestW7: ispr_addr = IsprKmacDigest;
+            CsrFlags, CsrFg0, CsrFg1:           ispr_addr = IsprFlags;
+            CsrRnd:                             ispr_addr = IsprRnd;
+            CsrUrnd:                            ispr_addr = IsprUrnd;
+            default: ;
+          endcase
+        end else begin
+          unique case (wsr_addr)
+            WsrMod:         ispr_addr = IsprMod;
+            WsrRnd:         ispr_addr = IsprRnd;
+            WsrUrnd:        ispr_addr = IsprUrnd;
+            WsrAcc:         ispr_addr = IsprAcc;
+            WsrKmacCfg:     ispr_addr = IsprKmacCfg;
+            WsrKmacMsg:     ispr_addr = IsprKmacMsg;
+            WsrKmacDigest:  ispr_addr = IsprKmacDigest;
+            WsrAccH:        ispr_addr = IsprAccH;
+            WsrKeyS0L:      ispr_addr = IsprKeyS0L;
+            WsrKeyS0H:      ispr_addr = IsprKeyS0H;
+            WsrKeyS1L:      ispr_addr = IsprKeyS1L;
+            WsrKeyS1H:      ispr_addr = IsprKeyS1H;
+            default: ;
+          endcase
         end
-      `endif
+      end
+    end else begin : ispr_mapping
+      always_comb begin
+        ispr_addr = IsprMod;
 
-        default: ;
-      endcase
+        if (csr_addr_sel) begin
+          unique case (csr_addr)
+            CsrMod0, CsrMod1, CsrMod2, CsrMod3,
+            CsrMod4, CsrMod5, CsrMod6, CsrMod7: ispr_addr = IsprMod;
+            CsrFlags, CsrFg0, CsrFg1:           ispr_addr = IsprFlags;
+            CsrRnd:                             ispr_addr = IsprRnd;
+            CsrUrnd:                            ispr_addr = IsprUrnd;
+            default: ;
+          endcase
+        end else begin
+          unique case (wsr_addr)
+            WsrMod:         ispr_addr = IsprMod;
+            WsrRnd:         ispr_addr = IsprRnd;
+            WsrUrnd:        ispr_addr = IsprUrnd;
+            WsrAcc:         ispr_addr = IsprAcc;
+            WsrKeyS0L:      ispr_addr = IsprKeyS0L;
+            WsrKeyS0H:      ispr_addr = IsprKeyS0H;
+            WsrKeyS1L:      ispr_addr = IsprKeyS1L;
+            WsrKeyS1H:      ispr_addr = IsprKeyS1H;
+            default: ;
+          endcase
+        end
+      end
     end
-  end
-
-  always_comb begin
-    ispr_addr = IsprMod;
-
-    if (csr_addr_sel) begin
-      unique case (csr_addr)
-        CsrMod0, CsrMod1, CsrMod2, CsrMod3,
-        CsrMod4, CsrMod5, CsrMod6, CsrMod7: ispr_addr = IsprMod;
-      `ifdef OTBN_PQC
-        CsrKmacCfg:                         ispr_addr = IsprKmacCfg;
-        CsrKmacPartialW:                    ispr_addr = IsprKmacPartialW;
-        CsrKmacStatus:                      ispr_addr = IsprKmacStatus;
-        CsrKmacDigestW0, CsrKmacDigestW1, CsrKmacDigestW2, CsrKmacDigestW3, CsrKmacDigestW4,
-        CsrKmacDigestW5, CsrKmacDigestW6, CsrKmacDigestW7: ispr_addr = IsprKmacDigest;
-      `endif
-        CsrFlags, CsrFg0, CsrFg1:           ispr_addr = IsprFlags;
-        CsrRnd:                             ispr_addr = IsprRnd;
-        CsrUrnd:                            ispr_addr = IsprUrnd;
-        default: ;
-      endcase
-    end else begin
-      unique case (wsr_addr)
-        WsrMod:         ispr_addr = IsprMod;
-        WsrRnd:         ispr_addr = IsprRnd;
-        WsrUrnd:        ispr_addr = IsprUrnd;
-        WsrAcc:         ispr_addr = IsprAcc;
-      `ifdef OTBN_PQC
-        WsrKmacCfg:     ispr_addr = IsprKmacCfg;
-        WsrKmacMsg:     ispr_addr = IsprKmacMsg;
-        WsrKmacDigest:  ispr_addr = IsprKmacDigest;
-        WsrAccH:        ispr_addr = IsprAccH;
-      `endif
-        WsrKeyS0L:      ispr_addr = IsprKeyS0L;
-        WsrKeyS0H:      ispr_addr = IsprKeyS0H;
-        WsrKeyS1L:      ispr_addr = IsprKeyS1L;
-        WsrKeyS1H:      ispr_addr = IsprKeyS1H;
-        default: ;
-      endcase
-    end
-  end
+  endgenerate
 
   assign alu_predec_bignum_o.adder_x_en            = alu_bignum_adder_x_en;
   assign alu_predec_bignum_o.x_res_operand_a_sel   = alu_bignum_x_res_operand_a_sel;
@@ -603,11 +970,15 @@ module otbn_predecode
   assign alu_predec_bignum_o.shifter_a_en          = alu_bignum_shifter_a_en;
   assign alu_predec_bignum_o.shifter_b_en          = alu_bignum_shifter_b_en;
   assign alu_predec_bignum_o.shift_right           = alu_bignum_shift_right;
-`ifdef OTBN_PQC
-  assign alu_predec_bignum_o.vector_type           = alu_bignum_vector_type;
-  assign alu_predec_bignum_o.vector_sel            = alu_bignum_vector_sel;
-  assign alu_predec_bignum_o.trn_type              = alu_bignum_trn_type;
-`endif
+
+  generate
+    if (OtbnPQCEn) begin : gen_alu_predec_pqc
+      assign alu_predec_bignum_o.vector_type           = gen_alu_vec_pqc.alu_bignum_vector_type;
+      assign alu_predec_bignum_o.vector_sel            = gen_alu_vec_pqc.alu_bignum_vector_sel;
+      assign alu_predec_bignum_o.trn_type              = gen_alu_vec_pqc.alu_bignum_trn_type;
+    end
+  endgenerate
+
   assign alu_predec_bignum_o.shift_amt             = alu_bignum_shift_amt;
   assign alu_predec_bignum_o.shift_mod_sel         = alu_bignum_shift_mod_sel;
   assign alu_predec_bignum_o.logic_a_en            = alu_bignum_logic_a_en;

@@ -22,6 +22,9 @@ module otbn_controller
   // Size of the data memory, in bytes
   parameter int DmemSizeByte = 4096,
 
+  // Enabling PQC hardware support with vector ISA extension
+  parameter bit OtbnPQCEn = 1'b1,
+
   localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte),
   localparam int DmemAddrWidth = prim_util_pkg::vbits(DmemSizeByte)
 ) (
@@ -149,12 +152,10 @@ module otbn_controller
 
   input  logic urnd_reseed_err_i,
 
-`ifdef OTBN_PQC
   // KMAC interface
   input  logic kmac_msg_write_ready_i,
   input  logic kmac_msg_pending_write_i,
   input  logic kmac_digest_valid_i,
-`endif
 
   // Secure Wipe
   output logic secure_wipe_req_o,
@@ -216,9 +217,16 @@ module otbn_controller
 
   logic stall;
   logic ispr_stall;
-`ifdef OTBN_PQC
-  logic kmac_write_stall;
-`endif
+
+  generate
+    if (OtbnPQCEn) begin : gen_kmac_nets
+      logic kmac_write_stall;
+      logic kmac_digest_req_raw;
+      logic kmac_msg_write_req_raw;
+      logic kmac_msg_partial_raw;
+    end
+  endgenerate
+
   logic mem_stall;
   logic rf_indirect_stall;
   logic jump_or_branch;
@@ -262,11 +270,6 @@ module otbn_controller
   logic                     lsu_predec_error, branch_target_predec_error, ctrl_predec_error;
 
   logic rnd_req_raw;
-`ifdef OTBN_PQC
-  logic kmac_digest_req_raw;
-  logic kmac_msg_write_req_raw;
-  logic kmac_msg_partial_raw;
-`endif
 
   // Register read data with integrity stripped off
   logic [31:0]     rf_base_rd_data_a_no_intg;
@@ -389,18 +392,6 @@ module otbn_controller
   // required on stores as there is no response to deal with.
   assign mem_stall = lsu_load_req_raw;
 
-  // Reads to RND must stall until data is available.
-  // Also, writes to the KMAC_MSG register are only
-  // allowed if it can accept new data.
-`ifdef OTBN_PQC
-  assign ispr_stall = (rnd_req_raw & ~rnd_valid_i) | (kmac_digest_req_raw & ~kmac_digest_valid_i);
-
-  assign kmac_write_stall = (kmac_msg_write_req_raw & ~kmac_msg_write_ready_i)
-                            | (kmac_msg_partial_raw & kmac_msg_pending_write_i);
-`else
-  assign ispr_stall = rnd_req_raw & ~rnd_valid_i;
-`endif
-
   assign rf_indirect_stall = insn_valid_i &
                              (state_q != OtbnStateStall) &
                              (insn_dec_shared_i.subset == InsnSubsetBignum) &
@@ -408,11 +399,22 @@ module otbn_controller
                               insn_dec_bignum_i.rf_b_indirect |
                               insn_dec_bignum_i.rf_d_indirect);
 
-`ifdef OTBN_PQC
-  assign stall = mem_stall | ispr_stall | rf_indirect_stall | kmac_write_stall;
-`else
-  assign stall = mem_stall | ispr_stall | rf_indirect_stall;
-`endif
+  // Reads to RND must stall until data is available.
+  // Also, writes to the KMAC_MSG register are only
+  // allowed if it can accept new data.
+  generate
+    if (OtbnPQCEn) begin : gen_ispr_stall_pqc
+      assign ispr_stall = (rnd_req_raw & ~rnd_valid_i) | (gen_kmac_nets.kmac_digest_req_raw & ~kmac_digest_valid_i);
+
+      assign gen_kmac_nets.kmac_write_stall = (gen_kmac_nets.kmac_msg_write_req_raw & ~kmac_msg_write_ready_i)
+                                | (gen_kmac_nets.kmac_msg_partial_raw & kmac_msg_pending_write_i);
+
+      assign stall = mem_stall | ispr_stall | rf_indirect_stall | gen_kmac_nets.kmac_write_stall;
+    end else begin : gen_ispr_stall
+      assign ispr_stall = rnd_req_raw & ~rnd_valid_i;
+      assign stall = mem_stall | ispr_stall | rf_indirect_stall;
+    end
+  endgenerate
 
   // OTBN is done when it was executing something (in state OtbnStateRun or OtbnStateStall)
   // and either it executes an ecall or an error occurs. A pulse on the done signal raises the
@@ -1002,13 +1004,15 @@ module otbn_controller
     .out_o(rf_bignum_rd_addr_a_o)
   );
 
-`ifdef OTBN_PQC
-  assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a
-      & insn_valid_i
-      & (~stall | kmac_write_stall);
-`else
-  assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a & insn_valid_i & ~stall;
-`endif
+  generate
+    if (OtbnPQCEn) begin : gen_bignum_rd_unbuf_pqc
+      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a
+          & insn_valid_i
+          & (~stall | gen_kmac_nets.kmac_write_stall);
+    end else begin : gen_bignum_rd_unbuf
+      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a & insn_valid_i & ~stall;
+    end
+  endgenerate
 
   prim_buf #(
     .Width(1)
@@ -1050,11 +1054,6 @@ module otbn_controller
   assign alu_bignum_operation_o.op          = insn_dec_bignum_i.alu_op;
   assign alu_bignum_operation_o.shift_right = insn_dec_bignum_i.alu_shift_right;
   assign alu_bignum_operation_o.shift_amt   = insn_dec_bignum_i.alu_shift_amt;
-`ifdef OTBN_PQC
-  assign alu_bignum_operation_o.vector_type = insn_dec_bignum_i.vector_type;
-  assign alu_bignum_operation_o.vector_sel  = insn_dec_bignum_i.vector_sel;
-  assign alu_bignum_operation_o.trn_type    = insn_dec_bignum_i.alu_trn_type;
-`endif
   assign alu_bignum_operation_o.flag_group  = insn_dec_bignum_i.alu_flag_group;
   assign alu_bignum_operation_o.sel_flag    = insn_dec_bignum_i.alu_sel_flag;
   assign alu_bignum_operation_o.alu_flag_en = insn_dec_bignum_i.alu_flag_en & insn_valid_i;
@@ -1072,15 +1071,20 @@ module otbn_controller
   assign mac_bignum_operation_o.zero_acc          = insn_dec_bignum_i.mac_zero_acc;
   assign mac_bignum_operation_o.shift_acc         = insn_dec_bignum_i.mac_shift_out;
 
-`ifdef OTBN_PQC
-  assign mac_bignum_operation_o.mulv              = insn_dec_bignum_i.mac_mulv;
-  assign mac_bignum_operation_o.data_type         = insn_dec_bignum_i.mac_data_type;
-  assign mac_bignum_operation_o.sel               = insn_dec_bignum_i.mac_sel;
-  assign mac_bignum_operation_o.lane_mode         = insn_dec_bignum_i.mac_lane_mode;
-  assign mac_bignum_operation_o.lane_word_32      = insn_dec_bignum_i.mac_lane_word_32;
-  assign mac_bignum_operation_o.lane_word_16      = insn_dec_bignum_i.mac_lane_word_16;
-  assign mac_bignum_operation_o.exec_mode         = insn_dec_bignum_i.mac_exec_mode;
-`endif
+  generate
+    if (OtbnPQCEn) begin : gen_mac_operation_pqc
+      assign alu_bignum_operation_o.vector_type   = insn_dec_bignum_i.vector_type;
+      assign alu_bignum_operation_o.vector_sel    = insn_dec_bignum_i.vector_sel;
+      assign alu_bignum_operation_o.trn_type      = insn_dec_bignum_i.alu_trn_type;
+      assign mac_bignum_operation_o.mulv          = insn_dec_bignum_i.mac_mulv;
+      assign mac_bignum_operation_o.data_type     = insn_dec_bignum_i.mac_data_type;
+      assign mac_bignum_operation_o.sel           = insn_dec_bignum_i.mac_sel;
+      assign mac_bignum_operation_o.lane_mode     = insn_dec_bignum_i.mac_lane_mode;
+      assign mac_bignum_operation_o.lane_word_32  = insn_dec_bignum_i.mac_lane_word_32;
+      assign mac_bignum_operation_o.lane_word_16  = insn_dec_bignum_i.mac_lane_word_16;
+      assign mac_bignum_operation_o.exec_mode     = insn_dec_bignum_i.mac_exec_mode;
+    end
+  endgenerate
 
   assign mac_bignum_en_o     = insn_valid_i & insn_dec_bignum_i.mac_en;
   assign mac_bignum_commit_o = insn_executing;
@@ -1117,28 +1121,45 @@ module otbn_controller
                                                                  rf_bignum_rd_data_b_intg_blanked;
 
   // Bignum Register file write control
+  generate
+    if (OtbnPQCEn) begin : gen_bignum_wr_ctrl_pqc
+      always_comb begin
+        // By default write nothing
+        rf_bignum_wr_en_unbuf = 2'b00;
 
-  always_comb begin
-    // By default write nothing
-    rf_bignum_wr_en_unbuf = 2'b00;
+        // Only write if valid instruction wants a bignum rf write and it isn't stalled. If instruction
+        // doesn't execute (e.g. due to an error) the write won't commit.
+        if (insn_valid_i && insn_dec_bignum_i.rf_we && !rf_indirect_stall && !gen_kmac_nets.kmac_write_stall) begin
+          if (insn_dec_bignum_i.mac_en && insn_dec_bignum_i.mac_shift_out) begin
+            // Special handling for BN.MULQACC.SO, only enable upper or lower half depending on
+            // mac_wr_hw_sel_upper.
+            rf_bignum_wr_en_unbuf = insn_dec_bignum_i.mac_wr_hw_sel_upper ? 2'b10 : 2'b01;
+          end else begin
+            // For everything else write both halves immediately.
+            rf_bignum_wr_en_unbuf = 2'b11;
+          end
+        end
+      end
+    end else begin : gen_bignum_wr_ctrl
+      always_comb begin
+        // By default write nothing
+        rf_bignum_wr_en_unbuf = 2'b00;
 
-    // Only write if valid instruction wants a bignum rf write and it isn't stalled. If instruction
-    // doesn't execute (e.g. due to an error) the write won't commit.
-  `ifdef OTBN_PQC
-    if (insn_valid_i && insn_dec_bignum_i.rf_we && !rf_indirect_stall && !kmac_write_stall) begin
-  `else
-    if (insn_valid_i && insn_dec_bignum_i.rf_we && !rf_indirect_stall) begin
-  `endif
-      if (insn_dec_bignum_i.mac_en && insn_dec_bignum_i.mac_shift_out) begin
-        // Special handling for BN.MULQACC.SO, only enable upper or lower half depending on
-        // mac_wr_hw_sel_upper.
-        rf_bignum_wr_en_unbuf = insn_dec_bignum_i.mac_wr_hw_sel_upper ? 2'b10 : 2'b01;
-      end else begin
-        // For everything else write both halves immediately.
-        rf_bignum_wr_en_unbuf = 2'b11;
+        // Only write if valid instruction wants a bignum rf write and it isn't stalled. If instruction
+        // doesn't execute (e.g. due to an error) the write won't commit.
+        if (insn_valid_i && insn_dec_bignum_i.rf_we && !rf_indirect_stall) begin
+          if (insn_dec_bignum_i.mac_en && insn_dec_bignum_i.mac_shift_out) begin
+            // Special handling for BN.MULQACC.SO, only enable upper or lower half depending on
+            // mac_wr_hw_sel_upper.
+            rf_bignum_wr_en_unbuf = insn_dec_bignum_i.mac_wr_hw_sel_upper ? 2'b10 : 2'b01;
+          end else begin
+            // For everything else write both halves immediately.
+            rf_bignum_wr_en_unbuf = 2'b11;
+          end
+        end
       end
     end
-  end
+  endgenerate
 
   // Bignum RF control signals from the controller aren't actually used, instead the predecoded
   // one-hot versions are. The predecoded versions get checked against the signals produced here.
@@ -1302,54 +1323,86 @@ module otbn_controller
   assign csr_addr     = csr_e'(insn_dec_base_i.i[11:0]);
   assign csr_sub_addr = insn_dec_base_i.i[$clog2(BaseWordsPerWLEN)-1:0];
 
-  always_comb begin
-    ispr_addr_base      = IsprMod;
-    ispr_word_addr_base = '0;
-    csr_illegal_addr    = 1'b0;
-
-    unique case (csr_addr)
-      CsrFlags, CsrFg0, CsrFg1: begin
-        ispr_addr_base      = IsprFlags;
-        ispr_word_addr_base = '0;
-      end
-      CsrMod0, CsrMod1, CsrMod2, CsrMod3, CsrMod4, CsrMod5, CsrMod6, CsrMod7: begin
+  generate
+    if (OtbnPQCEn) begin : gen_csr_ctrl_pqc
+      always_comb begin
         ispr_addr_base      = IsprMod;
-        ispr_word_addr_base = csr_sub_addr;
-      end
-      CsrRndPrefetch: begin
-        // Reading from RND_PREFETCH results in 0, there is no ISPR to read so no address is set.
-        // The csr_rdata mux logic takes care of producing the 0.
-      end
-    `ifdef OTBN_PQC
-      CsrKmacCfg: begin
-        ispr_addr_base      = IsprKmacCfg;
         ispr_word_addr_base = '0;
+        csr_illegal_addr    = 1'b0;
+
+        unique case (csr_addr)
+          CsrFlags, CsrFg0, CsrFg1: begin
+            ispr_addr_base      = IsprFlags;
+            ispr_word_addr_base = '0;
+          end
+          CsrMod0, CsrMod1, CsrMod2, CsrMod3, CsrMod4, CsrMod5, CsrMod6, CsrMod7: begin
+            ispr_addr_base      = IsprMod;
+            ispr_word_addr_base = csr_sub_addr;
+          end
+          CsrRndPrefetch: begin
+            // Reading from RND_PREFETCH results in 0, there is no ISPR to read so no address is set.
+            // The csr_rdata mux logic takes care of producing the 0.
+          end
+          CsrKmacCfg: begin
+            ispr_addr_base      = IsprKmacCfg;
+            ispr_word_addr_base = '0;
+          end
+          CsrKmacStatus: begin
+            ispr_addr_base      = IsprKmacStatus;
+            ispr_word_addr_base = '0;
+          end
+          CsrKmacDigestW0, CsrKmacDigestW1, CsrKmacDigestW2, CsrKmacDigestW3,
+          CsrKmacDigestW4, CsrKmacDigestW5, CsrKmacDigestW6, CsrKmacDigestW7: begin
+            ispr_addr_base      = IsprKmacDigest;
+            ispr_word_addr_base = csr_sub_addr;
+          end
+          CsrKmacPartialW: begin
+            ispr_addr_base      = IsprKmacPartialW;
+            ispr_word_addr_base = '0;
+          end
+          CsrRnd: begin
+            ispr_addr_base      = IsprRnd;
+            ispr_word_addr_base = '0;
+          end
+          CsrUrnd: begin
+            ispr_addr_base      = IsprUrnd;
+            ispr_word_addr_base = '0;
+          end
+          default: csr_illegal_addr = 1'b1;
+        endcase
       end
-      CsrKmacStatus: begin
-        ispr_addr_base      = IsprKmacStatus;
+    end else begin : gen_csr_ctrl
+      always_comb begin
+        ispr_addr_base      = IsprMod;
         ispr_word_addr_base = '0;
+        csr_illegal_addr    = 1'b0;
+
+        unique case (csr_addr)
+          CsrFlags, CsrFg0, CsrFg1: begin
+            ispr_addr_base      = IsprFlags;
+            ispr_word_addr_base = '0;
+          end
+          CsrMod0, CsrMod1, CsrMod2, CsrMod3, CsrMod4, CsrMod5, CsrMod6, CsrMod7: begin
+            ispr_addr_base      = IsprMod;
+            ispr_word_addr_base = csr_sub_addr;
+          end
+          CsrRndPrefetch: begin
+            // Reading from RND_PREFETCH results in 0, there is no ISPR to read so no address is set.
+            // The csr_rdata mux logic takes care of producing the 0.
+          end
+          CsrRnd: begin
+            ispr_addr_base      = IsprRnd;
+            ispr_word_addr_base = '0;
+          end
+          CsrUrnd: begin
+            ispr_addr_base      = IsprUrnd;
+            ispr_word_addr_base = '0;
+          end
+          default: csr_illegal_addr = 1'b1;
+        endcase
       end
-      CsrKmacDigestW0, CsrKmacDigestW1, CsrKmacDigestW2, CsrKmacDigestW3,
-      CsrKmacDigestW4, CsrKmacDigestW5, CsrKmacDigestW6, CsrKmacDigestW7: begin
-        ispr_addr_base      = IsprKmacDigest;
-        ispr_word_addr_base = csr_sub_addr;
-      end
-      CsrKmacPartialW: begin
-        ispr_addr_base      = IsprKmacPartialW;
-        ispr_word_addr_base = '0;
-      end
-    `endif
-      CsrRnd: begin
-        ispr_addr_base      = IsprRnd;
-        ispr_word_addr_base = '0;
-      end
-      CsrUrnd: begin
-        ispr_addr_base      = IsprUrnd;
-        ispr_word_addr_base = '0;
-      end
-      default: csr_illegal_addr = 1'b1;
-    endcase
-  end
+    end
+  endgenerate
 
   for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : g_ispr_word_sel_base
     assign ispr_word_sel_base[i_word] = ispr_word_addr_base == i_word;
@@ -1466,41 +1519,73 @@ module otbn_controller
 
   assign wsr_addr = wsr_e'(insn_dec_bignum_i.i[WsrNumWidth-1:0]);
 
-  always_comb begin
-    ispr_addr_bignum = IsprMod;
-    wsr_illegal_addr = 1'b0;
-    key_invalid      = 1'b0;
+  generate
+    if (OtbnPQCEn) begin : gen_wsr_ctrl_pqc
+      always_comb begin
+        ispr_addr_bignum = IsprMod;
+        wsr_illegal_addr = 1'b0;
+        key_invalid      = 1'b0;
 
-    unique case (wsr_addr)
-      WsrMod:  ispr_addr_bignum = IsprMod;
-      WsrRnd:  ispr_addr_bignum = IsprRnd;
-      WsrUrnd: ispr_addr_bignum = IsprUrnd;
-      WsrAcc:  ispr_addr_bignum = IsprAcc;
-    `ifdef OTBN_PQC
-      WsrKmacMsg: ispr_addr_bignum = IsprKmacMsg;
-      WsrKmacCfg: ispr_addr_bignum = IsprKmacCfg;
-      WsrKmacDigest: ispr_addr_bignum = IsprKmacDigest;
-      WsrAccH: ispr_addr_bignum = IsprAccH;
-    `endif
-      WsrKeyS0L: begin
-        ispr_addr_bignum = IsprKeyS0L;
-        key_invalid = ~sideload_key_shares_valid_i[0];
+        unique case (wsr_addr)
+          WsrMod:  ispr_addr_bignum = IsprMod;
+          WsrRnd:  ispr_addr_bignum = IsprRnd;
+          WsrUrnd: ispr_addr_bignum = IsprUrnd;
+          WsrAcc:  ispr_addr_bignum = IsprAcc;
+          WsrKmacMsg: ispr_addr_bignum = IsprKmacMsg;
+          WsrKmacCfg: ispr_addr_bignum = IsprKmacCfg;
+          WsrKmacDigest: ispr_addr_bignum = IsprKmacDigest;
+          WsrAccH: ispr_addr_bignum = IsprAccH;
+          WsrKeyS0L: begin
+            ispr_addr_bignum = IsprKeyS0L;
+            key_invalid = ~sideload_key_shares_valid_i[0];
+          end
+          WsrKeyS0H: begin
+            ispr_addr_bignum = IsprKeyS0H;
+            key_invalid = ~sideload_key_shares_valid_i[0];
+          end
+          WsrKeyS1L: begin
+            ispr_addr_bignum = IsprKeyS1L;
+            key_invalid = ~sideload_key_shares_valid_i[1];
+          end
+          WsrKeyS1H: begin
+            ispr_addr_bignum = IsprKeyS1H;
+            key_invalid = ~sideload_key_shares_valid_i[1];
+          end
+          default: wsr_illegal_addr = 1'b1;
+        endcase
       end
-      WsrKeyS0H: begin
-        ispr_addr_bignum = IsprKeyS0H;
-        key_invalid = ~sideload_key_shares_valid_i[0];
+    end else begin : gen_wsr_ctrl
+      always_comb begin
+        ispr_addr_bignum = IsprMod;
+        wsr_illegal_addr = 1'b0;
+        key_invalid      = 1'b0;
+
+        unique case (wsr_addr)
+          WsrMod:  ispr_addr_bignum = IsprMod;
+          WsrRnd:  ispr_addr_bignum = IsprRnd;
+          WsrUrnd: ispr_addr_bignum = IsprUrnd;
+          WsrAcc:  ispr_addr_bignum = IsprAcc;
+          WsrKeyS0L: begin
+            ispr_addr_bignum = IsprKeyS0L;
+            key_invalid = ~sideload_key_shares_valid_i[0];
+          end
+          WsrKeyS0H: begin
+            ispr_addr_bignum = IsprKeyS0H;
+            key_invalid = ~sideload_key_shares_valid_i[0];
+          end
+          WsrKeyS1L: begin
+            ispr_addr_bignum = IsprKeyS1L;
+            key_invalid = ~sideload_key_shares_valid_i[1];
+          end
+          WsrKeyS1H: begin
+            ispr_addr_bignum = IsprKeyS1H;
+            key_invalid = ~sideload_key_shares_valid_i[1];
+          end
+          default: wsr_illegal_addr = 1'b1;
+        endcase
       end
-      WsrKeyS1L: begin
-        ispr_addr_bignum = IsprKeyS1L;
-        key_invalid = ~sideload_key_shares_valid_i[1];
-      end
-      WsrKeyS1H: begin
-        ispr_addr_bignum = IsprKeyS1H;
-        key_invalid = ~sideload_key_shares_valid_i[1];
-      end
-      default: wsr_illegal_addr = 1'b1;
-    endcase
-  end
+    end
+  endgenerate
 
   assign wsr_wdata = insn_dec_shared_i.ispr_rs_insn ? ispr_rdata | rf_bignum_rd_data_a_no_intg :
                                                       rf_bignum_rd_data_a_no_intg;
@@ -1643,11 +1728,14 @@ module otbn_controller
                                             dmem_addr_unaligned_bignum |
                                             dmem_addr_unaligned_base);
 
-`ifdef OTBN_PQC
-  assign kmac_digest_req_raw = insn_valid_i & ispr_rd_insn & (ispr_addr_o == IsprKmacDigest);
-  assign kmac_msg_write_req_raw = insn_valid_i & ispr_wr_insn & (ispr_addr_o == IsprKmacMsg);
-  assign kmac_msg_partial_raw = insn_valid_i & ispr_wr_insn & (ispr_addr_o == IsprKmacPartialW);
-`endif
+  generate
+    if (OtbnPQCEn) begin : gen_kmac_raw
+      assign gen_kmac_nets.kmac_digest_req_raw = insn_valid_i & ispr_rd_insn & (ispr_addr_o == IsprKmacDigest);
+      assign gen_kmac_nets.kmac_msg_write_req_raw = insn_valid_i & ispr_wr_insn & (ispr_addr_o == IsprKmacMsg);
+      assign gen_kmac_nets.kmac_msg_partial_raw = insn_valid_i & ispr_wr_insn & (ispr_addr_o == IsprKmacPartialW);
+    end
+  endgenerate
+
   assign rnd_req_raw = insn_valid_i & ispr_rd_insn & (ispr_addr_o == IsprRnd);
   // Don't factor rnd_rep/fips_err_i into rnd_req_o. This would lead to a combo loop.
   assign rnd_req_o = rnd_req_raw & insn_valid_i & ~(software_err | fatal_err);
