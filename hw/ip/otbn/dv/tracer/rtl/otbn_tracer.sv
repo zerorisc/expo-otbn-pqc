@@ -14,7 +14,9 @@
  * cycle and provides it to the simulation environment via a DPI call. It uses `otbn_trace_if` to
  * get the information it needs. For further information see `hw/ip/otbn/dv/tracer/README.md`.
  */
-module otbn_tracer (
+module otbn_tracer #(
+  parameter bit OtbnPQCEn = `EN_PQC
+) (
   input  logic  clk_i,
   input  logic  rst_ni,
 
@@ -88,22 +90,33 @@ module otbn_tracer (
   endfunction
 
   // Determine name for an ISPR
-  function automatic string otbn_ispr_name_str(ispr_e ispr);
-    unique case (ispr)
-      IsprMod: return "MOD";
-      IsprAcc: return "ACC";
-    `ifdef OTBN_PQC
-      IsprAccH: return "ACCH";
-      IsprKmacMsg: return "KMAC_MSG";
-      IsprKmacCfg: return "KMAC_CFG";
-      IsprKmacPartialW: return "KMAC_PARTIAL_WRITE";
-    `endif
-      IsprRnd: return "RND";
-      IsprFlags: return "FLAGS";
-      IsprUrnd: return "URND";
-      default: return "UNKNOWN_ISPR";
-    endcase
-  endfunction
+  if (OtbnPQCEn) begin : gen_otbn_ispr_name_pqc
+    function automatic string otbn_ispr_name_str(ispr_e ispr);
+      unique case (ispr)
+        IsprMod: return "MOD";
+        IsprAcc: return "ACC";
+        IsprAccH: return "ACCH";
+        IsprKmacMsg: return "KMAC_MSG";
+        IsprKmacCfg: return "KMAC_CFG";
+        IsprKmacPartialW: return "KMAC_PARTIAL_WRITE";
+        IsprRnd: return "RND";
+        IsprFlags: return "FLAGS";
+        IsprUrnd: return "URND";
+        default: return "UNKNOWN_ISPR";
+      endcase
+    endfunction
+  end else begin : gen_otbn_ispr_name
+    function automatic string otbn_ispr_name_str(ispr_e ispr);
+      unique case (ispr)
+        IsprMod: return "MOD";
+        IsprAcc: return "ACC";
+        IsprRnd: return "RND";
+        IsprFlags: return "FLAGS";
+        IsprUrnd: return "URND";
+        default: return "UNKNOWN_ISPR";
+      endcase
+    endfunction
+  end
 
   // Format flag information into a string
   function automatic string otbn_flags_str(flags_t f);
@@ -182,41 +195,81 @@ module otbn_tracer (
     return work;
   endfunction
 
-  function automatic string trace_ispr_accesses(string work);
-    // Iterate through all ISPRs outputting reg reads and writes where ISPR accesses have occurred
-    for (int i_ispr = 0; i_ispr < NIspr; i_ispr++) begin
-      if (ispr_e'(i_ispr) == IsprFlags) begin
-        // Special handling for flags ISPR to provide per flag field output
-        for (int i_fg = 0; i_fg < NFlagGroups; i_fg++) begin
-          if (otbn_trace.flags_read[i_fg]) begin
-            work = output_trace(work, RegReadPrefix,
-                                $sformatf("%s%1d: %s", otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
-                                          otbn_flags_str(otbn_trace.flags_read_data[i_fg])));
-          end
+  generate
+    if (OtbnPQCEn) begin : gen_trace_accesses_pqc
+      function automatic string trace_ispr_accesses(string work);
+        // Iterate through all ISPRs outputting reg reads and writes where ISPR accesses have occurred
+        for (int i_ispr = 0; i_ispr < NIspr; i_ispr++) begin
+          if (ispr_e'(i_ispr) == IsprFlags) begin
+            // Special handling for flags ISPR to provide per flag field output
+            for (int i_fg = 0; i_fg < NFlagGroups; i_fg++) begin
+              if (otbn_trace.flags_read[i_fg]) begin
+                work = output_trace(work, RegReadPrefix,
+                                    $sformatf("%s%1d: %s", gen_otbn_ispr_name_pqc.otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
+                                              otbn_flags_str(otbn_trace.flags_read_data[i_fg])));
+              end
 
-          if (otbn_trace.flags_write[i_fg]) begin
-            work = output_trace(work, RegWritePrefix,
-                                $sformatf("%s%1d: %s", otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
-                                          otbn_flags_str(otbn_trace.flags_write_data[i_fg])));
+              if (otbn_trace.flags_write[i_fg]) begin
+                work = output_trace(work, RegWritePrefix,
+                                    $sformatf("%s%1d: %s", gen_otbn_ispr_name_pqc.otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
+                                              otbn_flags_str(otbn_trace.flags_write_data[i_fg])));
+              end
+            end
+          end else begin
+            // For all other ISPRs just dump out the full 256-bits of data being read/written
+            if (otbn_trace.ispr_read[i_ispr]) begin
+              work = output_trace(work, RegReadPrefix,
+                                  $sformatf("%s: %s", gen_otbn_ispr_name_pqc.otbn_ispr_name_str(ispr_e'(i_ispr)),
+                                            otbn_wlen_data_str(otbn_trace.ispr_read_data[i_ispr])));
+            end
+
+            if (otbn_trace.ispr_write[i_ispr]) begin
+              work = output_trace(work, RegWritePrefix,
+                                  $sformatf("%s: %s", gen_otbn_ispr_name_pqc.otbn_ispr_name_str(ispr_e'(i_ispr)),
+                                            otbn_wlen_data_str(otbn_trace.ispr_write_data[i_ispr])));
+            end
           end
         end
-      end else begin
-        // For all other ISPRs just dump out the full 256-bits of data being read/written
-        if (otbn_trace.ispr_read[i_ispr]) begin
-          work = output_trace(work, RegReadPrefix,
-                              $sformatf("%s: %s", otbn_ispr_name_str(ispr_e'(i_ispr)),
-                                        otbn_wlen_data_str(otbn_trace.ispr_read_data[i_ispr])));
-        end
+        return work;
+      endfunction
+    end else begin : gen_trace_accesses
+      function automatic string trace_ispr_accesses(string work);
+        // Iterate through all ISPRs outputting reg reads and writes where ISPR accesses have occurred
+        for (int i_ispr = 0; i_ispr < NIspr; i_ispr++) begin
+          if (ispr_e'(i_ispr) == IsprFlags) begin
+            // Special handling for flags ISPR to provide per flag field output
+            for (int i_fg = 0; i_fg < NFlagGroups; i_fg++) begin
+              if (otbn_trace.flags_read[i_fg]) begin
+                work = output_trace(work, RegReadPrefix,
+                                    $sformatf("%s%1d: %s", gen_otbn_ispr_name.otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
+                                              otbn_flags_str(otbn_trace.flags_read_data[i_fg])));
+              end
 
-        if (otbn_trace.ispr_write[i_ispr]) begin
-          work = output_trace(work, RegWritePrefix,
-                              $sformatf("%s: %s", otbn_ispr_name_str(ispr_e'(i_ispr)),
-                                        otbn_wlen_data_str(otbn_trace.ispr_write_data[i_ispr])));
+              if (otbn_trace.flags_write[i_fg]) begin
+                work = output_trace(work, RegWritePrefix,
+                                    $sformatf("%s%1d: %s", gen_otbn_ispr_name.otbn_ispr_name_str(ispr_e'(i_ispr)), i_fg,
+                                              otbn_flags_str(otbn_trace.flags_write_data[i_fg])));
+              end
+            end
+          end else begin
+            // For all other ISPRs just dump out the full 256-bits of data being read/written
+            if (otbn_trace.ispr_read[i_ispr]) begin
+              work = output_trace(work, RegReadPrefix,
+                                  $sformatf("%s: %s", gen_otbn_ispr_name.otbn_ispr_name_str(ispr_e'(i_ispr)),
+                                            otbn_wlen_data_str(otbn_trace.ispr_read_data[i_ispr])));
+            end
+
+            if (otbn_trace.ispr_write[i_ispr]) begin
+              work = output_trace(work, RegWritePrefix,
+                                  $sformatf("%s: %s", gen_otbn_ispr_name.otbn_ispr_name_str(ispr_e'(i_ispr)),
+                                            otbn_wlen_data_str(otbn_trace.ispr_write_data[i_ispr])));
+            end
+          end
         end
-      end
+        return work;
+      endfunction
     end
-    return work;
-  endfunction
+  endgenerate
 
   function automatic string prepend_trace_header(string work);
     bit added_header = 1'b0;
@@ -253,29 +306,57 @@ module otbn_tracer (
 
   import "DPI-C" function void accept_otbn_trace_string(string trace, int unsigned cycle_count);
 
-  function automatic void do_trace();
-    string work;
+  generate
+    if (OtbnPQCEn) begin : gen_do_trace_pqc
+      function automatic void do_trace();
+        string work;
 
-    work = trace_bignum_rf(work);
-    work = trace_base_rf(work);
-    work = trace_bignum_mem(work);
-    work = trace_ispr_accesses(work);
+        work = trace_bignum_rf(work);
+        work = trace_base_rf(work);
+        work = trace_bignum_mem(work);
+        work = gen_trace_accesses_pqc.trace_ispr_accesses(work);
 
-    work = prepend_trace_header(work);
+        work = prepend_trace_header(work);
 
-    if (work != "") begin
-      accept_otbn_trace_string(work, cycle_count);
+        if (work != "") begin
+          accept_otbn_trace_string(work, cycle_count);
+        end
+      endfunction
+
+      always @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          cycle_count <= '0;
+        end else begin
+          cycle_count <= cycle_count + 1'b1;
+          do_trace();
+        end
+      end
+    end else begin : gen_do_trace
+      function automatic void do_trace();
+        string work;
+
+        work = trace_bignum_rf(work);
+        work = trace_base_rf(work);
+        work = trace_bignum_mem(work);
+        work = gen_trace_accesses.trace_ispr_accesses(work);
+
+        work = prepend_trace_header(work);
+
+        if (work != "") begin
+          accept_otbn_trace_string(work, cycle_count);
+        end
+      endfunction
+
+      always @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          cycle_count <= '0;
+        end else begin
+          cycle_count <= cycle_count + 1'b1;
+          do_trace();
+        end
+      end
     end
-  endfunction
-
-  always @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      cycle_count <= '0;
-    end else begin
-      cycle_count <= cycle_count + 1'b1;
-      do_trace();
-    end
-  end
+  endgenerate
 endmodule
 
 `endif // SYNTHESIS
