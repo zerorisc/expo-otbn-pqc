@@ -62,6 +62,7 @@ module otbn_decoder
 
   // Immediates from RV32I encoding
   logic [31:0] imm_i_type_base;
+  logic [31:0] imm_i_sub_type_base;
   logic [31:0] imm_s_type_base;
   logic [31:0] imm_b_type_base;
   logic [31:0] imm_u_type_base;
@@ -120,6 +121,7 @@ module otbn_decoder
 
   // immediate extraction and sign extension
   assign imm_i_type_base = {{20{insn[31]}}, insn[31:20]};
+  assign imm_i_sub_type_base = {{22{insn[31]}}, insn[31:22]};
   assign imm_s_type_base = {{20{insn[31]}}, insn[31:25], insn[11:7]};
   assign imm_b_type_base = {{19{insn[31]}}, insn[31], insn[7], insn[30:25], insn[11:8], 1'b0};
   assign imm_u_type_base = {insn[31:12], 12'b0};
@@ -224,7 +226,7 @@ module otbn_decoder
   always_comb begin : immediate_b_mux
     unique case (imm_b_mux_sel_base)
       ImmBaseBI:    imm_b_base = imm_i_type_base;
-      ImmBaseBIsub: imm_b_base = {imm_i_type_base[31:2], 2'b00};
+      ImmBaseBIsub: imm_b_base = imm_i_sub_type_base;
       ImmBaseBS:    imm_b_base = imm_s_type_base;
       ImmBaseBU:    imm_b_base = imm_u_type_base;
       ImmBaseBB:    imm_b_base = imm_b_type_base;
