@@ -1659,10 +1659,7 @@ module otbn_controller
                     insn_dec_shared_i.ld_insn                         ? ~stall : 1'b0);
 
   assign lsu_addr = lsu_addr_saved_sel ? lsu_addr_saved_q                                :
-                    (insn_dec_shared_i.ld_insn ?
-                    (rf_bignum_wr_indirect_en ? alu_base_operation_result_i[DmemAddrWidth-1:0] :
-                                               {alu_base_operation_result_i[DmemAddrWidth-1:2], 2'b00})
-                                               : alu_base_operation_result_i[DmemAddrWidth-1:0]);
+                                         alu_base_operation_result_i[DmemAddrWidth-1:0];
 
   // SEC_CM: CTRL.REDUN
   assign expected_lsu_addr_en =

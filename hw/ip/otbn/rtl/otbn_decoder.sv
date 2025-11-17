@@ -223,14 +223,15 @@ module otbn_decoder
   logic [31:0] imm_b_base;
   always_comb begin : immediate_b_mux
     unique case (imm_b_mux_sel_base)
-      ImmBaseBI: imm_b_base = imm_i_type_base;
-      ImmBaseBS: imm_b_base = imm_s_type_base;
-      ImmBaseBU: imm_b_base = imm_u_type_base;
-      ImmBaseBB: imm_b_base = imm_b_type_base;
-      ImmBaseBJ: imm_b_base = imm_j_type_base;
-      ImmBaseBL: imm_b_base = imm_l_type_base;
-      ImmBaseBX: imm_b_base = imm_x_type_base;
-      default:   imm_b_base = imm_i_type_base;
+      ImmBaseBI:    imm_b_base = imm_i_type_base;
+      ImmBaseBIsub: imm_b_base = {imm_i_type_base[31:2], 2'b00};
+      ImmBaseBS:    imm_b_base = imm_s_type_base;
+      ImmBaseBU:    imm_b_base = imm_u_type_base;
+      ImmBaseBB:    imm_b_base = imm_b_type_base;
+      ImmBaseBJ:    imm_b_base = imm_j_type_base;
+      ImmBaseBL:    imm_b_base = imm_l_type_base;
+      ImmBaseBX:    imm_b_base = imm_x_type_base;
+      default:      imm_b_base = imm_i_type_base;
     endcase
   end
 
@@ -1155,6 +1156,9 @@ module otbn_decoder
             alu_op_b_mux_sel_base = OpBSelImmediate;
             alu_operator_base     = AluOpBaseAdd;
             imm_b_mux_sel_base    = ImmBaseBX;
+          end
+          3'b010: begin  // BN.LD
+            imm_b_mux_sel_base    = ImmBaseBIsub;
           end
           default: ;
         endcase
