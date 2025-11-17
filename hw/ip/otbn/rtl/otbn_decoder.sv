@@ -650,6 +650,18 @@ module otbn_decoder
             rf_ren_a_bignum = 1'b1;
             rf_ren_b_bignum = 1'b1;
           end
+          3'b010: begin  // BN.LD
+            ld_insn              = 1'b1;
+            rf_we_bignum         = 1'b1;
+            rf_ren_a_base        = 1'b1;
+            rf_wdata_sel_bignum  = RfWdSelLsu;
+
+            if (insn[21]) begin
+              a_wlen_word_inc_bignum = 1'b1;
+              rf_we_base             = 1'b1;
+              rf_wdata_sel_base      = RfWdSelIncr;
+            end
+          end
           3'b100: begin  // BN.LID
             ld_insn              = 1'b1;
             rf_we_bignum         = 1'b1;

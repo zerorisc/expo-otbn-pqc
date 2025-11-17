@@ -1372,6 +1372,61 @@ class BNCMPB(OTBNInsn):
         state.set_flags(self.flag_group, flags)
 
 
+class BNLD(OTBNInsn):
+    insn = insn_for_mnemonic('bn.ld', 4)
+
+    def __init__(self, raw: int, op_vals: Dict[str, int]):
+        super().__init__(raw, op_vals)
+        self.wrd = op_vals['wrd']
+        self.offset = op_vals['offset']
+        self.grs = op_vals['grs']
+        self.grs_inc = op_vals['grs_inc']
+
+    def execute(self, state: OTBNState) -> Optional[Iterator[None]]:
+        # BN.LD executes over two cycles. On the first cycle, we read the base
+        # address, compute the load address and check it for correctness,
+        # increment any GPRs, then perform the load itself. On the second
+        # cycle, update the WDR with the result.
+
+        grs_val = state.gprs.get_reg(self.grs).read_unsigned()
+        addr = (grs_val + self.offset) & ((1 << 32) - 1)
+        if DEBUG_MEM:
+            print(f"bn.lid {grs_val} {self.offset}", file=sys.stderr)
+        bad_grs = state.gprs.call_stack_err and (self.grs == 1)
+
+        saw_err = False
+
+        if state.gprs.call_stack_err:
+            state.stop_at_end_of_cycle(ErrBits.CALL_STACK)
+            saw_err = True
+
+        if not state.dmem.is_valid_256b_addr(addr) and not bad_grs1:
+            state.stop_at_end_of_cycle(ErrBits.BAD_DATA_ADDR)
+            saw_err = True
+
+        if saw_err:
+            return None
+
+        wrd = self.wrd
+        value = state.dmem.load_u256(addr)
+
+        if self.grs_inc:
+            new_grs_val = (grs_val + 32) & ((1 << 32) - 1)
+            state.gprs.get_reg(self.grs).write_unsigned(new_grs_val)
+
+        # Stall for a single cycle for memory to respond
+        yield None
+
+        if value is None:
+            state.stop_at_end_of_cycle(ErrBits.DMEM_INTG_VIOLATION)
+            return None
+
+        if DEBUG_MEM:
+            print(f"\t {format(value, '064x')}", file=sys.stderr)
+
+        state.wdrs.get_reg(wrd).write_unsigned(value)
+        return None
+
 class BNLID(OTBNInsn):
     insn = insn_for_mnemonic('bn.lid', 5)
 
@@ -1707,6 +1762,7 @@ INSN_CLASSES = [
     BNRSHI,
     BNSEL,
     BNCMP, BNCMPB,
+    BNLD,
     BNLID, BNSID,
     BNMOV, BNMOVR, BNTRN,
     BNWSRR, BNWSRW

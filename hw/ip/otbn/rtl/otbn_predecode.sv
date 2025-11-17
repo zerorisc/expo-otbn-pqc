@@ -462,6 +462,14 @@ module otbn_predecode
                 rf_we_b_base = 1'b1;
               end
             end
+            3'b010: begin  // BN.LD
+              rf_ren_a_base        = 1'b1;
+              lsu_addr_en_predec_o = 1'b1;
+
+              if (imem_rdata_i[21]) begin
+                rf_we_a_base = 1'b1;
+              end
+            end
             3'b110: begin
               if (imem_rdata_i[31]) begin // BN.MOVR
                 // bignum RF read and write occur in the following cycle due to the indirect

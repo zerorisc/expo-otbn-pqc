@@ -375,6 +375,21 @@ bnc:
     - shift
     - fg
 
+# Used by bn.ld and bn.sd
+bnxd:
+  parents:
+    - custom0
+    - funct3
+  fields:
+    imm: 31-22
+    fixed:
+      bits: 20
+      value: bx
+    rs1: 19-15
+    rd: 11-7
+    spp: 21
+
+
 # Used by bn.lid and bn.sid
 bnxid:
   parents:

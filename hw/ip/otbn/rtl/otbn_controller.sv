@@ -415,7 +415,8 @@ module otbn_controller
                              (insn_dec_shared_i.subset == InsnSubsetBignum) &
                              (insn_dec_bignum_i.rf_a_indirect |
                               insn_dec_bignum_i.rf_b_indirect |
-                              insn_dec_bignum_i.rf_d_indirect);
+                              insn_dec_bignum_i.rf_d_indirect |
+                              insn_dec_shared_i.ld_insn);
 
 `ifdef TOWARDS_MAC
   assign mulv_stall = insn_valid_i & insn_dec_bignum_i.mac_mulv_en & ~mac_mulv_done_i;
@@ -1255,8 +1256,8 @@ module otbn_controller
   prim_onehot_enc #(
     .OneHotWidth(NWdr)
   ) rf_bignum_wr_indirect_onehot_enc (
-    .in_i  (rf_base_rd_data_b_no_intg[4:0]),
-    .en_i  (rf_bignum_wr_indirect_en),
+    .in_i  (insn_dec_bignum_i.rf_d_indirect ? rf_base_rd_data_b_no_intg[4:0] : insn_dec_bignum_i.d),
+    .en_i  (rf_bignum_wr_indirect_en | insn_dec_shared_i.ld_insn),
     .out_o (rf_bignum_wr_indirect_onehot_o)
   );
 
