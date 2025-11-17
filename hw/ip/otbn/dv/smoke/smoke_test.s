@@ -217,9 +217,9 @@ li x26, 24
 bn.lid x26, 0(x25++)
 
 li x25, 0
-#bn.ld w24, 0(x25++)
-bn.ld w24, 0(x25)
-li x25, 32
+bn.ld w24, 0(x25++)
+#bn.ld w24, 0(x25)
+#li x25, 32
 
 # dmem[x25 == 0x20] = *x26 == w20 = 0x78fccc06_2228e9d6_89c9b54f_887cf14e_c79af825_69be57d4_fecd21a1_b9dd0141
 # x26 = x26 + 1 = 21 (0x15)
