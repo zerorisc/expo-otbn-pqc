@@ -70,7 +70,6 @@ module otbn_decoder
   // Immediates specific to OTBN encoding
   logic [31:0] imm_l_type_base;
   logic [31:0] imm_x_type_base;
-  logic [31:0] imm_y_type_base;
 
   alu_op_base_e   alu_operator_base;      // ALU operation selection for base ISA
   alu_op_bignum_e alu_operator_bignum;    // ALU operation selection for bignum ISA
@@ -129,8 +128,6 @@ module otbn_decoder
   assign imm_l_type_base = {22'b0, insn[19:15], insn[11:7]};
   // x type immediate is for BN.LID/BN.SID instructions and is not from the RISC-V ISA
   assign imm_x_type_base = {{17{insn[11]}}, insn[11:9], insn[31:25], 5'b0};
-  // y type immediate is for BN.LD/BN.SD instructions and is not from the RISC-V ISA
-  assign imm_y_type_base = {{17{insn[31]}}, insn[31:22], 5'b0};
 
   logic [WLEN-1:0] imm_i_type_bignum;
 
@@ -233,7 +230,6 @@ module otbn_decoder
       ImmBaseBJ: imm_b_base = imm_j_type_base;
       ImmBaseBL: imm_b_base = imm_l_type_base;
       ImmBaseBX: imm_b_base = imm_x_type_base;
-      ImmBaseBY: imm_b_base = imm_y_type_base;
       default:   imm_b_base = imm_i_type_base;
     endcase
   end
@@ -654,13 +650,19 @@ module otbn_decoder
             rf_ren_a_bignum = 1'b1;
             rf_ren_b_bignum = 1'b1;
           end
-          3'b010: begin  // BN.LD
-            ld_insn              = 1'b1;
-            rf_we_bignum         = 1'b1;
-            rf_ren_a_base        = 1'b1;
-            rf_wdata_sel_bignum  = RfWdSelLsu;
+          3'b010: begin  // BN.LD and BN.SD
+            if (insn[7]) begin // BN.SD
+              st_insn              = 1'b1;
+              rf_ren_a_base        = 1'b1;
+              rf_ren_b_bignum      = 1'b1;
+            end else begin      // BN.LD
+              ld_insn              = 1'b1;
+              rf_we_bignum         = 1'b1;
+              rf_ren_a_base        = 1'b1;
+              rf_wdata_sel_bignum  = RfWdSelLsu;
+            end
 
-            if (insn[21]) begin
+            if (insn[8]) begin
               a_wlen_word_inc_bignum = 1'b1;
               rf_we_base             = 1'b1;
               rf_wdata_sel_base      = RfWdSelIncr;
@@ -1153,18 +1155,13 @@ module otbn_decoder
             alu_flag_en_bignum       = 1'b1;
           end
           3'b100,
-          3'b101: begin  // BN.LID/BN.SID
+          3'b010,
+          3'b101: begin  // BN.LD/BN.SD/BN.LID/BN.SID
             // Calculate memory address using base ALU
             alu_op_a_mux_sel_base = OpASelRegister;
             alu_op_b_mux_sel_base = OpBSelImmediate;
             alu_operator_base     = AluOpBaseAdd;
             imm_b_mux_sel_base    = ImmBaseBX;
-          end
-          3'b010: begin  // BN.LD
-            alu_op_a_mux_sel_base = OpASelRegister;
-            alu_op_b_mux_sel_base = OpBSelImmediate;
-            alu_operator_base     = AluOpBaseAdd;
-            imm_b_mux_sel_base    = ImmBaseBY;
           end
           default: ;
         endcase

@@ -226,6 +226,10 @@ bn.ld w24, 0(x25++)
 li x26, 20
 bn.sid x26++, 0(x25)
 
+bn.sd w20, 0(x25++)
+bn.sd w21, 0(x25)
+li x25, 32
+
 # w25 = w24 = 0xcccccccc_bbbbbbbb_aaaaaaaa_facefeed_deadbeef_cafed00d_d0beb533_1234abcd
 bn.mov w25, w24
 

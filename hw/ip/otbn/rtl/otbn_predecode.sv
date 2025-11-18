@@ -462,11 +462,16 @@ module otbn_predecode
                 rf_we_b_base = 1'b1;
               end
             end
-            3'b010: begin  // BN.LD
+            3'b010: begin  // BN.LD and BN.SD
               rf_ren_a_base        = 1'b1;
+              if (imem_rdata_i[7]) begin // BN.SD
+                rf_ren_b_bignum        = 1'b1;
+              //end else begin      // BN.LD
+              end
               lsu_addr_en_predec_o = 1'b1;
 
-              if (imem_rdata_i[21]) begin
+              //if (imem_rdata_i[21]) begin
+              if (imem_rdata_i[8]) begin
                 rf_we_a_base = 1'b1;
               end
             end

@@ -882,7 +882,9 @@ module otbn_controller
         // Bignum stores can update the base register file where an increment is used.
         rf_base_wr_en_raw   = (insn_dec_shared_i.subset == InsnSubsetBignum) &
                               insn_dec_base_i.rf_we                          &
-                              rf_indirect_stall;
+                              (insn_dec_bignum_i.rf_a_indirect |
+                              insn_dec_bignum_i.rf_b_indirect  |
+                              insn_dec_bignum_i.rf_d_indirect ? rf_indirect_stall : 1'b1);
       end else if (insn_dec_shared_i.ld_insn) begin
         // For loads, both base reads happen in the same cycle as the request. The address is
         // required for the request and the indirect destination register (only used for Bignum
@@ -1256,7 +1258,7 @@ module otbn_controller
   prim_onehot_enc #(
     .OneHotWidth(NWdr)
   ) rf_bignum_wr_indirect_onehot_enc (
-    .in_i  (insn_dec_bignum_i.rf_d_indirect ? rf_base_rd_data_b_no_intg[4:0] : insn_dec_bignum_i.d),
+    .in_i  (insn_dec_bignum_i.rf_d_indirect ? rf_base_rd_data_b_no_intg[4:0] : insn_dec_bignum_i.b),
     .en_i  (rf_bignum_wr_indirect_en | insn_dec_shared_i.ld_insn),
     .out_o (rf_bignum_wr_indirect_onehot_o)
   );
@@ -1282,7 +1284,8 @@ module otbn_controller
   // Buffer them to ensure they don't get optimised away (with a functionaly correct OTBN they will
   // always be identical).
   assign rf_bignum_wr_addr_unbuf = insn_dec_bignum_i.rf_d_indirect ? insn_bignum_wr_addr_q :
-                                                                     insn_dec_bignum_i.d;
+                                   (insn_dec_shared_i.ld_insn ? insn_dec_bignum_i.b :
+                                                                     insn_dec_bignum_i.d);
 
   prim_buf #(
     .Width(WdrAw)

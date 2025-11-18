@@ -1427,6 +1427,51 @@ class BNLD(OTBNInsn):
         state.wdrs.get_reg(wrd).write_unsigned(value)
         return None
 
+
+class BNSD(OTBNInsn):
+    insn = insn_for_mnemonic('bn.sd', 4)
+
+    def __init__(self, raw: int, op_vals: Dict[str, int]):
+        super().__init__(raw, op_vals)
+        self.wrs = op_vals['wrs']
+        self.offset = op_vals['offset']
+        self.grs = op_vals['grs']
+        self.grs_inc = op_vals['grs_inc']
+
+    def execute(self, state: OTBNState) -> Optional[Iterator[None]]:
+        grs_val = state.gprs.get_reg(self.grs).read_unsigned()
+        addr = (grs_val + self.offset) & ((1 << 32) - 1)
+        wrs_val = state.gprs.get_reg(self.wrs).read_unsigned()
+
+        bad_grs = state.gprs.call_stack_err and (self.grs == 1)
+        if DEBUG_MEM:
+            print(f"bn.sd {grs_val} {self.offset} <- {self.wrs}", file=sys.stderr)
+        saw_err = False
+
+        if state.gprs.call_stack_err:
+            state.stop_at_end_of_cycle(ErrBits.CALL_STACK)
+            saw_err = True
+
+        if not state.dmem.is_valid_256b_addr(addr) and not bad_grs:
+            state.stop_at_end_of_cycle(ErrBits.BAD_DATA_ADDR)
+            saw_err = True
+
+        if saw_err:
+            return None
+
+        if self.grs_inc:
+            new_grs_val = (grs_val + 32) & ((1 << 32) - 1)
+            state.gprs.get_reg(self.grs).write_unsigned(new_grs_val)
+
+
+#        yield None
+
+        if DEBUG_MEM:
+            print(f"\t {format(wrs_val, '064x')}", file=sys.stderr)
+        state.dmem.store_u256(addr, wrs_val)
+        return None
+
+
 class BNLID(OTBNInsn):
     insn = insn_for_mnemonic('bn.lid', 5)
 
@@ -1762,7 +1807,7 @@ INSN_CLASSES = [
     BNRSHI,
     BNSEL,
     BNCMP, BNCMPB,
-    BNLD,
+    BNLD, BNSD,
     BNLID, BNSID,
     BNMOV, BNMOVR, BNTRN,
     BNWSRR, BNWSRW

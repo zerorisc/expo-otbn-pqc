@@ -326,8 +326,7 @@ package otbn_pkg;
     ImmBaseBU,
     ImmBaseBJ,
     ImmBaseBL,
-    ImmBaseBX,
-    ImmBaseBY
+    ImmBaseBX
   } imm_b_sel_base_e;
 
   // Shift amount select for bignum ISA
