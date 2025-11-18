@@ -1041,7 +1041,6 @@
       dpp: b0
       funct3: b010
 
-
 - mnemonic: bn.sd
   synopsis: Store Word
   operands:
@@ -1099,7 +1098,6 @@
       spp: grs_inc
       dpp: b1
       funct3: b010
-
 
 - mnemonic: bn.lid
   synopsis: Load Word (indirect source, indirect destination)
