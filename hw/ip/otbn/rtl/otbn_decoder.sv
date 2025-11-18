@@ -62,7 +62,6 @@ module otbn_decoder
 
   // Immediates from RV32I encoding
   logic [31:0] imm_i_type_base;
-  logic [31:0] imm_i_sub_type_base;
   logic [31:0] imm_s_type_base;
   logic [31:0] imm_b_type_base;
   logic [31:0] imm_u_type_base;
@@ -71,6 +70,7 @@ module otbn_decoder
   // Immediates specific to OTBN encoding
   logic [31:0] imm_l_type_base;
   logic [31:0] imm_x_type_base;
+  logic [31:0] imm_y_type_base;
 
   alu_op_base_e   alu_operator_base;      // ALU operation selection for base ISA
   alu_op_bignum_e alu_operator_bignum;    // ALU operation selection for bignum ISA
@@ -121,7 +121,6 @@ module otbn_decoder
 
   // immediate extraction and sign extension
   assign imm_i_type_base = {{20{insn[31]}}, insn[31:20]};
-  assign imm_i_sub_type_base = {{22{insn[31]}}, insn[31:22]};
   assign imm_s_type_base = {{20{insn[31]}}, insn[31:25], insn[11:7]};
   assign imm_b_type_base = {{19{insn[31]}}, insn[31], insn[7], insn[30:25], insn[11:8], 1'b0};
   assign imm_u_type_base = {insn[31:12], 12'b0};
@@ -130,6 +129,8 @@ module otbn_decoder
   assign imm_l_type_base = {22'b0, insn[19:15], insn[11:7]};
   // x type immediate is for BN.LID/BN.SID instructions and is not from the RISC-V ISA
   assign imm_x_type_base = {{17{insn[11]}}, insn[11:9], insn[31:25], 5'b0};
+  // y type immediate is for BN.LD/BN.SD instructions and is not from the RISC-V ISA
+  assign imm_y_type_base = {{17{insn[31]}}, insn[31:22], 5'b0};
 
   logic [WLEN-1:0] imm_i_type_bignum;
 
@@ -225,15 +226,15 @@ module otbn_decoder
   logic [31:0] imm_b_base;
   always_comb begin : immediate_b_mux
     unique case (imm_b_mux_sel_base)
-      ImmBaseBI:    imm_b_base = imm_i_type_base;
-      ImmBaseBIsub: imm_b_base = imm_i_sub_type_base;
-      ImmBaseBS:    imm_b_base = imm_s_type_base;
-      ImmBaseBU:    imm_b_base = imm_u_type_base;
-      ImmBaseBB:    imm_b_base = imm_b_type_base;
-      ImmBaseBJ:    imm_b_base = imm_j_type_base;
-      ImmBaseBL:    imm_b_base = imm_l_type_base;
-      ImmBaseBX:    imm_b_base = imm_x_type_base;
-      default:      imm_b_base = imm_i_type_base;
+      ImmBaseBI: imm_b_base = imm_i_type_base;
+      ImmBaseBS: imm_b_base = imm_s_type_base;
+      ImmBaseBU: imm_b_base = imm_u_type_base;
+      ImmBaseBB: imm_b_base = imm_b_type_base;
+      ImmBaseBJ: imm_b_base = imm_j_type_base;
+      ImmBaseBL: imm_b_base = imm_l_type_base;
+      ImmBaseBX: imm_b_base = imm_x_type_base;
+      ImmBaseBY: imm_b_base = imm_y_type_base;
+      default:   imm_b_base = imm_i_type_base;
     endcase
   end
 
@@ -1160,7 +1161,10 @@ module otbn_decoder
             imm_b_mux_sel_base    = ImmBaseBX;
           end
           3'b010: begin  // BN.LD
-            imm_b_mux_sel_base    = ImmBaseBIsub;
+            alu_op_a_mux_sel_base = OpASelRegister;
+            alu_op_b_mux_sel_base = OpBSelImmediate;
+            alu_operator_base     = AluOpBaseAdd;
+            imm_b_mux_sel_base    = ImmBaseBY;
           end
           default: ;
         endcase
