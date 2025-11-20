@@ -5437,7 +5437,7 @@
             desc: Number of application interfaces
             param_type: int
             unpacked_dimensions: null
-            default: 3
+            default: 4
             local: false
             expose: true
             name_top: KmacNumAppIntf
@@ -12568,7 +12568,7 @@
               {
                 hart: 0x22100000
               }
-              size_byte: 0x40000
+              size_byte: 0x20000
             }
           ]
           xbar: false
@@ -24353,7 +24353,7 @@
           desc: Number of application interfaces
           param_type: int
           unpacked_dimensions: null
-          default: 3
+          default: 4
           local: false
           expose: true
           name_top: KmacNumAppIntf
@@ -30761,7 +30761,7 @@
           desc: Number of application interfaces
           param_type: int
           unpacked_dimensions: null
-          default: 3
+          default: 4
           local: false
           expose: true
           name_top: KmacNumAppIntf
@@ -30782,7 +30782,7 @@
           desc: Number of application interfaces
           param_type: int
           unpacked_dimensions: null
-          default: 3
+          default: 4
           local: false
           expose: true
           name_top: KmacNumAppIntf
