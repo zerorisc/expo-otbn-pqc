@@ -693,6 +693,16 @@ poly_uniform:
     bn.or   w11, w11, w11 << 64
     bn.or   w11, w11, w11 << 32
 
+    /* Set up a mask to select the least significant byte of each 32 bits.
+       This is only used later, but right now we're waiting on Keccak to
+       complete anyway so we process it early. */
+    bn.shv.8S w13, w11 >> 15
+
+    /* Load the vectorized modulus for later. */
+    li      t0, 12
+    la      t1, modulus
+    bn.lid  t0, 0(t1)
+
     /* Speculatively store 256 candidate coefficients.
 
        For performance reasons, we do not check that the coefficients are < Q
@@ -795,17 +805,6 @@ _poly_uniform_postprocess_test_entrypoint:
     /* Reset the output pointer. */
     addi    a1, a1, -1024
 
-    /* Set up a mask to select the least significant byte of each 32 bits. */
-    bn.addi w11, bn0, 0xff
-    bn.or   w11, w11, w11 << 128
-    bn.or   w11, w11, w11 << 64
-    bn.or   w11, w11, w11 << 32
-
-    /* w12 <= vectorized modulus */
-    li      t0, 12
-    la      t1, modulus
-    bn.lid  t0, 0(t1)
-
     /* Keep track of the number of bytes available in the digest. Starts at 0
        since at present all bytes have been consumed. */
     li    t2, 0
@@ -828,11 +827,11 @@ _poly_uniform_discard_coeff_done:
 
        /* Select the most significant byte of each difference and shift it down
           to the least significant byte-position. */
-       bn.and  w10, w11, w10 >> 24
+       bn.and  w10, w13, w10 >> 24
 
        /* Compare to the mask. If all coefficients are good, the values should
           be equal and all flags should be zero except for Z. */
-       bn.cmp  w11, w10
+       bn.cmp  w13, w10
 
        /* Check the flag values. If only Z is set, all indicator
           bytes are 0xff and we can proceed to the next word.  Otherwise, we
