@@ -35,22 +35,27 @@ main:
   bn.lid  x13, 0(x2)
 
   /* Set up a SHAKE128 operation with an empty input (just so there's digest to read). */
-  li     x2, 0x2
-  csrrw  x0, kmac_cfg, x2
+  li      x2, 0x2
+  csrrw   x0, kmac_cfg, x2
 
   /* Run the first test. */
-  la     x11, result1
-  addi   x11, x11, 1024
-  jal    x1, _poly_uniform_postprocess_test_entrypoint
-
+/*
+  la      x11, result1
+  addi    x11, x11, 1024
+  bn.addi w14, w31, 0
+  jal     x1, _poly_uniform_postprocess_test_entrypoint
+*/
   /* Reset SHAKE128 operation. */
-  li     x2, 0x2
-  csrrw  x0, kmac_cfg, x2
+/*
+  li      x2, 0x2
+  csrrw   x0, kmac_cfg, x2
+*/
 
   /* Run the second test. */
-  la     x11, result2
-  addi   x11, x11, 1024
-  jal    x1, _poly_uniform_postprocess_test_entrypoint
+  la      x11, result2
+  addi    x11, x11, 1024
+  bn.addi w14, w31, 31
+  jal     x1, _poly_uniform_postprocess_test_entrypoint
 
   ecall
 
