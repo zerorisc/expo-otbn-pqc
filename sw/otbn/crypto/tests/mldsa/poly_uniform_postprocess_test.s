@@ -42,7 +42,7 @@ main:
   la      x11, result1
   addi    x11, x11, 1024
   addi    x28, x11, 0
-  li      x29, 0
+  bn.addi w14, w31, 0
   jal     x1, _poly_uniform_postprocess_test_entrypoint
 
   /* Reset SHAKE128 operation. */
@@ -53,7 +53,7 @@ main:
   la      x11, result2
   addi    x11, x11, 1024
   addi    x28, x11, 0
-  li      x29, 31
+  bn.addi w14, w31, 31
   jal     x1, _poly_uniform_postprocess_test_entrypoint
 
   ecall

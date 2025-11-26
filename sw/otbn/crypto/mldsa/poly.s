@@ -712,11 +712,11 @@ poly_uniform:
 
     /* Initialize a register that will eventually hold the vector index of the
        first vector with bad coefficients as a hint to the postprocessing. */
-    li      t4, 0
+    bn.xor  w14, w14, w14
 
     /* Initialize a register to increment the vector index. When we reach the
        first bad vector, we set this to zero to stop incrementing. */
-    li      t5, 1
+    bn.addi w15, bn0, 1
 
     /* Initialize a temp register pointer. */
     li      t6, 21
@@ -829,7 +829,7 @@ poly_uniform:
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     bn.rshi w0, shake_reg, w0 >> 8
     /* While waiting for more digest, mask and check vectors 0..5. */
-    loopi 6, 11
+    loopi 6, 8
       /* Load the next vector. */
       bn.lid  t6, 0(t3)
       /* Mask and store the data. */
@@ -840,11 +840,8 @@ poly_uniform:
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t5, zero, 0
-      add        t4, t4, t5
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
     /* STATE REFRESH. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
     bn.rshi w0, shake_reg, w0 >> 24
@@ -904,7 +901,7 @@ poly_uniform:
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     bn.rshi w0, shake_reg, w0 >> 16
     /* While waiting for more digest, mask and check vectors 6..12. */
-    loopi 7, 11
+    loopi 7, 8
       /* Load the next vector. */
       bn.lid  t6, 0(t3)
       /* Mask and store the data. */
@@ -915,11 +912,8 @@ poly_uniform:
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t5, zero, 0
-      add        t4, t4, t5
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
     /* STATE REFRESH. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
     bn.rshi w0, shake_reg, w0 >> 16
@@ -981,7 +975,7 @@ poly_uniform:
     /* Process bytes 480-575 of digest (state refresh before first read). */
 
     /* While waiting for more digest, mask and check vectors 13..19. */
-    loopi 7, 11
+    loopi 7, 8
       /* Load the next vector. */
       bn.lid  t6, 0(t3)
       /* Mask and store the data. */
@@ -992,11 +986,8 @@ poly_uniform:
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t5, zero, 0
-      add        t4, t4, t5
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
     /* STATE REFRESH. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
     loopi   8, 2
@@ -1067,7 +1058,7 @@ poly_uniform:
     /* Process bytes 672-767 of digest (state refresh before first read). */
 
     /* While waiting for more digest, mask and check vectors 20..27. */
-    loopi 8, 11
+    loopi 8, 8
       /* Load the next vector. */
       bn.lid  t6, 0(t3)
       /* Mask and store the data. */
@@ -1078,11 +1069,8 @@ poly_uniform:
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t5, zero, 0
-      add        t4, t4, t5
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
     /* STATE REFRESH. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
     loopi   8, 2
@@ -1117,7 +1105,7 @@ poly_uniform:
     bn.sid  x0, 0(a1++)
 
     /* Done sampling; mask and check the last few vectors 28..31. */
-    loopi 4, 11
+    loopi 4, 8
       /* Load the next vector. */
       bn.lid  t6, 0(t3)
       /* Mask and store the data. */
@@ -1128,11 +1116,8 @@ poly_uniform:
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t5, zero, 0
-      add        t4, t4, t5
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
 
 /* This label is for testing, so we can intentionally give the postprocessing
  * part difficult inputs. */
@@ -1146,9 +1131,11 @@ _poly_uniform_postprocess_test_entrypoint:
     /* Reset the output pointer. */
     addi    a1, a1, -1024
 
-    /* TODO: remove this copy */
     /* Copy the index of the first bad coefficient into a GPR. */
-    addi    a3, t4, 0
+    la      t0, poly_wdr2gpr
+    li      t1, 14
+    bn.sid  t1, 0(t0)
+    lw      a3, 0(t0)
 
 _poly_uniform_discard_coeff_done:
     /* If we jump here, we assume:
