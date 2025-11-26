@@ -851,6 +851,7 @@ _poly_uniform_find_and_discard_bad_coeff:
          - t2 has the number of digest bytes available in shake_reg
          - t3 points to the end of the output polynomial
          - w10 has the indicator bytes for each coefficient.
+         - w11 holds a vectorized 23-bit mask.
        We can use the indicator to find and discard the bad coefficient. Only
        process one at a time, because discarding will shift the indices and
        make subsequent correction more complicated. */
@@ -877,6 +878,7 @@ _poly_uniform_discard_coeff:
          - t0 points to a bad 32-bit coefficient
          - t2 has the number of digest bytes available in shake_reg
          - t3 points to the end of the output polynomial
+         - w11 holds a vectorized 23-bit mask.
        Now we need to shift the entire polynomial to eliminate the bad
        coefficient, and backfill the next candidate from the digest. */
     /* Get the number of coefficients to shift. */
@@ -892,47 +894,44 @@ _poly_uniform_discard_coeff:
       sw   t1, 0(t0)
       addi t0, t0, 4
 _poly_uniform_discard_coeff_skip_shift:
-    /* Speculatively copy 23 bits of digest (some bytes may be invalid). */
-    la      t4, poly_wdr2gpr
-    li      t5, shake_reg_ptr
-    bn.sid  t5, 0(t4)
+    /* Now we need to draw a new coefficient from SHAKE output. */
+    /* Load the last vector of coefficients. */
+    srli    t0, t0, 5
+    slli    t0, t0, 5
+    bn.lid  zero, 0(t0)
+    /* Rotate so the last coefficient is in the least significant position. */
+    bn.rshi w0, w0, w0 >> 224
+    /* Speculatively copy 3 bytes of digest (some bytes may be invalid). */
+    bn.rshi w0, shake_reg, w0 >> 32
     bn.rshi shake_reg, shake_reg, shake_reg >> 24
-    lw      t1, 0(t4)
-    li      t6, 0x7fffff
-    and     t1, t1, t6
-    sw      t1, 0(t0)
+    /* Speculatively mask and store. */
+    bn.and  w0, w0, w11
+    bn.sid  zero, 0(t0)
     /* Update number of bytes available and check for underflow. If the bytes
        were all valid, we're done. */
     addi    t2, t2, -3
     srli    t6, t2, 31
     beq     t6, zero, _poly_uniform_discard_coeff_done
-    /* Some upper bytes are not valid. Refresh the digest and re-read. */
+    /* Some upper bytes are not valid. Refresh the digest. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
-    bn.sid  t5, 0(t4)
-    lw      t6, 0(t4)
-    /* Calculate how many bytes we need and rotate them out of the digest. */
+    /* Shift the uppermost 0 byte out of the vector. */
+    bn.rshi w0, w0, bn0 >> 248
+    /* Calculate how many bytes were invalid. */
     sub     t4, zero, t2
+    /* Shift invalid upper bytes out of the coefficient. */
     loop    t4, 1
+      bn.rshi w0, w0, bn0 >> 248
+    /* Rotate valid bytes into the coefficient. */
+    loop    t4, 2
+      bn.rshi w0, shake_reg, w0 >> 8
       bn.rshi shake_reg, shake_reg, shake_reg >> 8
-    /* Update the number of bytes available. */
+    /* Reinsert the uppermost 0 byte. */
+    bn.rshi w0, bn0, w0 >> 8
+    /* Update the number of bytes available in the digest. */
     addi    t2, t2, 32
-    /* Get the number of lower bytes that were valid (may be 0). */
-    addi    t4, t4, -3
-    sub     t4, zero, t4
-    /* Mask out the new upper bytes and shift them into position. */
-    slli    t4, t4, 3
-    li      t5, 0x7fffff
-    srl     t5, t5, t4
-    and     t6, t6, t5
-    sll     t6, t6, t4
-    /* Mask out valid lower bytes. */
-    li      t5, 1
-    sll     t5, t5, t4
-    addi    t5, t5, -1
-    and     t1, t1, t5
-    /* Assemble final coefficient and store; now done. */
-    or      t6, t6, t1
-    sw      t6, 0(t0)
+    /* Re-mask and re-store. */
+    bn.and  w0, w0, w11
+    bn.sid  zero, 0(t0)
     jal     x0, _poly_uniform_discard_coeff_done
 
 /**

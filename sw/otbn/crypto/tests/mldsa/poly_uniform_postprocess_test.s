@@ -19,6 +19,11 @@ main:
 
   /* Note: if details of poly_uniform change, this setup might also need to change. */
 
+  /* Load the mask. */
+  li      x11, 11
+  la      x2, mask23
+  bn.lid  x11, 0(x2)
+
   /* Load the vectorized modulus. */
   li      x12, 12
   la      x2, modulus
@@ -26,7 +31,7 @@ main:
 
   /* Load the mask. */
   li      x13, 13
-  la      x2, mask
+  la      x2, mask8
   bn.lid  x13, 0(x2)
 
   /* Set up a SHAKE128 operation with an empty input (just so there's digest to read). */
@@ -52,7 +57,7 @@ main:
 .data
 /* Mask used internally by poly_uniform. */
 .balign 32
-mask:
+mask8:
   .word 0x000000ff
   .word 0x000000ff
   .word 0x000000ff
@@ -61,6 +66,18 @@ mask:
   .word 0x000000ff
   .word 0x000000ff
   .word 0x000000ff
+
+/* Mask used internally by poly_uniform. */
+.balign 32
+mask23:
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
+  .word 0x007fffff
 
 /* Polynomial with all good coefficients except for the very last (this means
    no shifting of the polynomial is required and could cause a loop error if
