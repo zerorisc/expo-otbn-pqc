@@ -712,11 +712,11 @@ poly_uniform:
 
     /* Initialize a register that will eventually hold the vector index of the
        first vector with bad coefficients as a hint to the postprocessing. */
-    addi    t4, 0
+    li      t4, 0
 
     /* Initialize a register to increment the vector index. When we reach the
        first bad vector, we set this to zero to stop incrementing. */
-    addi    t5, 1
+    li      t5, 1
 
     /* Speculatively store 256 candidate coefficients.
 
@@ -761,7 +761,6 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     /* Store 8 coefficient candidates. */
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     /* Load 2 23-bit coefficient candidates into vector register. */
     loopi   2, 2
@@ -779,7 +778,6 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     /* Store 8 coefficient candidates. */
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     /* Load 5 23-bit coefficient candidates into vector register. */
     loopi   5, 2
@@ -797,14 +795,12 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     /* Store 8 coefficient candidates. */
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     /* Load 8 23-bit coefficient candidates into vector register. */
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     /* Store 8 coefficient candidates. */
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
 
     /* Process bytes 96..191 of digest (state refresh before third read). */
@@ -813,7 +809,6 @@ poly_uniform:
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     loopi   2, 2
       bn.rshi w0, shake_reg, w0 >> 32
@@ -825,16 +820,28 @@ poly_uniform:
     loopi   5, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     loopi   5, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
     bn.rshi w0, shake_reg, w0 >> 8
-    /* While waiting for the state to refresh, check the input so far. */
-    /* TODO: keep the indexes in small regs and use pointer arith here */
-    csrrs   
-    addi    t4, t4, t5
+    /* While waiting for more digest, mask and check vectors 0..5. */
+    loopi 6, 11
+      /* Load the next vector. */
+      bn.lid  zero, 0(t3)
+      /* Mask and store the data. */
+      bn.and  w0, w0, w11
+      bn.sid  zero, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w0, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      csrrs      t1, FG0, zero
+      andi       t1, t1, 8
+      bne        t1, zero, .+8
+      addi       t5, zero, 0
+      add        t4, t4, t5
     /* STATE REFRESH. */
     bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
     bn.rshi w0, shake_reg, w0 >> 24
@@ -842,14 +849,287 @@ poly_uniform:
     loopi   2, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-    bn.and  w0, w0, w11
     bn.sid  x0, 0(a1++)
 
+    /* Process bytes 192-287 of digest (no state refresh needed). */
+
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Process bytes 288-383 of digest (state refresh before second read). */
+
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    /* While waiting for more digest, mask and check vectors 6..12. */
+    loopi 7, 11
+      /* Load the next vector. */
+      bn.lid  zero, 0(t3)
+      /* Mask and store the data. */
+      bn.and  w0, w0, w11
+      bn.sid  zero, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w0, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      csrrs      t1, FG0, zero
+      andi       t1, t1, 8
+      bne        t1, zero, .+8
+      addi       t5, zero, 0
+      add        t4, t4, t5
+    /* STATE REFRESH. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Process bytes 384-479 of digest (no state refresh needed). */
+
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Process bytes 480-575 of digest (state refresh before first read). */
+
+    /* While waiting for more digest, mask and check vectors 13..19. */
+    loopi 7, 11
+      /* Load the next vector. */
+      bn.lid  zero, 0(t3)
+      /* Mask and store the data. */
+      bn.and  w0, w0, w11
+      bn.sid  zero, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w0, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      csrrs      t1, FG0, zero
+      andi       t1, t1, 8
+      bne        t1, zero, .+8
+      addi       t5, zero, 0
+      add        t4, t4, t5
+    /* STATE REFRESH. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Process bytes 576-671 of digest (no state refresh needed). */
+
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Process bytes 672-767 of digest (state refresh before first read). */
+
+    /* While waiting for more digest, mask and check vectors 20..27. */
+    loopi 8, 11
+      /* Load the next vector. */
+      bn.lid  zero, 0(t3)
+      /* Mask and store the data. */
+      bn.and  w0, w0, w11
+      bn.sid  zero, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w0, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      csrrs      t1, FG0, zero
+      andi       t1, t1, 8
+      bne        t1, zero, .+8
+      addi       t5, zero, 0
+      add        t4, t4, t5
+    /* STATE REFRESH. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.sid  x0, 0(a1++)
+
+    /* Done sampling; mask and check the last few vectors 28..31. */
+    loopi 4, 11
+      /* Load the next vector. */
+      bn.lid  zero, 0(t3)
+      /* Mask and store the data. */
+      bn.and  w0, w0, w11
+      bn.sid  zero, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w0, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      csrrs      t1, FG0, zero
+      andi       t1, t1, 8
+      bne        t1, zero, .+8
+      addi       t5, zero, 0
+      add        t4, t4, t5
 
 /* This label is for testing, so we can intentionally give the postprocessing
  * part difficult inputs. */
@@ -860,17 +1140,12 @@ _poly_uniform_postprocess_test_entrypoint:
        since at present all bytes have been consumed. */
     li    t2, 0
 
-    /* Copy the pointer to the end of the output. */
-    addi    t3, a1, 0
-
     /* Reset the output pointer. */
     addi    a1, a1, -1024
 
+    /* TODO: remove this copy */
     /* Copy the index of the first bad coefficient into a GPR. */
-    la      t0, poly_wdr2gpr
-    li      t1, 14
-    bn.sid  t1, 0(t0)
-    lw      a3, 0(t0)
+    addi    a3, t4, 0
 
 _poly_uniform_discard_coeff_done:
     /* If we jump here, we assume:
