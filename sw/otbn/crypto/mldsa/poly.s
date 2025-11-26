@@ -994,10 +994,13 @@ _poly_uniform_recompute_first_bad_index:
     /* Check for underflow in each vector and stop incrementing the index if we
        find it. */
     loop t1, 9
+      /* Load the next vector. */
       bn.lid  zero, 0(t0++)
+      /* Check for underflow in all coefficients. */
       bn.subv.8S w10, w0, w12
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
       csrrs      t1, FG0, zero
       andi       t1, t1, 8
       bne        t1, zero, .+8
