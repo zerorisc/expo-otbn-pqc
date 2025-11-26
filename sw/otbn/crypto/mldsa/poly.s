@@ -654,7 +654,7 @@ _loop_inner_skip_load_poly_challenge:
  * @param[in]  a2: nonce
  * @param[out] a1: dmem pointer to polynomial
  *
- * clobbered registers: a0-a3, t0-t6, w0, w8-w12
+ * clobbered registers: a0-a3, t0-t6, w0, w8-w13, w21
  */
 .global poly_uniform
 poly_uniform:
@@ -717,6 +717,9 @@ poly_uniform:
     /* Initialize a register to increment the vector index. When we reach the
        first bad vector, we set this to zero to stop incrementing. */
     li      t5, 1
+
+    /* Initialize a temp register pointer. */
+    li      t6, 21
 
     /* Speculatively store 256 candidate coefficients.
 
@@ -828,12 +831,12 @@ poly_uniform:
     /* While waiting for more digest, mask and check vectors 0..5. */
     loopi 6, 11
       /* Load the next vector. */
-      bn.lid  zero, 0(t3)
+      bn.lid  t6, 0(t3)
       /* Mask and store the data. */
-      bn.and  w0, w0, w11
-      bn.sid  zero, 0(t3++)
+      bn.and  w21, w21, w11
+      bn.sid  t6, 0(t3++)
       /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w0, w12
+      bn.subv.8S w10, w21, w12
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
@@ -903,12 +906,12 @@ poly_uniform:
     /* While waiting for more digest, mask and check vectors 6..12. */
     loopi 7, 11
       /* Load the next vector. */
-      bn.lid  zero, 0(t3)
+      bn.lid  t6, 0(t3)
       /* Mask and store the data. */
-      bn.and  w0, w0, w11
-      bn.sid  zero, 0(t3++)
+      bn.and  w21, w21, w11
+      bn.sid  t6, 0(t3++)
       /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w0, w12
+      bn.subv.8S w10, w21, w12
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
@@ -980,12 +983,12 @@ poly_uniform:
     /* While waiting for more digest, mask and check vectors 13..19. */
     loopi 7, 11
       /* Load the next vector. */
-      bn.lid  zero, 0(t3)
+      bn.lid  t6, 0(t3)
       /* Mask and store the data. */
-      bn.and  w0, w0, w11
-      bn.sid  zero, 0(t3++)
+      bn.and  w21, w21, w11
+      bn.sid  t6, 0(t3++)
       /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w0, w12
+      bn.subv.8S w10, w21, w12
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
@@ -1066,12 +1069,12 @@ poly_uniform:
     /* While waiting for more digest, mask and check vectors 20..27. */
     loopi 8, 11
       /* Load the next vector. */
-      bn.lid  zero, 0(t3)
+      bn.lid  t6, 0(t3)
       /* Mask and store the data. */
-      bn.and  w0, w0, w11
-      bn.sid  zero, 0(t3++)
+      bn.and  w21, w21, w11
+      bn.sid  t6, 0(t3++)
       /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w0, w12
+      bn.subv.8S w10, w21, w12
       bn.and     w10, w10, w13
       bn.cmp     w10, w13
       /* If the Z flag is set, stop incrementing the index. */
@@ -1116,10 +1119,10 @@ poly_uniform:
     /* Done sampling; mask and check the last few vectors 28..31. */
     loopi 4, 11
       /* Load the next vector. */
-      bn.lid  zero, 0(t3)
+      bn.lid  t6, 0(t3)
       /* Mask and store the data. */
-      bn.and  w0, w0, w11
-      bn.sid  zero, 0(t3++)
+      bn.and  w21, w21, w11
+      bn.sid  t6, 0(t3++)
       /* Check for underflow in all coefficients. */
       bn.subv.8S w10, w0, w12
       bn.and     w10, w10, w13

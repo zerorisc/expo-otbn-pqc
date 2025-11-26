@@ -41,7 +41,8 @@ main:
   /* Run the first test. */
   la      x11, result1
   addi    x11, x11, 1024
-  bn.addi w14, w31, 0
+  addi    x28, x11, 0
+  li      x29, 0
   jal     x1, _poly_uniform_postprocess_test_entrypoint
 
   /* Reset SHAKE128 operation. */
@@ -51,7 +52,8 @@ main:
   /* Run the second test. */
   la      x11, result2
   addi    x11, x11, 1024
-  bn.addi w14, w31, 31
+  addi    x28, x11, 0
+  li      x29, 31
   jal     x1, _poly_uniform_postprocess_test_entrypoint
 
   ecall
