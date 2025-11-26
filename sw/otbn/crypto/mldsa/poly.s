@@ -666,6 +666,7 @@ poly_uniform:
     la t0, modulus
     lw a2, 0(t0)
 
+    /* TODO: Start the operation outside the function. */
     /* Initialize a SHAKE128 operation. */
     addi  a3, a1, 0               /* save output pointer */
     addi  a1, zero, 34
@@ -706,156 +707,149 @@ poly_uniform:
     /* Set up a mask to select the most significant byte of each 32 bits. */
     bn.shv.8S w13, w11 << 24
 
+    /* Copy the pointer to the start of the output polynomial. */
+    addi    t3, a1, 0
+
     /* Initialize a register that will eventually hold the vector index of the
-       first vector with bad coefficients. */
-    bn.xor  w14, w14, w14
+       first vector with bad coefficients as a hint to the postprocessing. */
+    addi    t4, 0
 
     /* Initialize a register to increment the vector index. When we reach the
        first bad vector, we set this to zero to stop incrementing. */
-    bn.addi w15, bn0, 1
+    addi    t5, 1
 
     /* Speculatively store 256 candidate coefficients.
 
-       For performance reasons, we do not check that the coefficients are < Q
-       within this loop. Because the vast majority of 23-bit numbers are within
-       bounds (Q / 2^23 = 0.99902), it's faster to store speculatively and then
-       post-process to discard the small number of bad coefficients.
+       In the following logic, we translate 768 bytes of SHAKE data into 256
+       23-bit candidate coefficients by sampling 3 bytes per coefficient and
+       masking out the uppermost bit. This logic is performance-critical.
 
-       Each iteration of this loop processes 96 bytes of digest into 32
-       coefficient candidates that are 23 bits each. The loop is slightly
-       unrolled to handle imperfect alignment between reads of the digest, but
-       luckily the pattern repeats every 3 reads: 
+       We read the digest in 32-byte chunks from the digest register. SHAKE128
+       produces output 168 bytes at a time, so once every ~5 reads we will need
+       to wait about 100 cycles for the KMAC hardware block to process.
+       Carefully scheduled during this time, we store information about whether
+       the coefficients we stored so far are < Q or not. For performance
+       reasons, we do not discard them immediately, since it would complicate
+       the vectorization of the sampling routine. The vast majority of 23-bit
+       numbers are within bounds (Q / 2^23 = 0.99902), so it's faster to store
+       speculatively and run a more expensive correction routine later for the
+       few bad values.
+
+       Reads from SHAKE and stores of candidate vectors follow a repeating
+       pattern every 3 reads/4 stores:
          - read 32B of digest
-         - create 10 candidates (uses 30B, 2B of digest remaining)
+         - create 8 candidates (uses 24B, 8B of digest remaining)
+         - store 8 candidates
+         - create 2 candidates (uses 6B, 2B of digest remaining)
          - read 32B of digest
-         - create 11 candidates (uses 33B, 1B of digest remaining)
+         - create 6 candidates (uses 18B, 16B of digest remaining)
+         - store 8 candidates
+         - create 5 candidates (uses 15B, 1B of digest remaining)
          - read 32B of digest
-         - create 11 candidates (uses 33B, now safe to repeat)
+         - create 3 candidates (uses 9B, 24B of digest remaining)
+         - store 8 candidates
+         - create 8 candidates (uses 24B, now aligned again)
+         - store 8 candidates
     */
-    loopi 8, 55
 
-      /* Read 32 bytes from the digest. */
-      bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    /* Process bytes 0..95 of digest (no state refresh needed). */
 
-      /* Load 8 23-bit coefficient candidates into vector register. */
-      loopi   8, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Read 32 bytes from the digest. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    /* Load 8 23-bit coefficient candidates into vector register. */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Store 8 coefficient candidates. */
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    /* Load 2 23-bit coefficient candidates into vector register. */
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Save the leftover bytes (2) in the upper part of w0. */
+    bn.rshi w0, shake_reg, w0 >> 16
+    /* Read 32 bytes from the digest. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    /* Complete the partial coefficient with 1 more byte from the digest. */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    /* Load 5 23-bit coefficient candidates into vector register. */
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Store 8 coefficient candidates. */
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    /* Load 5 23-bit coefficient candidates into vector register. */
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Save the leftover bytes (1) in the upper part of w0. */
+    bn.rshi w0, shake_reg, w0 >> 8
+    /* Read 32 bytes from the digest. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    /* Complete the partial coefficient with 2 more bytes from the digest. */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    /* Load 2 23-bit coefficient candidates into vector register. */
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Store 8 coefficient candidates. */
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    /* Load 8 23-bit coefficient candidates into vector register. */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    /* Store 8 coefficient candidates. */
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
 
-      /* Store 8 coefficient candidates. */
-      bn.and  w0, w0, w11
-      bn.sid  x0, 0(a1++)
+    /* Process bytes 96..191 of digest (state refresh before third read). */
 
-      /* Subtract the modulus from each coefficient and select the upper byte
-         to detect underflow. */
-      bn.subv.8S w10, w0, w12
-      bn.and     w10, w10, w13
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 16
+    bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    loopi   5, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.rshi w0, shake_reg, w0 >> 8
+    /* While waiting for the state to refresh, check the input so far. */
+    /* TODO: keep the indexes in small regs and use pointer arith here */
+    csrrs   
+    addi    t4, t4, t5
+    /* STATE REFRESH. */
+    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.rshi w0, shake_reg, w0 >> 24
+    bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
+    loopi   2, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
+    loopi   8, 2
+      bn.rshi w0, shake_reg, w0 >> 32
+      bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
+    bn.and  w0, w0, w11
+    bn.sid  x0, 0(a1++)
 
-      /* If the masked value is equal to the mask (Z is set), all coefficients
-         are good. Otherwise, stop incrementing the vector index. */
-      bn.cmp     w10, w13
-      bn.sel     w15, w15, bn0, Z
-
-      /* Increment the vector index. */
-      bn.add     w14, w14, w15
-
-      /* Load 2 23-bit coefficient candidates into vector register. */
-      loopi   2, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-
-      /* Save the leftover bytes (2) in the upper part of w0. */
-      bn.rshi w0, shake_reg, w0 >> 16
-
-      /* Read 32 bytes from the digest. */
-      bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
-
-      /* Complete the partial coefficient with 1 more byte from the digest. */
-      bn.rshi w0, shake_reg, w0 >> 16
-      bn.rshi shake_reg, shake_reg, shake_reg >> 8 # rotate-right
-
-      /* Load 5 23-bit coefficient candidates into vector register. */
-      loopi   5, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-
-      /* Store 8 coefficient candidates. */
-      bn.and  w0, w0, w11
-      bn.sid  x0, 0(a1++)
-
-      /* Subtract the modulus from each coefficient and select the upper byte
-         to detect underflow. */
-      bn.subv.8S w10, w0, w12
-      bn.and     w10, w10, w13
-
-      /* If the masked value is equal to the mask (Z is set), all coefficients
-         are good. Otherwise, stop incrementing the vector index. */
-      bn.cmp     w10, w13
-      bn.sel     w15, w15, bn0, Z
-
-      /* Increment the vector index. */
-      bn.add     w14, w14, w15
-
-      /* Load 5 23-bit coefficient candidates into vector register. */
-      loopi   5, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-
-      /* Save the leftover bytes (1) in the upper part of w0. */
-      bn.rshi w0, shake_reg, w0 >> 8
-
-      /* Read 32 bytes from the digest. */
-      bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
-
-      /* Complete the partial coefficient with 2 more bytes from the digest. */
-      bn.rshi w0, shake_reg, w0 >> 24
-      bn.rshi shake_reg, shake_reg, shake_reg >> 16 # rotate-right
-
-      /* Load 2 23-bit coefficient candidates into vector register. */
-      loopi   2, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-
-      /* Store 8 coefficient candidates. */
-      bn.and  w0, w0, w11
-      bn.sid  x0, 0(a1++)
-
-      /* Subtract the modulus from each coefficient and select the upper byte
-         to detect underflow. */
-      bn.subv.8S w10, w0, w12
-      bn.and     w10, w10, w13
-
-      /* If the masked value is equal to the mask (Z is set), all coefficients
-         are good. Otherwise, stop incrementing the vector index. */
-      bn.cmp     w10, w13
-      bn.sel     w15, w15, bn0, Z
-
-      /* Increment the vector index. */
-      bn.add     w14, w14, w15
-
-      /* Load 8 23-bit coefficient candidates into vector register. */
-      loopi   8, 2
-        bn.rshi w0, shake_reg, w0 >> 32
-        bn.rshi shake_reg, shake_reg, shake_reg >> 24 # rotate-right
-
-      /* Store 8 coefficient candidates. */
-      bn.and  w0, w0, w11
-      bn.sid  x0, 0(a1++)
-
-      /* Subtract the modulus from each coefficient and select the upper byte
-         to detect underflow. */
-      bn.subv.8S w10, w0, w12
-      bn.and     w10, w10, w13
-
-      /* If the masked value is equal to the mask (Z is set), all coefficients
-         are good. Otherwise, stop incrementing the vector index. */
-      bn.cmp     w10, w13
-      bn.sel     w15, w15, bn0, Z
-
-      /* Increment the vector index. */
-      bn.add     w14, w14, w15
-
-      /* End of loop body. */
 
 /* This label is for testing, so we can intentionally give the postprocessing
  * part difficult inputs. */
