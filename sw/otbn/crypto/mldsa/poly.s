@@ -993,17 +993,18 @@ _poly_uniform_recompute_first_bad_index:
     li   t4, 1
     /* Check for underflow in each vector and stop incrementing the index if we
        find it. */
-    loop t1, 8
+    loop t1, 9
       bn.lid  zero, 0(t0++)
       bn.subv.8S w10, w0, w12
       bn.and     w10, w10, w13
+      bn.cmp     w10, w13
       csrrs      t1, FG0, zero
       andi       t1, t1, 8
-      beq        t1, zero, .+8
+      bne        t1, zero, .+8
       addi       t4, zero, 0
       add        a3, a3, t4
 
-    /* Discard procedure done; jump back. */
+    /* Jump back to discard next bad coefficient, if any. */
     jal     x0, _poly_uniform_discard_coeff_done
 
 /**

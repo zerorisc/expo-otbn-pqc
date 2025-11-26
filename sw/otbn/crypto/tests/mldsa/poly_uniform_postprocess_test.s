@@ -39,17 +39,14 @@ main:
   csrrw   x0, kmac_cfg, x2
 
   /* Run the first test. */
-/*
   la      x11, result1
   addi    x11, x11, 1024
   bn.addi w14, w31, 0
   jal     x1, _poly_uniform_postprocess_test_entrypoint
-*/
+
   /* Reset SHAKE128 operation. */
-/*
   li      x2, 0x2
   csrrw   x0, kmac_cfg, x2
-*/
 
   /* Run the second test. */
   la      x11, result2
@@ -63,14 +60,14 @@ main:
 /* Mask used internally by poly_uniform. */
 .balign 32
 mask8:
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
-  .word 0x000000ff
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
+  .word 0xff000000
 
 /* Mask used internally by poly_uniform. */
 .balign 32
