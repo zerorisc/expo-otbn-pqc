@@ -529,7 +529,7 @@ _rej_crypto_sign_signature_internal:
            for i in 0..k-1:
              w[i] += A[i][j] * yj
     */
-    loopi L, 40
+    loopi L, 38
         /* Zero the buffer for y[j]. */
         addi  t0, s8, 0
         loopi 32, 1
@@ -553,14 +553,13 @@ _rej_crypto_sign_signature_internal:
         addi a1, s9, 0
         addi a2, s8, 0
         jal x1, ntt
-        loopi K, 15
+        loopi K, 13
             /* Compute A[i][j]. */
-            addi a0, fp, STACK_RHO
             addi a1, s10, 0
-            addi a2, s4, 0 /* matrix nonce */
             jal  x1, poly_uniform
             /* Increment the row index by 1. */
             bn.addi w23, w23, 256
+            /* Start the SHAKE128 operation for poly_uniform for A[i+1][j]. */
             csrrw zero, kmac_cfg, s4
             addi  a0, fp, STACK_RHO
             bn.lid    x0, 0(a0)

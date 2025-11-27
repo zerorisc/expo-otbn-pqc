@@ -297,7 +297,7 @@ crypto_sign_keypair:
            for i in 0..k-1:
              t[i] += A[i][j] * s1j
     */
-    loopi L, 40
+    loopi L, 38
         bn.wsrw   mod, w16 /* MOD = R | Q */
         /* Sample the next polynomial from s1. */
         addi a0, fp, STACK_RHOPRIME
@@ -322,11 +322,9 @@ crypto_sign_keypair:
         addi a1, s5, 0
         addi a2, s0, 0
         jal  x1, ntt
-        loopi K, 15
+        loopi K, 13
             /* Compute A[i][j]. */
-            addi a0, fp, STACK_RHO
             addi a1, s1, 0
-            addi a2, s4, 0
             jal  x1, poly_uniform
             /* Increment the row in the matrix nonce (upper byte). */
             bn.addi w23, w23, 256

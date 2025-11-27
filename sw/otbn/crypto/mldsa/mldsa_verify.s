@@ -580,11 +580,9 @@ crypto_sign_verify_internal:
     li s3, POLYVECL_BYTES
 
      /* Compute A * z, computing elements of A on the fly. */
-    loopi K, 40
+    loopi K, 36
         /* Compute A[i][0]. */
-        addi a0, fp, STACK_RHO
         addi a1, s1, 0
-        addi a2, s4, 0
         jal  x1, poly_uniform
         /* Increment the matrix nonce. */
         bn.addi w23, w23, 1
@@ -600,11 +598,9 @@ crypto_sign_verify_internal:
         addi a2, s2, 0
         jal  x1, poly_pointwise
         addi s0, s0, 1024
-        loopi Lminus1, 15
+        loopi Lminus1, 13
             /* Compute A[i][j]. */
-            addi a0, fp, STACK_RHO
             addi a1, s1, 0
-            addi a2, s4, 0
             jal  x1, poly_uniform
             /* Increment the matrix nonce. */
             bn.addi w23, w23, 1
