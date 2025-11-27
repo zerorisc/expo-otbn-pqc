@@ -549,6 +549,16 @@ crypto_sign_verify_internal:
 
     /* After NTT(c), w16 is still R | Q and MOD is still 2*R | 2*Q */
 
+    /* Initialize the nonce for matrix expansion. This value should be
+         byte(i) || byte(j)
+       for entry A[i][j]. */
+    bn.xor w23, w23, w23
+
+    /* Precompute the SHAKE128 configuration for poly_uniform. */
+    addi  s4, zero, 34
+    slli  s4, s4, 5
+    addi  s4, s4, SHAKE128_CFG
+
     /* Load source pointers for matrix-vector multiplication. */
     li  s0, STACK_Z
     add s0, fp, s0
@@ -561,11 +571,6 @@ crypto_sign_verify_internal:
 
     /* Load offset for resetting vector pointer. */
     li s3, POLYVECL_BYTES
-
-    /* Initialize the nonce for matrix expansion. This value should be
-         byte(i) || byte(j)
-       for entry A[i][j]. */
-    li s4, 0
 
      /* Compute A * z, computing elements of A on the fly. */
     loopi K, 25
