@@ -662,10 +662,6 @@ poly_uniform:
     la t0, poly_wdr2gpr
     sw a2, 0(t0)
 
-    /* Load Q to GPR */
-    la t0, modulus
-    lw a2, 0(t0)
-
     /* TODO: Start the operation outside the function. */
     /* Initialize a SHAKE128 operation. */
     addi  a3, a1, 0               /* save output pointer */
