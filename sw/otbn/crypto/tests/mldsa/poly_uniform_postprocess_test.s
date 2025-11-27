@@ -34,6 +34,9 @@ main:
   la      x2, mask8
   bn.lid  x13, 0(x2)
 
+  /* Load the temp reg pointer. */
+  li      x31, 21
+
   /* Set up a SHAKE128 operation with an empty input (just so there's digest to read). */
   li      x2, 0x2
   csrrw   x0, kmac_cfg, x2

@@ -1075,20 +1075,20 @@ _poly_uniform_postprocess_test_entrypoint:
     /* Reset the output pointer. */
     addi    a1, a1, -1024
 
-    /* Copy the index of the first bad coefficient into a GPR. */
-    la      t0, poly_wdr2gpr
-    li      t1, 14
-    bn.sid  t1, 0(t0)
-    lw      a3, 0(t0)
-
 _poly_uniform_discard_coeff_done:
     /* If we jump here, we assume:
          - a1 points to the start of the output polynomial
          - w11 holds a mask that selects the lower 23 bits of each 32b word
          - w12 holds the vectorized modulus
          - w13 holds a mask that selects the upper 8 bits of each 32b word
-         - a3 holds the first vector index with a bad coefficient (32 if none)
+         - w14 holds the first vector index with a bad coefficient (32 if none)
      */
+
+    /* Copy the index of the first bad coefficient into a GPR. */
+    la      t0, poly_wdr2gpr
+    li      t1, 14
+    bn.sid  t1, 0(t0)
+    lw      a3, 0(t0)
 
     /* If the index is 32, there are no bad coefficients and we can return. */
     li      t1, 32
@@ -1190,25 +1190,12 @@ _poly_uniform_recompute_first_bad_index:
     li   t1, 32
     sub  t1, t1, a3
     /* Get a pointer to the just-corrected vector. */
-    slli t0, a3, 5
-    add  t0, t0, a1
-    /* Initialize the increment value. */
-    li   t4, 1
-    /* Check for underflow in each vector and stop incrementing the index if we
-       find it. */
-    loop t1, 9
-      /* Load the next vector. */
-      bn.lid  zero, 0(t0++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w0, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      csrrs      t1, FG0, zero
-      andi       t1, t1, 8
-      bne        t1, zero, .+8
-      addi       t4, zero, 0
-      add        a3, a3, t4
+    slli t3, a3, 5
+    add  t3, t3, a1
+    /* Reset the incrementer value. The index register will still correctly
+       indicate the current vector. */
+    bn.addi w15, bn0, 1
+    jal     x1, poly_uniform_mask_and_check_vectors
 
     /* Jump back to discard next bad coefficient, if any. */
     jal     x0, _poly_uniform_discard_coeff_done
