@@ -754,7 +754,7 @@ poly_uniform:
     /* Process bytes 0..95 of digest (no state refresh needed). */
 
     /* Read 32 bytes from the digest. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     /* Load 8 23-bit coefficient candidates into vector register. */
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
@@ -768,7 +768,7 @@ poly_uniform:
     /* Save the leftover bytes (2) in the upper part of w0. */
     bn.rshi w0, shake_reg, w0 >> 16
     /* Read 32 bytes from the digest. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     /* Complete the partial coefficient with 1 more byte from the digest. */
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
@@ -785,7 +785,7 @@ poly_uniform:
     /* Save the leftover bytes (1) in the upper part of w0. */
     bn.rshi w0, shake_reg, w0 >> 8
     /* Read 32 bytes from the digest. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     /* Complete the partial coefficient with 2 more bytes from the digest. */
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
@@ -804,7 +804,7 @@ poly_uniform:
 
     /* Process bytes 96..191 of digest (state refresh before third read). */
 
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -813,7 +813,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -825,21 +825,10 @@ poly_uniform:
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
     /* While waiting for more digest, mask and check vectors 0..5. */
-    loopi 6, 8
-      /* Load the next vector. */
-      bn.lid  t6, 0(t3)
-      /* Mask and store the data. */
-      bn.and  w21, w21, w11
-      bn.sid  t6, 0(t3++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w21, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      bn.sel     w15, w15, bn0, Z
-      bn.add     w14, w14, w15
+    li      t1, 6
+    jal     x1, poly_uniform_mask_and_check_vectors
     /* STATE REFRESH. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -853,7 +842,7 @@ poly_uniform:
 
     /* Process bytes 192-287 of digest (no state refresh needed). */
 
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -862,7 +851,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -873,7 +862,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -887,7 +876,7 @@ poly_uniform:
 
     /* Process bytes 288-383 of digest (state refresh before second read). */
 
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -897,21 +886,10 @@ poly_uniform:
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
     /* While waiting for more digest, mask and check vectors 6..12. */
-    loopi 7, 8
-      /* Load the next vector. */
-      bn.lid  t6, 0(t3)
-      /* Mask and store the data. */
-      bn.and  w21, w21, w11
-      bn.sid  t6, 0(t3++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w21, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      bn.sel     w15, w15, bn0, Z
-      bn.add     w14, w14, w15
+    li      t1, 7
+    jal     x1, poly_uniform_mask_and_check_vectors
     /* STATE REFRESH. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -922,7 +900,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -936,7 +914,7 @@ poly_uniform:
 
     /* Process bytes 384-479 of digest (no state refresh needed). */
 
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -945,7 +923,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -956,7 +934,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -970,22 +948,14 @@ poly_uniform:
 
     /* Process bytes 480-575 of digest (state refresh before first read). */
 
-    /* While waiting for more digest, mask and check vectors 13..19. */
-    loopi 7, 8
-      /* Load the next vector. */
-      bn.lid  t6, 0(t3)
-      /* Mask and store the data. */
-      bn.and  w21, w21, w11
-      bn.sid  t6, 0(t3++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w21, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      bn.sel     w15, w15, bn0, Z
-      bn.add     w14, w14, w15
+    /* While waiting for more digest, mask and check vectors 13..19. Note that
+       t1 already holds the right vector count from the previous check (and for
+       this run in particular we actually exceed the SHAKE latency due to the
+       larger amount of computation between the last shake read and this one,
+       so saving the instruction counts). */
+    jal     x1, poly_uniform_mask_and_check_vectors
     /* STATE REFRESH. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -994,7 +964,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -1005,7 +975,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -1019,7 +989,7 @@ poly_uniform:
 
     /* Process bytes 576-671 of digest (no state refresh needed). */
 
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -1028,7 +998,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -1039,7 +1009,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -1054,21 +1024,10 @@ poly_uniform:
     /* Process bytes 672-767 of digest (state refresh before first read). */
 
     /* While waiting for more digest, mask and check vectors 20..27. */
-    loopi 8, 8
-      /* Load the next vector. */
-      bn.lid  t6, 0(t3)
-      /* Mask and store the data. */
-      bn.and  w21, w21, w11
-      bn.sid  t6, 0(t3++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w21, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      bn.sel     w15, w15, bn0, Z
-      bn.add     w14, w14, w15
+    li      t1, 8
+    jal     x1, poly_uniform_mask_and_check_vectors
     /* STATE REFRESH. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     loopi   8, 2
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
@@ -1077,7 +1036,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 16
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 16
     bn.rshi shake_reg, shake_reg, shake_reg >> 8
     loopi   5, 2
@@ -1088,7 +1047,7 @@ poly_uniform:
       bn.rshi w0, shake_reg, w0 >> 32
       bn.rshi shake_reg, shake_reg, shake_reg >> 24
     bn.rshi w0, shake_reg, w0 >> 8
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     bn.rshi w0, shake_reg, w0 >> 24
     bn.rshi shake_reg, shake_reg, shake_reg >> 16
     loopi   2, 2
@@ -1101,19 +1060,8 @@ poly_uniform:
     bn.sid  x0, 0(a1++)
 
     /* Done sampling; mask and check the last few vectors 28..31. */
-    loopi 4, 8
-      /* Load the next vector. */
-      bn.lid     t6, 0(t3)
-      /* Mask and store the data. */
-      bn.and     w21, w21, w11
-      bn.sid     t6, 0(t3++)
-      /* Check for underflow in all coefficients. */
-      bn.subv.8S w10, w21, w12
-      bn.and     w10, w10, w13
-      bn.cmp     w10, w13
-      /* If the Z flag is set, stop incrementing the index. */
-      bn.sel     w15, w15, bn0, Z
-      bn.add     w14, w14, w15
+    li      t1, 4
+    jal     x1, poly_uniform_mask_and_check_vectors
 
 /* This label is for testing, so we can intentionally give the postprocessing
  * part difficult inputs. */
@@ -1217,7 +1165,7 @@ _poly_uniform_discard_coeff_skip_shift:
     srli    t1, t2, 31
     beq     t1, zero, _poly_uniform_recompute_first_bad_index
     /* Some upper bytes are not valid. Refresh the digest. */
-    bn.wsrr shake_reg, 0xA /* KECCAK_DIGEST */
+    bn.wsrr shake_reg, kmac_digest
     /* Shift the uppermost 0 byte out of the vector. */
     bn.rshi w0, w0, bn0 >> 248
     /* Calculate how many bytes were invalid. */
@@ -1264,6 +1212,53 @@ _poly_uniform_recompute_first_bad_index:
 
     /* Jump back to discard next bad coefficient, if any. */
     jal     x0, _poly_uniform_discard_coeff_done
+
+/**
+ * Internal helper routine for poly_uniform.
+ *
+ * Given a series of vectors in memory, loads them, masks them, and returns the
+ * index of the first one that contains at least one bad coefficient.
+ *
+ * The index and incrementer arguments are used to ensure we stop after the
+ * first bad coefficient. If we find a bad coefficient, we set the incrementer
+ * register to zero, and then future loops or calls to this function will not
+ * change the index.
+ *
+ * This routine is performance-critical within the sampling loop, where it
+ * typically runs between KMAC refreshes that take ~100 cycles and typically
+ * checks about 5 vectors at a time. Therefore, keeping the total cycle count
+ * under about 80 cycles per 5 vectors is important but hyperoptimizing the
+ * performance beyond that is not.
+ *
+ * Flags: Clobbers FG0, has no meaning beyond the scope of this subroutine.
+ *
+ * @param[in] w11 mask that selects lower 23 bits of each 32b word
+ * @param[in] w12 vectorized modulus
+ * @param[in] w13 mask that selects upper 8 bits of each 32b word
+ * @param[in] t1, number of vectors to check
+ * @param[in] t6, constant 21 (wide register pointer)
+ * @param[in,out] t3, pointer to first input vector (updated in-place)
+ * @param[in,out] w14 index, either current index or first bad index if found
+ * @param[in,out] w15 incrementer, 1 if bad index not found yet otherwise 0
+ *
+ * clobbered registers: w10, w21
+ */
+poly_uniform_mask_and_check_vectors:
+    loop  t1, 8
+      /* Load the next vector. */
+      bn.lid     t6, 0(t3)
+      /* Mask and store the data. */
+      bn.and     w21, w21, w11
+      bn.sid     t6, 0(t3++)
+      /* Check for underflow in all coefficients. */
+      bn.subv.8S w10, w21, w12
+      bn.and     w10, w10, w13
+      bn.cmp     w10, w13
+      /* If the Z flag is set, stop incrementing the index. */
+      bn.sel     w15, w15, bn0, Z
+      bn.add     w14, w14, w15
+    ret
+
 
 /**
  * poly_uniform_eta
