@@ -5292,13 +5292,14 @@
       param_decl:
       {
         EnMasking: "1"
-        NumAppIntf: 4
+        NumAppIntf: 5
         AppCfg:
           '''
           '{kmac_pkg::AppCfgKeyMgr,
                   kmac_pkg::AppCfgLcCtrl,
                   kmac_pkg::AppCfgRomCtrl,
-                  kmac_pkg::AppCfgRomCtrl}
+                  kmac_pkg::AppCfgRomCtrl,
+                  kmac_pkg::AppCfgOTBN}
           '''
       }
       clock_srcs:
@@ -5385,7 +5386,7 @@
           name: NumAppIntf
           desc: Number of application interfaces
           type: int
-          default: 4
+          default: 5
           local: "false"
           expose: "true"
           name_top: KmacNumAppIntf
@@ -5404,7 +5405,8 @@
             '{kmac_pkg::AppCfgKeyMgr,
                     kmac_pkg::AppCfgLcCtrl,
                     kmac_pkg::AppCfgRomCtrl,
-                    kmac_pkg::AppCfgRomCtrl}
+                    kmac_pkg::AppCfgRomCtrl,
+                    kmac_pkg::AppCfgOTBN}
             '''
           local: "false"
           expose: "true"
@@ -5529,6 +5531,10 @@
     {
       name: otbn
       type: otbn
+      param_decl:
+      {
+        OtbnPQCEn: "0"
+      }
       clock_srcs:
       {
         clk_i:
@@ -5572,7 +5578,6 @@
         clk_edn_i: clkmgr_aon_clocks.clk_main_secure
         clk_otp_i: clkmgr_aon_clocks.clk_io_div4_secure
       }
-      param_decl: {}
       memory: {}
       param_list:
       [
@@ -5622,6 +5627,15 @@
           expose: "true"
           name_top: SecOtbnSkipUrndReseedAtStart
         }
+        {
+          name: OtbnPQCEn
+          desc: If enabled (1), vector ISA extension for PQC is enabled
+          type: bit
+          default: "0"
+          local: "false"
+          expose: "true"
+          name_top: OtbnOtbnPQCEn
+        }
       ]
       inter_signal_list:
       [
@@ -5660,6 +5674,18 @@
           default: ""
           top_signame: edn0_edn
           index: 5
+        }
+        {
+          name: kmac_data
+          struct: app
+          package: kmac_pkg
+          type: req_rsp
+          act: req
+          width: 1
+          inst_name: otbn
+          default: ""
+          top_signame: kmac_app
+          index: 4
         }
         {
           name: idle
@@ -11310,6 +11336,7 @@
         lc_ctrl.kmac_data
         rom_ctrl0.kmac_data
         rom_ctrl1.kmac_data
+        otbn.kmac_data
       ]
       kmac.en_masking:
       [
@@ -24463,6 +24490,18 @@
         default: ""
         top_signame: edn0_edn
         index: 5
+      }
+      {
+        name: kmac_data
+        struct: app
+        package: kmac_pkg
+        type: req_rsp
+        act: req
+        width: 1
+        inst_name: otbn
+        default: ""
+        top_signame: kmac_app
+        index: 4
       }
       {
         name: idle
