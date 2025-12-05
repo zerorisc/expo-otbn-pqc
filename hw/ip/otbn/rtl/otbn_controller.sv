@@ -191,6 +191,13 @@ module otbn_controller
 );
   import prim_mubi_pkg::*;
 
+  // Tie unused ports to '0
+  generate
+    if (!OtbnPQCEn) begin : gen_unused_outputs
+      assign mac_bignum_start_o = '0;
+    end
+  endgenerate
+
   otbn_state_e state_q, state_d;
 
 

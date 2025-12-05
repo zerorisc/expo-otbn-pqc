@@ -56,6 +56,7 @@ module otbn_mac_bignum
   generate
     if (!OtbnPQCEn) begin : gen_unused_outputs
       assign ispr_acch_intg_o = '0;
+      assign operation_done_o = '0;
     end
   endgenerate
 
@@ -63,7 +64,7 @@ module otbn_mac_bignum
   logic [ADDER_WIDTH-1:0] adder_op_a;
   logic [ADDER_WIDTH-1:0] adder_op_b;
   logic [ADDER_WIDTH-1:0] adder_result;
-  logic [ADDER_WIDTH-1:0] mul_res_shifted, mul_res_shifted_q;
+  logic [ADDER_WIDTH-1:0] mul_res_shifted;
 
   logic [1:0]      adder_result_hw_is_zero;
 
@@ -209,15 +210,25 @@ module otbn_mac_bignum
     end
   endgenerate
 
-  // Add a register layer at the MUL output to split accumulate into 2 cycles
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      mul_res_shifted_q <= '0;
+
+  // Pipeline is only needed for PQC mode
+  generate
+    if (OtbnPQCEn) begin : gen_pipeline_pqc
+      logic [ADDER_WIDTH-1:0] mul_res_shifted_q;
+
+      // Add a register layer at the MUL output to split accumulate into 2 cycles
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          mul_res_shifted_q <= '0;
+        end else begin
+          mul_res_shifted_q <= mul_res_shifted;
+        end
+      end
+      assign adder_op_a = mul_res_shifted_q;
     end else begin
-      mul_res_shifted_q <= mul_res_shifted;
+      assign adder_op_a = mul_res_shifted;
     end
-  end
-  assign adder_op_a = mul_res_shifted_q;
+  endgenerate
 
   generate
     if (OtbnPQCEn) begin : gen_adder_op_pqc
@@ -390,8 +401,15 @@ module otbn_mac_bignum
 
   // Only write to accumulator if the MAC is enabled or an ACC ISPR write is occurring or secure
   // wipe of the internal state is occurring.
-  assign acc_en = (mac_en_i & mac_commit_i & operation_done_o)
-                  | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
+  generate
+    if (OtbnPQCEn) begin : gen_acc_en_pqc
+      assign acc_en = (mac_en_i & mac_commit_i & operation_done_o)
+                      | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
+    end else begin : gen_acc_en
+      assign acc_en = (mac_en_i & mac_commit_i)
+                      | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
+    end
+  endgenerate
 
   always_ff @(posedge clk_i) begin
     if (acc_en) begin
