@@ -440,7 +440,9 @@ class KmacMsgWSR(WSR):
             self._pending_write_stall_pw = False
         # KMAC_MSG reg -> FIFO
         if self._pending_write_to_app_intf:
+            # read and reset partial-write ispr
             strb_len = self._partial_ispr.read_mask()
+            self._partial_ispr._value = 32
             value_bytes = int.to_bytes(self._value, byteorder='little', length=32)[:strb_len]
             kmac_debug_print("\tPending write to App FIFO")
             if (
