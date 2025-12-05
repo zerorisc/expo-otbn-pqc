@@ -118,8 +118,10 @@ module otbn_controller
   // Bignum MAC
   output mac_bignum_operation_t mac_bignum_operation_o,
   input  logic [WLEN-1:0]       mac_bignum_operation_result_i,
+  input  logic                  mac_bignum_operation_done_i,
   output logic                  mac_bignum_en_o,
   output logic                  mac_bignum_commit_o,
+  output logic                  mac_bignum_start_o,
 
   // LSU
   output logic                     lsu_load_req_o,
@@ -224,6 +226,7 @@ module otbn_controller
       logic kmac_digest_req_raw;
       logic kmac_msg_write_req_raw;
       logic kmac_msg_partial_raw;
+      logic mac_stall, mac_stall_q;
     end
   endgenerate
 
@@ -408,8 +411,23 @@ module otbn_controller
 
       assign gen_kmac_nets.kmac_write_stall = (gen_kmac_nets.kmac_msg_write_req_raw & ~kmac_msg_write_ready_i)
                                 | (gen_kmac_nets.kmac_msg_partial_raw & kmac_msg_pending_write_i);
+      
+      assign gen_kmac_nets.mac_stall = (insn_dec_bignum_i.mac_mulv | insn_dec_bignum_i.mac_en)
+                                       & ~mac_bignum_operation_done_i;
 
-      assign stall = mem_stall | ispr_stall | rf_indirect_stall | gen_kmac_nets.kmac_write_stall;
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          gen_kmac_nets.mac_stall_q <= 1'b0;
+        end else begin
+          gen_kmac_nets.mac_stall_q <= gen_kmac_nets.mac_stall;
+        end
+      end
+
+      assign mac_bignum_start_o = (insn_dec_bignum_i.mac_mulv | insn_dec_bignum_i.mac_en)
+                                  & (gen_kmac_nets.mac_stall & ~gen_kmac_nets.mac_stall_q);
+
+      assign stall = mem_stall | ispr_stall | rf_indirect_stall
+                     | gen_kmac_nets.kmac_write_stall | gen_kmac_nets.mac_stall;
     end else begin : gen_ispr_stall
       assign ispr_stall = rnd_req_raw & ~rnd_valid_i;
       assign stall = mem_stall | ispr_stall | rf_indirect_stall;
@@ -1004,23 +1022,6 @@ module otbn_controller
     .out_o(rf_bignum_rd_addr_a_o)
   );
 
-  generate
-    if (OtbnPQCEn) begin : gen_bignum_rd_unbuf_pqc
-      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a
-          & insn_valid_i
-          & (~stall | gen_kmac_nets.kmac_write_stall);
-    end else begin : gen_bignum_rd_unbuf
-      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a & insn_valid_i & ~stall;
-    end
-  endgenerate
-
-  prim_buf #(
-    .Width(1)
-  ) u_rf_bignum_rd_en_a_buf (
-    .in_i (rf_bignum_rd_en_a_unbuf),
-    .out_o(rf_bignum_rd_en_a_o)
-  );
-
   assign rf_bignum_rd_addr_b_unbuf = insn_dec_bignum_i.rf_b_indirect ? insn_bignum_rd_addr_b_q :
                                                                        insn_dec_bignum_i.b;
 
@@ -1031,7 +1032,28 @@ module otbn_controller
     .out_o(rf_bignum_rd_addr_b_o)
   );
 
-  assign rf_bignum_rd_en_b_unbuf = insn_dec_bignum_i.rf_ren_b & insn_valid_i & ~stall;
+  generate
+    if (OtbnPQCEn) begin : gen_bignum_rd_unbuf_pqc
+      // RD Enable A Port
+      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a
+          & insn_valid_i
+          & (~stall | gen_kmac_nets.kmac_write_stall | gen_kmac_nets.mac_stall);
+
+      // RD Enable B Port
+      assign rf_bignum_rd_en_b_unbuf = insn_dec_bignum_i.rf_ren_b & insn_valid_i
+                                       & (~stall | gen_kmac_nets.mac_stall);
+    end else begin : gen_bignum_rd_unbuf
+      assign rf_bignum_rd_en_a_unbuf = insn_dec_bignum_i.rf_ren_a & insn_valid_i & ~stall;
+      assign rf_bignum_rd_en_b_unbuf = insn_dec_bignum_i.rf_ren_b & insn_valid_i & ~stall;
+    end
+  endgenerate
+
+  prim_buf #(
+    .Width(1)
+  ) u_rf_bignum_rd_en_a_buf (
+    .in_i (rf_bignum_rd_en_a_unbuf),
+    .out_o(rf_bignum_rd_en_a_o)
+  );
 
   prim_buf #(
     .Width(1)

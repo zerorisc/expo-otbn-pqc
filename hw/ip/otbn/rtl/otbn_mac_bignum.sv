@@ -23,8 +23,10 @@ module otbn_mac_bignum
   input mac_bignum_operation_t operation_i,
   input logic                  mac_en_i,
   input logic                  mac_commit_i,
+  input logic                  mac_start_i,
 
   output logic [WLEN-1:0] operation_result_o,
+  output logic            operation_done_o,
   output flags_t          operation_flags_o,
   output flags_t          operation_flags_en_o,
   output logic            operation_intg_violation_err_o,
@@ -61,7 +63,7 @@ module otbn_mac_bignum
   logic [ADDER_WIDTH-1:0] adder_op_a;
   logic [ADDER_WIDTH-1:0] adder_op_b;
   logic [ADDER_WIDTH-1:0] adder_result;
-  logic [ADDER_WIDTH-1:0] mul_res_shifted;
+  logic [ADDER_WIDTH-1:0] mul_res_shifted, mul_res_shifted_q;
 
   logic [1:0]      adder_result_hw_is_zero;
 
@@ -207,7 +209,15 @@ module otbn_mac_bignum
     end
   endgenerate
 
-  assign adder_op_a = mul_res_shifted;
+  // Add a register layer at the MUL output to split accumulate into 2 cycles
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mul_res_shifted_q <= '0;
+    end else begin
+      mul_res_shifted_q <= mul_res_shifted;
+    end
+  end
+  assign adder_op_a = mul_res_shifted_q;
 
   generate
     if (OtbnPQCEn) begin : gen_adder_op_pqc
@@ -380,7 +390,8 @@ module otbn_mac_bignum
 
   // Only write to accumulator if the MAC is enabled or an ACC ISPR write is occurring or secure
   // wipe of the internal state is occurring.
-  assign acc_en = (mac_en_i & mac_commit_i) | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
+  assign acc_en = (mac_en_i & mac_commit_i & operation_done_o)
+                  | ispr_acc_wr_en_i | sec_wipe_acc_urnd_i;
 
   always_ff @(posedge clk_i) begin
     if (acc_en) begin
@@ -419,7 +430,8 @@ module otbn_mac_bignum
 
       // Only write to accumulator if the MAC is enabled or an ACC ISPR write is occurring or secure
       // wipe of the internal state is occurring.
-      assign acch_en = (mac_en_i & mac_commit_i & operation_i.mulv) | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME acch
+      assign acch_en = (mac_en_i & mac_commit_i & operation_i.mulv & operation_done_o)
+                       | ispr_acch_wr_en_i | sec_wipe_acc_urnd_i;  // FIX ME acch
 
       always_ff @(posedge clk_i) begin
         if (acch_en) begin
@@ -536,6 +548,15 @@ module otbn_mac_bignum
           end
         endcase
       end
+
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          operation_done_o <= 1'b0;
+        end else begin
+          operation_done_o <= mac_start_i;
+        end
+      end
+
     end else begin : gen_op_result
       // The operation result is taken directly from the adder, shift_acc only applies to the new value
       // written to the accumulator.

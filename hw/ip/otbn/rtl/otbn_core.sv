@@ -221,6 +221,8 @@ module otbn_core
 
   mac_bignum_operation_t mac_bignum_operation;
   logic [WLEN-1:0]       mac_bignum_operation_result;
+  logic                  mac_bignum_operation_done;
+  logic                  mac_operation_start;
   flags_t                mac_bignum_operation_flags;
   flags_t                mac_bignum_operation_flags_en;
   logic                  mac_bignum_en;
@@ -545,8 +547,10 @@ module otbn_core
     // To/from bignum MAC
     .mac_bignum_operation_o       (mac_bignum_operation),
     .mac_bignum_operation_result_i(mac_bignum_operation_result),
+    .mac_bignum_operation_done_i  (mac_bignum_operation_done),
     .mac_bignum_en_o              (mac_bignum_en),
     .mac_bignum_commit_o          (mac_bignum_commit),
+    .mac_bignum_start_o           (mac_operation_start),
 
     // To/from LSU (base and bignum)
     .lsu_load_req_o          (lsu_load_req),
@@ -921,6 +925,7 @@ module otbn_core
 
     .operation_i                    (mac_bignum_operation),
     .operation_result_o             (mac_bignum_operation_result),
+    .operation_done_o               (mac_bignum_operation_done),
     .operation_flags_o              (mac_bignum_operation_flags),
     .operation_flags_en_o           (mac_bignum_operation_flags_en),
     .operation_intg_violation_err_o (mac_bignum_reg_intg_violation_err),
@@ -935,6 +940,7 @@ module otbn_core
 
     .mac_en_i    (mac_bignum_en),
     .mac_commit_i(mac_bignum_commit),
+    .mac_start_i (mac_operation_start),
 
     .ispr_acch_intg_o        (ispr_acch_intg),
     .ispr_acch_wr_data_intg_i(ispr_acch_wr_data_intg),
