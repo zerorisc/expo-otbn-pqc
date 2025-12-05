@@ -895,6 +895,9 @@ class BNMULV(OTBNInsn):
             if DEBUG_ARITH:
                 eprint(f"wrd_v[{i}] = {hex(wrd_v[i])}")
 
+        # MULV is 2 cycles
+        yield None
+
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
@@ -1006,6 +1009,9 @@ class BNMULVL(OTBNInsn):
             if DEBUG_ARITH:
                 eprint(f"wrd_v[{i}] = {hex(wrd_v[i])}")
 
+        # MULVL is 2 cycles
+        yield None
+
         result = sum((wrd_v[i] & mask) << (i * size) for i in range(num_lanes))
         state.wdrs.get_reg(self.wrd).write_unsigned(result)
 
@@ -1054,6 +1060,10 @@ class BNMULQACC(OTBNInsn):
         if DEBUG_ARITH:
             eprint(f"mulqacc {a_qw} * {b_qw} = {truncated}")
 
+        # MAC is 2 cycles for PQC parameter mode
+        if state.wsrs.EN_PQC:
+            yield None
+
         state.wsrs.ACC.write_unsigned(truncated)
 
 
@@ -1085,6 +1095,10 @@ class BNMULQACCWO(OTBNInsn):
             acc = 0
 
         acc += (mul_res << self.acc_shift_imm)
+
+        # MAC is 2 cycles for PQC parameter mode
+        if state.wsrs.EN_PQC:
+            yield None
 
         truncated = acc & ((1 << 256) - 1)
         state.wdrs.get_reg(self.wrd).write_unsigned(truncated)
@@ -1127,6 +1141,10 @@ class BNMULQACCSO(OTBNInsn):
 
         if DEBUG_ARITH:
             eprint(f"mulqacc.so {a_qw} * {b_qw} = {truncated}")
+
+        # MAC is 2 cycles for PQC parameter mode
+        if state.wsrs.EN_PQC:
+            yield None
 
         # Split the result into low and high parts
         lo_part = truncated & ((1 << 128) - 1)
