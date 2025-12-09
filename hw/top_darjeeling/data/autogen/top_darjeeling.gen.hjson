@@ -5533,7 +5533,7 @@
       type: otbn
       param_decl:
       {
-        OtbnPQCEn: "0"
+        OtbnPQCEn: "1"
       }
       clock_srcs:
       {
@@ -5631,7 +5631,7 @@
           name: OtbnPQCEn
           desc: If enabled (1), vector ISA extension for PQC is enabled
           type: bit
-          default: "0"
+          default: "1"
           local: "false"
           expose: "true"
           name_top: OtbnOtbnPQCEn

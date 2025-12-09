@@ -82,7 +82,7 @@ module top_darjeeling #(
   parameter otbn_pkg::regfile_e OtbnRegFile = otbn_pkg::RegFileFF,
   parameter bit SecOtbnMuteUrnd = 0,
   parameter bit SecOtbnSkipUrndReseedAtStart = 0,
-  parameter bit OtbnOtbnPQCEn = 0,
+  parameter bit OtbnOtbnPQCEn = 1,
   // parameters for keymgr_dpe
   parameter bit KeymgrDpeKmacEnMasking = 1,
   // parameters for csrng

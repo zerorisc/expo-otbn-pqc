@@ -735,7 +735,7 @@
     { name: "otbn",
       type: "otbn",
       param_decl: {
-        OtbnPQCEn: "0"
+        OtbnPQCEn: "1"
       }
       clock_srcs: {
         clk_i: {
