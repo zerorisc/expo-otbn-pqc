@@ -262,6 +262,12 @@ indcpa_enc:
     jal  x1, basemul_acc
   .endr
 
+  lw   a0, STACK_ENC_COINS_ADDR(fp)
+  addi a2, zero, 2*KYBER_K
+  sw   a2, STACK_ENC_NONCE(fp)
+  li   a3, STACK_ENC_NONCE
+  jal  x1, poly_getnoise_eta_2_init
+
   /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT v ***/
   li      a0, STACK_ENC_V
@@ -272,12 +278,8 @@ indcpa_enc:
   bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /*** CBD epp ***/
-  lw   a0, STACK_ENC_COINS_ADDR(fp)
   li   a1, STACK_ENC_EPP
   add  a1, fp, a1
-  addi a2, zero, 2*KYBER_K
-  sw   a2, STACK_ENC_NONCE(fp)
-  li   a3, STACK_ENC_NONCE
   li   t1, STACK_ENC_TMP
   add  t1, fp, t1
   jal  x1, poly_getnoise_eta_2
@@ -410,31 +412,42 @@ indcpa_enc:
   .endr
   bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
-  /*** CBD ep ***/
-  lw  a0, STACK_ENC_COINS_ADDR(fp)
-  li  a1, STACK_ENC_EP
-  add a1, fp, a1
-  add a4, zero, a0
-  li  a5, STACK_ENC_TMP
+  /*** CBD ep + ADD ***/
   li  a3, STACK_ENC_NONCE
-  li  a2, KYBER_K
-  LOOPI KYBER_K, 5
-    add  t1, fp, a5
-    sw   a2, STACK_ENC_NONCE(fp)
-    jal  x1, poly_getnoise_eta_2
-    add  a0, zero, a4
-    addi a2, a2, 1
+  lw  a4, STACK_ENC_COINS_ADDR(fp)
+  li  a5, STACK_ENC_EP
+  add a5, fp, a5
+  li  a6, STACK_ENC_B
+  add a6, fp, a6
+  li  t3, KYBER_K
 
-  /*** ADD ***/
-  /** b = b + ep **/
-  li  a0, STACK_ENC_B
-  add a0, fp, a0
-  li  a1, STACK_ENC_EP
-  add a1, fp, a1
-  add a2, zero, a0
-  .rept KYBER_K
-    jal x1, poly_add
-  .endr
+  LOOPI KYBER_K, 13
+    addi t1, fp, STACK_ENC_TMP
+    add  a0, zero, a4
+    add  a1, zero, a5
+    sw   t3, STACK_ENC_NONCE(fp)
+    jal  x1, poly_getnoise_eta_2_init
+    jal  x1, poly_getnoise_eta_2
+    addi t3, t3, 1
+
+    add  a0, zero, a6
+    add  a1, zero, a5
+    add  a2, zero, a6
+    jal  x1, poly_add
+
+    add  a5, a5, 2*KYBER_N
+    add  a6, a6, 2*KYBER_N
+
+  # /*** ADD ***/
+  # /** b = b + ep **/
+  # li  a0, STACK_ENC_B
+  # add a0, fp, a0
+  # li  a1, STACK_ENC_EP
+  # add a1, fp, a1
+  # add a2, zero, a0
+  # .rept KYBER_K
+  #   jal x1, poly_add
+  # .endr
 
   /*** pack_ciphertext ***/
   li   a0, STACK_ENC_B

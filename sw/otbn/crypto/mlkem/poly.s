@@ -187,6 +187,23 @@ poly_getnoise_eta_1:
 
   ret
 
+.globl poly_getnoise_eta_2_init
+poly_getnoise_eta_2_init:
+  /* Initialize a SHAKE256 operation. */
+  addi  x5, x0, 33
+  slli  x5, x5, 5
+  addi  x5, x5, SHAKE256_CFG
+  csrrw x0, KECCAK_CFG_REG, x5
+
+  /* Send the message to the Keccak core. */
+  bn.lid  x0, 0(x10)
+  bn.wsrw 0x9, w0
+  add     x10, x3, x13
+  bn.lid  x0, 0(x10)
+  bn.wsrw 0x9, w0
+
+  ret
+
 /*
  * Name:        poly_getnoise_eta2
  *
@@ -215,19 +232,6 @@ poly_getnoise_eta_2:
   addi x2, x2, -8
   sw   x11, 4(x2)
   sw   x6, 0(x2)
-
-  /* Initialize a SHAKE256 operation. */
-  addi  x5, x0, 33
-  slli  x5, x5, 5
-  addi  x5, x5, SHAKE256_CFG
-  csrrw x0, KECCAK_CFG_REG, x5
-
-  /* Send the message to the Keccak core. */
-  bn.lid  x0, 0(x10)
-  bn.wsrw 0x9, w0
-  add     x10, x3, x13
-  bn.lid  x0, 0(x10)
-  bn.wsrw 0x9, w0
 
   li x5, 8
   LOOPI 4, 2
