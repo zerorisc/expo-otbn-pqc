@@ -401,6 +401,13 @@ indcpa_enc:
 
   /* (End of public key rejection sampling) */
 
+  li   a3, STACK_ENC_NONCE
+  lw   a4, STACK_ENC_COINS_ADDR(fp)
+  add  a0, zero, a4
+  li   t3, KYBER_K
+  sw   t3, STACK_ENC_NONCE(fp)
+  jal  x1, poly_getnoise_eta_2_init
+
   /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT ***/
   li  a0, STACK_ENC_AT
@@ -419,11 +426,6 @@ indcpa_enc:
   add  a5, fp, a5
   li   a6, STACK_ENC_B
   add  a6, fp, a6
-
-  add  a0, zero, a4
-  li   t3, KYBER_K
-  sw   t3, STACK_ENC_NONCE(fp)
-  jal  x1, poly_getnoise_eta_2_init
 
   .rept KYBER_K-1
     addi t1, fp, STACK_ENC_TMP
