@@ -219,7 +219,7 @@ indcpa_enc:
   bn.lid x4, 0(a0)
   bn.sid x4, STACK_ENC_SEED(fp)
 
-  /*** CBD sp ***/
+  /*** CBD sp + NTT ***/
   lw  a0, STACK_ENC_COINS_ADDR(fp)
   add a4, zero, a0
   li  a1, STACK_ENC_SP
