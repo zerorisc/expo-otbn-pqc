@@ -413,41 +413,47 @@ indcpa_enc:
   bn.wsrw 0x0, w16 /* Restore MOD = R | Q */
 
   /*** CBD ep + ADD ***/
-  li  a3, STACK_ENC_NONCE
-  lw  a4, STACK_ENC_COINS_ADDR(fp)
-  li  a5, STACK_ENC_EP
-  add a5, fp, a5
-  li  a6, STACK_ENC_B
-  add a6, fp, a6
-  li  t3, KYBER_K
+  li   a3, STACK_ENC_NONCE
+  lw   a4, STACK_ENC_COINS_ADDR(fp)
+  li   a5, STACK_ENC_EP
+  add  a5, fp, a5
+  li   a6, STACK_ENC_B
+  add  a6, fp, a6
 
-  LOOPI KYBER_K, 13
+  add  a0, zero, a4
+  li   t3, KYBER_K
+  sw   t3, STACK_ENC_NONCE(fp)
+  jal  x1, poly_getnoise_eta_2_init
+
+  .rept KYBER_K-1
     addi t1, fp, STACK_ENC_TMP
     add  a0, zero, a4
     add  a1, zero, a5
+    jal  x1, poly_getnoise_eta_2
+
+    add  a0, zero, a4
+    addi t3, t3, 1
     sw   t3, STACK_ENC_NONCE(fp)
     jal  x1, poly_getnoise_eta_2_init
-    jal  x1, poly_getnoise_eta_2
-    addi t3, t3, 1
 
     add  a0, zero, a6
     add  a1, zero, a5
     add  a2, zero, a6
     jal  x1, poly_add
 
-    add  a5, a5, 2*KYBER_N
-    add  a6, a6, 2*KYBER_N
+    addi  a5, a5, 2*KYBER_N
+    addi  a6, a6, 2*KYBER_N
+  .endr
 
-  # /*** ADD ***/
-  # /** b = b + ep **/
-  # li  a0, STACK_ENC_B
-  # add a0, fp, a0
-  # li  a1, STACK_ENC_EP
-  # add a1, fp, a1
-  # add a2, zero, a0
-  # .rept KYBER_K
-  #   jal x1, poly_add
-  # .endr
+  addi t1, fp, STACK_ENC_TMP
+  add  a0, zero, a4
+  add  a1, zero, a5
+  jal  x1, poly_getnoise_eta_2
+
+  add  a0, zero, a6
+  add  a1, zero, a5
+  add  a2, zero, a6
+  jal  x1, poly_add
 
   /*** pack_ciphertext ***/
   li   a0, STACK_ENC_B
