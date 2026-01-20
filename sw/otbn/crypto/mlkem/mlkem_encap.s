@@ -227,9 +227,10 @@ indcpa_enc:
   li  a5, STACK_ENC_V
   li  a3, STACK_ENC_NONCE
   li  a2, 0
-  LOOPI KYBER_K, 5
+  LOOPI KYBER_K, 6
     add  t1, fp, a5
     sw   a2, STACK_ENC_NONCE(fp)
+    jal  x1, poly_getnoise_eta_init
     jal  x1, poly_getnoise_eta_1
     add  a0, zero, a4
     addi a2, a2, 1
@@ -266,7 +267,7 @@ indcpa_enc:
   addi a2, zero, 2*KYBER_K
   sw   a2, STACK_ENC_NONCE(fp)
   li   a3, STACK_ENC_NONCE
-  jal  x1, poly_getnoise_eta_2_init
+  jal  x1, poly_getnoise_eta_init
 
   /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT v ***/
@@ -401,12 +402,11 @@ indcpa_enc:
 
   /* (End of public key rejection sampling) */
 
+  lw   a0, STACK_ENC_COINS_ADDR(fp)
   li   a3, STACK_ENC_NONCE
-  lw   a4, STACK_ENC_COINS_ADDR(fp)
-  add  a0, zero, a4
-  li   t3, KYBER_K
-  sw   t3, STACK_ENC_NONCE(fp)
-  jal  x1, poly_getnoise_eta_2_init
+  li   t0, KYBER_K
+  sw   t0, STACK_ENC_NONCE(fp)
+  jal  x1, poly_getnoise_eta_init
 
   /* After basemul, w16 is still R | Q and MOD is still 2*R | 2*Q */
   /*** INTT ***/
@@ -426,6 +426,7 @@ indcpa_enc:
   add  a5, fp, a5
   li   a6, STACK_ENC_B
   add  a6, fp, a6
+  li   s2, KYBER_K
 
   .rept KYBER_K-1
     addi t1, fp, STACK_ENC_TMP
@@ -434,9 +435,9 @@ indcpa_enc:
     jal  x1, poly_getnoise_eta_2
 
     add  a0, zero, a4
-    addi t3, t3, 1
-    sw   t3, STACK_ENC_NONCE(fp)
-    jal  x1, poly_getnoise_eta_2_init
+    addi s2, s2, 1
+    sw   s2, STACK_ENC_NONCE(fp)
+    jal  x1, poly_getnoise_eta_init
 
     add  a0, zero, a6
     add  a1, zero, a5
