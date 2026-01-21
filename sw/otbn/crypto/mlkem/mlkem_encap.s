@@ -220,32 +220,44 @@ indcpa_enc:
   bn.sid x4, STACK_ENC_SEED(fp)
 
   /*** CBD sp + NTT ***/
-  lw  a0, STACK_ENC_COINS_ADDR(fp)
-  add a4, zero, a0
-  li  a1, STACK_ENC_SP
-  add a1, fp, a1
-  li  a5, STACK_ENC_V
-  li  a3, STACK_ENC_NONCE
-  li  a2, 0
-  LOOPI KYBER_K, 6
-    add  t1, fp, a5
-    sw   a2, STACK_ENC_NONCE(fp)
-    jal  x1, poly_getnoise_eta_init
-    jal  x1, poly_getnoise_eta_1
-    add  a0, zero, a4
-    addi a2, a2, 1
+  li  s8, STACK_ENC_NONCE
+  lw  s9, STACK_ENC_COINS_ADDR(fp)
+  li  s10, STACK_ENC_SP
+  add s10, fp, s10
+  li  s11, 0
 
   bn.wsrr   w16, 0x0 /* w16 = R | Q */
   bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
   bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
-  /*** NTT sp ***/
-  li  a0, STACK_ENC_SP
-  add a0, fp, a0
-  la  a1, twiddles_ntt
-  add a2, zero, a0
   .rept KYBER_K
-    jal x1, ntt
+    addi t1, fp, STACK_ENC_V
+    sw   s11, STACK_ENC_NONCE(fp)
+    add  a0, zero, s9
+    add  a1, zero, s10
+    add  a3, zero, s8
+    jal  x1, poly_getnoise_eta_init
+    jal  x1, poly_getnoise_eta_1
+    addi s11, s11, 1
+
+    add  a0, zero, s10
+    la   a1, twiddles_ntt
+    add  a2, zero, s10
+    jal  x1, ntt
+
+    addi s10, s10, 2*KYBER_N
   .endr
+
+  # bn.wsrr   w16, 0x0 /* w16 = R | Q */
+  # bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  # bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
+  # /*** NTT sp ***/
+  # li  a0, STACK_ENC_SP
+  # add a0, fp, a0
+  # la  a1, twiddles_ntt
+  # add a2, zero, a0
+  # .rept KYBER_K
+  #   jal x1, ntt
+  # .endr
 
   /* After NTT, w6 is still R | Q and MOD is still 2*R | 2*Q */
   /** v = sp * pkpv **/
