@@ -226,9 +226,6 @@ indcpa_enc:
   add s10, fp, s10
   li  s11, 0
 
-  bn.wsrr   w16, 0x0 /* w16 = R | Q */
-  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
-  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   .rept KYBER_K
     addi t1, fp, STACK_ENC_V
     sw   s11, STACK_ENC_NONCE(fp)
@@ -239,25 +236,26 @@ indcpa_enc:
     jal  x1, poly_getnoise_eta_1
     addi s11, s11, 1
 
+    bn.wsrr   w16, 0x0 /* w16 = R | Q */
+    bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+    bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
+
     add  a0, zero, s10
     la   a1, twiddles_ntt
     add  a2, zero, s10
     jal  x1, ntt
+    bn.xor w31, w31, w31
 
     addi s10, s10, 2*KYBER_N
+
+    bn.wsrr   w16, 0x0 /* w16 = R | Q */
+    bn.shv.8S w0, w16 >> 1 /* w0 = 2*R | 2*Q */
+    bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
   .endr
 
-  # bn.wsrr   w16, 0x0 /* w16 = R | Q */
-  # bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
-  # bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
-  # /*** NTT sp ***/
-  # li  a0, STACK_ENC_SP
-  # add a0, fp, a0
-  # la  a1, twiddles_ntt
-  # add a2, zero, a0
-  # .rept KYBER_K
-  #   jal x1, ntt
-  # .endr
+  bn.wsrr   w16, 0x0 /* w16 = R | Q */
+  bn.shv.8S w0, w16 << 1 /* w0 = 2*R | 2*Q */
+  bn.wsrw   0x0, w0 /* MOD = 2*R | 2*Q */
 
   /* After NTT, w6 is still R | Q and MOD is still 2*R | 2*Q */
   /** v = sp * pkpv **/
