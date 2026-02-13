@@ -19,7 +19,7 @@ MODE_FOR_PARAMS = {
     "mlkem1024": 4,
 }
 
-NTESTS = 3
+NTESTS = 10
 
 STATS = True  # makes tests run slower but logs detailed execution stats
 
