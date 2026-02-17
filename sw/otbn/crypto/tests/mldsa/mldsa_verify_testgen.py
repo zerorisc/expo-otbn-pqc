@@ -17,11 +17,11 @@ INSTANCE_FOR_PARAMS = {
     'mldsa87': ML_DSA_87,
 }
 
-MIN_MSG_LEN = 0
-MAX_MSG_LEN = 3072
+MIN_MSG_LEN = 64
+MAX_MSG_LEN = 64
 
-MIN_CTX_LEN = 0
-MAX_CTX_LEN = 255
+MIN_CTX_LEN = 32
+MAX_CTX_LEN = 32
 
 
 def gen_verify_test(mldsa, data_file: TextIO, exp_file: TextIO, dexp_file: TextIO):
