@@ -315,6 +315,7 @@ ek:
   .word 0x0286f330
   .word 0x14750d29
   .word 0x277bf027
+
 #elif (KYBER_K == 3)
 .globl ek
 ek:
@@ -614,6 +615,7 @@ ek:
   .word 0x08f1f077
   .word 0x7b432442
   .word 0xa22ba847
+
 #elif (KYBER_K == 4)
 .globl ek
 ek:
@@ -1009,6 +1011,7 @@ ek:
   .word 0xdad48bb8
   .word 0xe84c1a4c
   .word 0x3959e1aa
+
 #endif
 
 /* Modulus: KYBER_Q = 3329 */

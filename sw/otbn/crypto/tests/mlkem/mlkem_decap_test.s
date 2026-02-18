@@ -704,6 +704,7 @@ dk:
   .word 0x63a3e858
   .word 0xe3a1a89c
   .word 0xe257aef9
+
 #elif (KYBER_K == 3)
 .globl ct
 ct:
@@ -1582,6 +1583,7 @@ dk:
   .word 0x63a3e858
   .word 0xe3a1a89c
   .word 0xe257aef9
+
 #elif (KYBER_K == 4)
 .globl ct
 ct:
@@ -2772,6 +2774,7 @@ dk:
   .word 0x63a3e858
   .word 0xe3a1a89c
   .word 0xe257aef9
+
 #endif
 
 /* Modulus: KYBER_Q = 3329 */
