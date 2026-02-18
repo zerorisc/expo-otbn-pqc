@@ -4367,6 +4367,7 @@ message:
 .globl messagelen
 messagelen:
   .word 0x00000040
+
 #endif
 
 .balign 32
