@@ -104,22 +104,22 @@ ek:
 /* First input: coins */
 .globl coins
 coins:
-.word 0xcb1855fe
-.word 0x92e5dfe8
-.word 0xd26b9496
-.word 0x14a03569
-.word 0x7c2b3abe
-.word 0xc320a473
-.word 0x42f9a039
-.word 0x096d3737
-.word 0x001d9a88
-.word 0x254499c7
-.word 0xa9ae7a34
-.word 0x9623d7cf
-.word 0x78629522
-.word 0xf72c2c26
-.word 0xc27db4ec
-.word 0xbc1e3ac1
+.word 0x52e6b438
+.word 0xf2a74de4
+.word 0x269e0d37
+.word 0x6513270e
+.word 0xa6a3a450
+.word 0x0c5c7fd0
+.word 0x128b2f33
+.word 0xd23f0824
+.word 0x892f902b
+.word 0x1818e811
+.word 0x5d9dc9f8
+.word 0x9531985d
+.word 0x0ed90475
+.word 0xe8e25d94
+.word 0x81e74ef5
+.word 0x36f675cc
 
 /* Modulus: KYBER_Q = 3329 */
 .globl modulus
