@@ -112,7 +112,7 @@ coins:
   .word 0x6a5ed235
   .word 0xb2855043
 
-#if (KYBER_K == 2)
+#if KYBER_K == 2
 .globl ek
 ek:
   .word 0x6cc69ac2
@@ -316,7 +316,7 @@ ek:
   .word 0x14750d29
   .word 0x277bf027
 
-#elif (KYBER_K == 3)
+#elif KYBER_K == 3
 .globl ek
 ek:
   .word 0x02322078
@@ -616,7 +616,7 @@ ek:
   .word 0x7b432442
   .word 0xa22ba847
 
-#elif (KYBER_K == 4)
+#elif KYBER_K == 4
 .globl ek
 ek:
   .word 0x55748628

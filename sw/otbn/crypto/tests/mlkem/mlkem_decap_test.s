@@ -98,7 +98,7 @@ ss:
   .zero CRYPTO_BYTES
 
 .balign 32
-#if (KYBER_K == 2)
+#if KYBER_K == 2
 .globl ct
 ct:
   .word 0x2051645a
@@ -705,7 +705,7 @@ dk:
   .word 0xe3a1a89c
   .word 0xe257aef9
 
-#elif (KYBER_K == 3)
+#elif KYBER_K == 3
 .globl ct
 ct:
   .word 0x4ae03b1d
@@ -1584,7 +1584,7 @@ dk:
   .word 0xe3a1a89c
   .word 0xe257aef9
 
-#elif (KYBER_K == 4)
+#elif KYBER_K == 4
 .globl ct
 ct:
   .word 0x7b9afd31
