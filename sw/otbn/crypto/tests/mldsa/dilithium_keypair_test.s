@@ -141,14 +141,14 @@ sk:
 .balign 32
 .globl zeta
 zeta:
-  .word 0xa42b9c7f
-  .word 0x7d828fe8
-  .word 0x50456061
-  .word 0x3e850576
-  .word 0x93803bd7
-  .word 0x88bceff6
-  .word 0xac6e1aeb
-  .word 0x26ef66fa
+.word 0xd82c07cd
+.word 0x629f6fbe
+.word 0xc2094cac
+.word 0xe3e70682
+.word 0x6baa9455
+.word 0x0a5d2f34
+.word 0x42485e3a
+.word 0xf728b4fa
 
 .balign 32
 /* Modulus for reduction */
