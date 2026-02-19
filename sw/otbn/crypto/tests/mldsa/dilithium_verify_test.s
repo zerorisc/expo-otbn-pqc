@@ -112,6 +112,9 @@ main:
   la    x2, stack_end
   /* Load parameters */
   la    x10, signature
+#if DILITHIUM_MODE == 3
+  addi  x10, x10, 16
+#endif
   li    x11, CRYPTO_BYTES  /* siglen */
   la    x12, message
   la    x13, messagelen
@@ -1098,6 +1101,7 @@ message:
   .word 0x889174d9
   .word 0x6a5ed235
   .word 0xb2855043
+
 /* account for longer messages in the tests */
 .zero 3300
 
@@ -1597,9 +1601,10 @@ pk:
   .word 0x7c807e59
   .word 0x2add7b21
 
-  .zero 16
+.balign 32
 .globl signature
 signature:
+  .zero 16
   .word 0x5e7a78bd
   .word 0xd5d35a31
   .word 0x577588ae
@@ -2448,6 +2453,7 @@ message:
   .word 0x889174d9
   .word 0x6a5ed235
   .word 0xb2855043
+
 /* account for longer messages in the tests */
 .zero 3300
 
@@ -4286,12 +4292,14 @@ message:
   .word 0x889174d9
   .word 0x6a5ed235
   .word 0xb2855043
+
 /* account for longer messages in the tests */
 .zero 3300
 
 .globl messagelen
 messagelen:
   .word 0x00000040
+
 #endif
 
 .balign 32

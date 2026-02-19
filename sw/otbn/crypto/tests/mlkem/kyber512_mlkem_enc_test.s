@@ -74,6 +74,7 @@ coins:
   .word 0x889174d9
   .word 0x6a5ed235
   .word 0xb2855043
+
 .globl ek
 ek: 
   .word 0x6cc69ac2
