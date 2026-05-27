@@ -1,3 +1,5 @@
+This repository is deprecated. Please visit the [Pavona project](https://github.com/pavona/pavona).
+
 # About this Repository
 WARNING: EXPERIMENTAL.
 
